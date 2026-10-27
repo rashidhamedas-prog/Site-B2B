@@ -47,7 +47,7 @@
 - `preview` → تعداد واجد/رد (با دلیل)، نمونه ۵ پیام شخصی‌سازی‌شده، برآورد هزینه **بر حسب تعداد پارت پیامک** (Σ پارت هر گیرنده)، مقایسه با اعتبار باقی‌مانده (همان واحد: تعداد پیامک).
 - **تأیید دومرحله‌ای اجباری داخل پنل:**
   1. مرحله ۱ (`prepare`): کاربر خلاصه را می‌بیند؛ سرور `confirmationToken` یک‌بارمصرف (TTL ۱۰ دقیقه) بر پایه hash(campaignId + audienceSnapshotHash + bodyHash + scheduledAt) صادر می‌کند.
-  2. مرحله ۲ (`confirm`): کاربر عدد دقیق گیرندگان را تایپ می‌کند + کد OTP به موبایل خودِ ادمین (یا رمز مجدد). برای > ۱۰۰۰ گیرنده یا PROMO: تأیید نفر دوم با نقش «مدیر پیامک» یا «مدیر کل» (four-eyes)؛ تأییدکننده ≠ سازنده.
+  2. مرحله ۲ (`confirm`): کاربر عدد دقیق گیرندگان را تایپ می‌کند + کد OTP به موبایل خودِ ادمین (یا رمز مجدد). برای **همه** ارسال‌های انبوه (بدون آستانه، تصمیم مالک §۹): تأیید نفر دوم با نقش «مدیر پیامک» یا «مدیر کل» (four-eyes)؛ تأییدکننده ≠ سازنده.
   - هر تغییر در متن/مخاطب/زمان token را باطل می‌کند. بدون token معتبر، API ارسال انبوه 409 می‌دهد.
 - canary: ارسال اول به حداکثر ۵ شماره تست داخلی (لیست `SMS_TEST_NUMBERS` در تنظیمات) قبل از go-live (الگوی موجود).
 - chunk به ۱۰۰ (`SMS_IR_BULK_MAX`)؛ توقف خودکار (circuit) اگر نرخ خطای chunk > ۲۰٪ یا اعتبار کم شد؛ دکمه «توقف اضطراری» (pause/cancel).
@@ -185,3 +185,74 @@ type SendResult = { ok: boolean; providerMessageId?: string; cost?: number;
 2. ساعات ارسال تبلیغاتی پیش‌فرض ۰۸:۰۰–۲۱:۰۰ و در تنظیمات قابل‌تغییر.
 3. بازاریاب می‌تواند PROMO تکی بفرستد، فقط با رضایت مشتری، لغو11، ساعات مجاز و rate limit اجباری.
 4. نقش‌ها: مدیر کل، مدیر پیامک، اپراتور، بازاریاب.
+
+## ۸. منابع داده و سگمنت‌ها (بازبینی مخزن master @ `3642bfc`، ۱۴۰۵/۰۸/۰۵)
+> PR #107 ادغام شده؛ ماژول `apps/api/src/modules/sms-panel/` روی master است. همه مسیرها نسبت به ریشه مخزن.
+
+### ۸.۱ منابع مخاطب موجود
+| منبع | جدول / فایل | فیلدهای قابل‌استفاده | نکته |
+|---|---|---|---|
+| مشتری عمده | `customers` — `apps/api/src/modules/customer/entities/customer.entity.ts` | `phone` (unique، L19–20)، `phone2` (L22)، `businessName`/`ownerName`، `type` (پیش‌فرض `B2B`، L28–29)، `segment` (پیش‌فرض `C`، L31–32)، `status` (L34–35)، `province`/`city` (رشته آزاد، L37–41)، `isActive`، `createdAt` | کانال از `type` تعیین می‌شود: `customer-channel.ts` L12–25 (`RETAIL`/`B2C` = خرده، بقیه = عمده) |
+| مشتری خرده (تک) | **همان جدول `customers`** با `type IN ('RETAIL','B2C')` | همان | جدول یا سایت جداگانه‌ای برای خرده در مخزن دیده نشد؛ `auth/retail-identity.ts` فقط نام/شهر ثبت‌نام خرده را تمیز می‌کند |
+| همکار فروش (بازاریاب) | `sales_partner_profiles` — `sales-partner/entities/sales-partner-profile.entity.ts` | `phone` (unique، L19–20)، `displayName`، `status` (L26–27)، `userId`، `createdAt` | وضعیت‌ها: `sales-partner-policy.ts` L5–12 → `PENDING_REVIEW, NEEDS_INFORMATION, ACTIVE, SUSPENDED, REJECTED, CLOSED`. **رابطه‌ای با `customers` ندارد و شهر ندارد.** |
+| معرف عمده (برنامه دوم همکاری) | `wholesale-referral/entities/wholesale-referral-partner.entity.ts` | `phone` (L9–10)، `displayName`، `status` (پیش‌فرض `PENDING_PHONE`، L24–25) | **منبع مخاطب است** (تصمیم مالک §۹)، کد `WHOLESALE_REFERRAL`، در ردهٔ عمده |
+| `affiliate` | `apps/api/src/modules/affiliate/` | فقط `GET health` + postback؛ جدول مخاطب ندارد | منبع مخاطب نیست |
+
+### ۸.۲ ابعاد سگمنت
+| بُعد درخواستی | وجود در مخزن | منبع |
+|---|---|---|
+| منبع | ✅ مشتق‌شده | `customers.type` + جدول همکار |
+| شهر/استان | ✅ برای مشتری، رشته آزاد (بدون جدول شهر؛ لیست مرجع فقط در وب `apps/web/src/lib/iran-geo.ts`) — ❌ برای همکار | customer.entity L37–41 |
+| وضعیت سفارش | ✅ `orders.status` (پیش‌فرض `PENDING_REVIEW`، `order.entity.ts` L27–28)؛ enum مرکزی ندارد؛ مقادیر دیده‌شده: `PENDING_REVIEW, CONFIRMED, PROCESSING, PACKED, SHIPPED, DELIVERED, COMPLETED, CANCELLED, DELETED` (`customer-marketing.constants.ts` L64–66، `sales-partner-ledger-policy.ts` L11–18) | |
+| آخرین خرید | ⚠️ ستون ندارد؛ باید `MAX(orders.createdAt)` روی سفارش‌های `SETTLED_ORDER_STATUSES` محاسبه شود | `orders.customerId` L21–22 |
+| گروه مشتری | ⚠️ موجودیت «گروه» ندارد؛ نزدیک‌ترین: `customers.segment` با `VIP,A,B,C` (`apps/web/src/lib/admin-customer-workspace.ts` L4) | |
+| وضعیت همکار | ✅ `sales_partner_profiles.status` (۶ مقدار، نه ۳ مقدار UI v2) | |
+| برچسب‌ها (UI v2) | ❌ ستون/جدول tag برای مشتری پیدا نشد | |
+| رضایت | ✅ `marketing_consent` با `customerId`+`channel`+`status` — فقط برای مشتری؛ **برای همکار رضایت تبلیغاتی وجود ندارد** | `customer-marketing/entities/marketing-consent.entity.ts` L12–22 |
+| لغو | ✅ `marketing_suppression.phoneNormalized` unique + `sms_unsubscribe` + `sms_blacklist` (بر پایه شماره → روی هر ۳ منبع اعمال‌پذیر) | |
+
+### ۸.۳ تحلیل شکاف پنل فعلی
+| قابلیت | وضعیت | شاهد |
+|---|---|---|
+| انتخاب مخاطب از منابع سایت | ❌ کمپین فقط از `listId` (لیست ایستا/CSV) | `sms-panel.service.ts` `createCampaign` L799–850، `previewCampaign` L860+ |
+| سگمنت پویا | ❌ stub: `count: 0` | `sms-panel.controller.ts` L138–142 |
+| ستون `filter` لیست DYNAMIC | ✅ ستون هست، استفاده نمی‌شود | `sms-panel.entities.ts` L62–65 |
+| ارسال تکی با جستجوی مخاطب | ❌ ورودی دستی «شناسه مشتری» | `apps/web/src/components/admin/sms/AdminSmsSend.tsx` L90–98 |
+| رضایت | ⚠️ `hasPromoConsent` کانال را چک نمی‌کند و فقط `customerId` | service L249–253 |
+| dedupe | ⚠️ فقط PK (listId, phone) و idempotencyKey `camp:{id}:{phone}`؛ dedupe بین منابع ندارد | service L1312–1332، L1189–1192 |
+| snapshot گیرندگان | ✅ `sms_campaign_recipient(campaignId, phone, customerId, parts)` | entities L198–211، enqueue L1172+ |
+| قالب strict | ✅ `domain/template.ts` L16؛ ❌ متغیر به‌ازای گیرنده (name/city…) از داده منبع پر نمی‌شود — `bodySnapshot` یکسان برای همه (L1199) |
+| زمان‌بندی | ✅ `scheduledAt` + انتقال به پنجره مجاز | L1178–1184 |
+| گزارش تحویل | ✅ polling هر ۵ دقیقه (`sms-panel.jobs.ts` L31) روی `GET /send/{id}` (`smsir.provider.ts` L198–201)؛ ⚠️ فقط ۱۰۰ ردیف آخر، یکی‌یکی، بدون backoff؛ webhook ندارد (مستند sms.ir هم webhook نشان نداد) | service L1522–1550 |
+| inbound لغو11 | ✅ `/receive/live` هر ۲ دقیقه | provider L242، jobs L41 |
+| نقش‌ها | ✅ `ADMIN/SMS_MANAGER/SMS_OPERATOR/SMS_MARKETER` | `auth/staff-access.ts` L3–12، L55–64؛ `sms-panel/sms-roles.ts` |
+| تست‌ها در CI | ✅ ۵ spec در `apps/api/scripts/unit-specs.txt` L7–11؛ CI فقط `npm test` (unit)؛ تست DB واقعی برای sms نیست (الگوی `sales-partner-integrity.integration.spec.ts` نیازمند DB محلی است و در CI اجرا نمی‌شود) | `.github/workflows/ci.yml` |
+
+### ۸.۴ مدل پیشنهادی
+- **`AudienceContact` (view منطقی در کد، نه جدول جدید):** `{ phone (09…), sources: ('WHOLESALE'|'RETAIL'|'SALES_PARTNER')[], customerId?, salesPartnerId?, name, city?, province?, customerSegment?, partnerStatus?, lastOrderAt?, orderCount, orderStatuses[], promoConsent: boolean, optedOut, blacklisted }`.
+- dedupe بر شماره نرمال (`domain/phone.ts`) روی `phone` و `phone2` مشتری و شماره همکاران؛ اولویت داده: `WHOLESALE > WHOLESALE_REFERRAL > SALES_PARTNER > RETAIL`.
+- سگمنت = `sms_segment(id, name, rules jsonb, sources text[], createdBy, updatedAt)`؛ قواعد AND، whitelist فیلد/عملگر، بدون SQL خام از ورودی.
+- همکاران (`sales_partner_profiles`, `wholesale_referral_partners`): رضایت PROMO پیش‌فرض با ستون‌های `smsPromoConsent`, `smsPromoConsentSource` (`OWNER_DEFAULT_POLICY` / `OWNER_DEFAULT_POLICY_BACKFILL`), `smsPromoConsentAt` + migration backfill؛ لغو با «لغو11» از مسیر inbound موجود، و لغو همیشه بر رضایت مقدم است.
+- سگمنت: فقط AND (OR ساخته نمی‌شود).
+- ارسال تکی به شماره خارج همه منابع: فقط مدیر کل و مدیر پیامک، برای خدماتی و تبلیغاتی؛ لغو/سیاه/لغو11/ساعات/rate limit اعمال می‌شوند؛ audit `send.single.offlist`.
+- `unitPricePerPart` (ریال) در تنظیمات، nullable و **بدون پیش‌فرض**؛ تا خالی است UI «قیمت تنظیم نشده» و هزینه ریالی محاسبه نمی‌شود.
+
+## ۹. لاگ تصمیم‌های مالک (حامد رشید، ۱۴۰۵/۰۸/۰۵ تهران)
+| # | تصمیم |
+|---|---|
+| 1 | اولویت داده شماره مشترک: عمده، سپس همکار، سپس خرده. معرف عمده (`wholesale_referral_partners`) در ردهٔ عمده و پس از مشتری عمده قرار می‌گیرد. این انتخاب مجری است، چون معرف عمده در کانال عمده فعالیت می‌کند و مخزن مانعی برای آن ندارد. |
+| 2 | ساعات مجاز PROMO ۰۸–۲۱ تهران و قابل‌تغییر (طبق §۱). |
+| 3 | تأیید دوم برای همه ارسال‌های انبوه، بدون آستانه. فرض ۱۰۰۰ گیرنده حذف شد. |
+| 4 | همه همکاران به‌صورت پیش‌فرض PROMO دریافت می‌کنند و با «لغو11» خارج می‌شوند. پرچم رضایت پیش‌فرض با منبع و زمان ثبت می‌شود، به‌اضافهٔ backfill. |
+| 5 | ارسال تکی به شماره خارج از منابع فقط برای مدیر کل و مدیر پیامک مجاز است، در هر دو کلاس پیام، و بررسی لغو و سیاه برقرار است. |
+| 6 | قیمت هر پارت تنظیم‌شدنی است و پیش‌فرض ندارد. تا تنظیم نشود، UI «قیمت تنظیم نشده» نشان می‌دهد. |
+| 7 | شرط‌های سگمنت فقط AND هستند. |
+| 8 | `wholesale_referral_partners` منبع مخاطب است. |
+| 9 | `customers.phone2` گیرنده است و با همان اولویت dedupe می‌شود. |
+
+## ۱۰. ریسک‌های افزوده
+- رضایت پیش‌فرض تبلیغاتی همکاران تصمیم مالک است. مبنای حقوقی آن (مصوبه ۳-۲۷۰ «اجازه قبلی مشترک») باید بررسی شود.
+- `phone2` ممکن است شماره فرد دیگری (منشی یا همکار) باشد که رضایت نداده است. رضایت مشتری به هر دو شماره تعمیم داده می‌شود.
+- ارسال PROMO مدیران به شماره خارج از منابع، رضایت ثبت‌شده ندارد و فقط بر audit تکیه می‌کند.
+- تأیید دوم برای هر انبوه، گلوگاه عملیاتی دو مدیر است.
+- وضعیت‌های معرف عمده از کد خوانده می‌شوند و در این بازبینی فهرست نشده‌اند.

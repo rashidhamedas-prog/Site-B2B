@@ -75,6 +75,7 @@ import {
   type SmsPanelSettings,
 } from './sms-panel.settings';
 import { SMS_MANAGERS } from './sms-roles';
+import { AudienceService } from './audience/audience.service';
 
 function hashToken(raw: string): string {
   return hashSmsToken(raw);
@@ -125,6 +126,7 @@ export class SmsPanelService {
     private readonly consents: Repository<MarketingConsentEntity>,
     @InjectRepository(MarketingSuppressionEntity)
     private readonly suppressions: Repository<MarketingSuppressionEntity>,
+    private readonly audience: AudienceService,
   ) {}
 
   async auditLog(input: {
@@ -188,6 +190,24 @@ export class SmsPanelService {
       provider: keys.provider,
       keys,
     };
+  }
+
+  listAudienceSources() {
+    return this.audience.sources();
+  }
+
+  searchAudienceContacts(input: {
+    q?: string;
+    source?: string;
+    page?: number;
+    pageSize?: number;
+    role?: string;
+  }) {
+    return this.audience.search(input);
+  }
+
+  getAudienceContact(phone: string, role?: string) {
+    return this.audience.getByPhone(phone, role);
   }
 
   async getCredit(force = false) {
@@ -1509,6 +1529,7 @@ export class SmsPanelService {
           handledAs: intent,
         }),
       );
+      // لغو و بازگشت روی شماره ثبت می‌شود. پرچم رضایت پیش‌فرض همکار عوض نمی‌شود.
       if (intent === 'UNSUBSCRIBE_11') {
         await this.addUnsubscribe('system', phone, 'INBOUND_11').catch(() => undefined);
       } else if (intent === 'RESUBSCRIBE_12') {

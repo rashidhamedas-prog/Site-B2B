@@ -55,6 +55,36 @@ export class SmsPanelController {
     };
   }
 
+  @Get('audience/sources')
+  @SmsRoles(...SMS_ALL)
+  audienceSources() {
+    return this.sms.listAudienceSources();
+  }
+
+  @Get('audience/contacts')
+  @SmsRoles(...SMS_ALL)
+  audienceContacts(
+    @Req() req: Request,
+    @Query('q') q?: string,
+    @Query('source') source?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.sms.searchAudienceContacts({
+      q,
+      source,
+      page: page ? Number(page) : undefined,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+      role: this.actor(req).role,
+    });
+  }
+
+  @Get('audience/contacts/:phone')
+  @SmsRoles(...SMS_ALL)
+  audienceContact(@Req() req: Request, @Param('phone') phone: string) {
+    return this.sms.getAudienceContact(decodeURIComponent(phone), this.actor(req).role);
+  }
+
   @Get('credit')
   @SmsRoles(...SMS_ALL)
   credit(@Query('force') force?: string) {

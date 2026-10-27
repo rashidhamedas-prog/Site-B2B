@@ -252,6 +252,9 @@ export class SalesPartnerService {
         status: 'PENDING_REVIEW',
         publicCode: salesPartnerPublicCode(randomBytes(8)),
         applicationAnswers: application.answers,
+        smsPromoConsent: true,
+        smsPromoConsentSource: 'OWNER_DEFAULT_POLICY',
+        smsPromoConsentAt: new Date(),
       });
       await this.profiles.save(profile);
     } else if (profile.status === 'REJECTED' || profile.status === 'NEEDS_INFORMATION') {

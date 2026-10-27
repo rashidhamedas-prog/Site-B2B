@@ -9,6 +9,8 @@ src/modules/sms-panel/provider/provider.spec.ts
 src/modules/sms-panel/sms-panel.rbac.spec.ts
 src/modules/sms-panel/sms-panel.fsm.spec.ts
 src/modules/sms-panel/sms-panel.gates.spec.ts
+src/modules/sms-panel/audience/audience.spec.ts
+src/database/migrations/20261027-002-sms-audience.spec.ts
 src/modules/blog/blog-seo.util.spec.ts
 src/modules/blog/blog-seo-analysis.spec.ts
 src/modules/product/product-sale.spec.ts
