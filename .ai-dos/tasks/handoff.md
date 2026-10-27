@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-27T16:45:00Z — PR-1 Health read-only committed (no push/deploy)
+
+- Branch `feat/omnichannel-health-readonly` commit `54a017ff` (base drain-resume `90b30634`).
+- Evidence: `omnichannel-health.spec.ts` ok; `admin-omnichannel-health.spec.ts` OK; `apps/api` + `apps/web` `tsc --noEmit` clean.
+- Next: open PR when owner asks; do not merge/deploy; PR-2 Status UI after this merges.
+
 ## 2026-10-27T16:15:00Z — PR-1 Health read-only claimed (implementer)
 
 - Branch `feat/omnichannel-health-readonly` from `fix/omnichannel-drain-resume` @ 90b30634.
