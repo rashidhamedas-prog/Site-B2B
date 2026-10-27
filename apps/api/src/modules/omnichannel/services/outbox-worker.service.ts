@@ -30,6 +30,7 @@ import {
   shouldKeepDrainPollTimer,
   type DrainOrigin,
 } from './outbox-worker-drain';
+import { heartbeatPath, writeProviderGateSnapshot } from './outbox-worker-provider-gate';
 import { CustomerMarketingService } from '../../customer-marketing/customer-marketing.service';
 import { MarketingSmsSender } from '../../customer-marketing/marketing-sms.sender';
 import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
@@ -200,13 +201,11 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
 
   private beat() {
     try {
-      writeFileSync(
-        process.env.OMNICHANNEL_WORKER_HEARTBEAT || '/tmp/omnichannel-worker.heartbeat',
-        String(Date.now()),
-      );
+      writeFileSync(heartbeatPath(), String(Date.now()));
     } catch {
       /* heartbeat is best-effort */
     }
+    writeProviderGateSnapshot(this.workerId);
   }
 
   async tick() {

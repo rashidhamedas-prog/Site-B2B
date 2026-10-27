@@ -4,6 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { AdminTelegramTemplateBuilder } from './AdminTelegramTemplateBuilder';
 import {
+  AdminOmnichannelHealth,
+  type OmnichannelHealthPayload,
+} from './admin-omnichannel-health';
+import {
   AttentionStrip,
   Badge,
   Callout,
@@ -220,6 +224,8 @@ function fallbackProviderInfo(provider: Provider): ProviderInfo {
 
 export function AdminOmnichannel() {
   const [status, setStatus] = useState<Status | null>(null);
+  const [health, setHealth] = useState<OmnichannelHealthPayload | null>(null);
+  const [healthError, setHealthError] = useState(false);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -295,8 +301,12 @@ export function AdminOmnichannel() {
       const scopeId = selectedDestinationIdRef.current;
       const q = scopeId ? `?destinationId=${encodeURIComponent(scopeId)}` : '';
       // Soft lists must not blank the whole console when one endpoint fails (e.g. brief API restart → HTML 502).
-      const [st, conns, dests, tpls, pubs, dels, box, logs, files, cats] = await Promise.all([
+      const [st, healthRes, conns, dests, tpls, pubs, dels, box, logs, files, cats] = await Promise.all([
         apiClient.get<Status>(`/omnichannel/status${q}`),
+        apiClient.get<OmnichannelHealthPayload>('/omnichannel/health').then(
+          (row) => ({ ok: true as const, row }),
+          () => ({ ok: false as const, row: null }),
+        ),
         apiClient.get<Connection[]>('/omnichannel/connections'),
         apiClient.get<Destination[]>('/omnichannel/destinations'),
         apiClient.get<Template[]>(`/omnichannel/templates${q}`),
@@ -308,6 +318,8 @@ export function AdminOmnichannel() {
         apiClient.get<CategoryOption[]>('/categories/admin').catch(() => [] as CategoryOption[]),
       ]);
       setStatus(st);
+      setHealth(healthRes.ok ? healthRes.row : null);
+      setHealthError(!healthRes.ok);
       setCategoryOptions(cats.filter((row) => row.status !== 'HIDDEN'));
       setConnections(conns);
       setDestinations(dests);
@@ -2234,6 +2246,8 @@ export function AdminOmnichannel() {
       </div>
 
       <AttentionStrip items={attentionItems} />
+
+      <AdminOmnichannelHealth health={health} loading={loading} error={healthError} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric

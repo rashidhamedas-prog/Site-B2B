@@ -3,11 +3,12 @@
 منبع: `stage2-design.md` + `00-CURSOR-MASTER-PROMPT.md` · GO حامد ۲۷ اکتبر ۲۰۲۶
 
 **رد:** PR-0 (انجام‌شده) · PR-12 Worker domain/vault/`TELEGRAM_API_URL`  
-**آخر:** PR-14 ربات‌ها
+**آخر:** PR-14 ربات‌ها  
+**در پرواز:** Drain-resume → [PR #113](https://github.com/rashidhamedas-prog/Site-B2B/pull/113) · Health → شاخه `feat/omnichannel-health-readonly` · طرح: `pr1-health-plan.md`
 
 | # | PR | ریسک | depends | parallel_prep | gate |
 |---|---|---|---|---|---|
-| 0 | Drain-resume | med | PR-0 | — | CODE |
+| 0 | Drain-resume (#113) | med | PR-0 | — | CODE |
 | 1 | Health read-only | low | drain | yes | CODE |
 | 2 | Status UI | low | PR-1 | yes | CODE |
 | 3 | Idempotency | high | PR-2 | yes (draft) | CODE + DB backup owner |

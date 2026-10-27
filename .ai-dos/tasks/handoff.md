@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-27T16:15:00Z — PR-1 Health read-only claimed (implementer)
+
+- Branch `feat/omnichannel-health-readonly` from `fix/omnichannel-drain-resume` @ 90b30634.
+- Reclaim thin mounts from stale TASK-20261024-005: `omnichannel-admin.controller.ts`, `AdminOmnichannel.tsx`, `outbox-worker.service.ts` (provider-gate write in beat only).
+- NEW: `omnichannel-health.ts` + spec, `outbox-worker-provider-gate.ts`, `admin-omnichannel-health.tsx` + spec, report.
+- Hard stops: no connector enable, no TELEGRAM_API_URL/egress/vault, no live send, no HOLD write.
+- Next: implement → unit specs + tsc → commit on feature branch (no push master / no deploy).
+
 ## 2026-10-27T15:10:00Z — TASK-20261027-omni-redesign package started (parallel)
 
 - GO حامد ۲۷ اکتبر ۲۰۲۶ برای کل بستهٔ بازطراحی (merge/deploy هر PR فقط با CI سبز + approval).

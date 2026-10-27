@@ -1,3 +1,10 @@
+## 2026-10-27 — Omnichannel PR-1 Health read-only (بدون merge/deploy)
+
+- `GET /v1/omnichannel/health` + کارت provider و بنر ناهمخوانی api/worker.
+- Worker در `beat()` فایل `provider-gate.json` کنار heartbeat می‌نویسد (بدون secret).
+- UI: `admin-omnichannel-health.tsx`؛ `emergencyHold=false`؛ بدون enable کانکتور / egress / vault.
+- شاخه `feat/omnichannel-health-readonly`. گزارش: `docs/reports/2026-10-27-omnichannel-health-readonly.md`.
+
 ## 2026-10-27 — Omnichannel: resume بعد از soft-drain (بسته بازطراحی)
 
 - باگ: حذف `/tmp/omnichannel-worker.drain` حافظهٔ `stopping` را پاک نمی‌کرد؛ ورکر تا restart متوقف می‌ماند.
