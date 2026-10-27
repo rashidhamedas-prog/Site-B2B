@@ -20,3 +20,9 @@ export function softDeletedSlugHint(opts: {
   if (!opts.softDeletedId) return null;
   return `reusing slug previously held by soft-deleted post ${opts.softDeletedId}`;
 }
+
+
+export function isPgUniqueViolation(err: unknown): boolean {
+  const e = (err ?? {}) as { code?: string; driverError?: { code?: string } };
+  return e.code === '23505' || e.driverError?.code === '23505';
+}

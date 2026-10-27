@@ -408,6 +408,7 @@ export function AdminBlog() {
   const [deleteRedirect, setDeleteRedirect] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [listMode, setListMode] = useState<'live' | 'trash'>('live');
+  const [canHardDelete, setCanHardDelete] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importing, setImporting] = useState(false);
@@ -443,6 +444,28 @@ export function AdminBlog() {
   useEffect(() => {
     void load();
   }, [load, syncEpoch]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiClient
+      .get<{ role?: string; blogRole?: string | null }>('/auth/me/profile')
+      .then((p) => {
+        if (cancelled) return;
+        // Mirror API resolveBlogRole: ADMIN without blogRole ⇒ SUPER_ADMIN (only role with blog:delete_hard)
+        const blogRole = p?.blogRole;
+        const isSuper =
+          blogRole === 'SUPER_ADMIN' ||
+          (p?.role === 'ADMIN' && (blogRole == null || blogRole === ''));
+        setCanHardDelete(!!isSuper);
+      })
+      .catch(() => {
+        if (!cancelled) setCanHardDelete(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   useEffect(() => {
     if (!modal || !editId) return;
@@ -560,9 +583,9 @@ export function AdminBlog() {
     }
   };
 
-    const handleDelete = async (id: string, hard = false) => {
+  const handleDelete = async (id: string, hard = false) => {
     try {
-      await apiClient.delete(/blog/admin/posts/, hard
+      await apiClient.delete(`/blog/admin/posts/${id}`, hard
         ? { hard: true }
         : {
             strategy: deleteStrategy,
@@ -578,14 +601,15 @@ export function AdminBlog() {
 
   const handleRestore = async (id: string) => {
     try {
-      await apiClient.post(/blog/admin/posts//restore, {});
+      await apiClient.post(`/blog/admin/posts/${id}/restore`, {});
       bump();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'بازیابی ناموفق');
+      const msg = e instanceof Error ? e.message : 'بازیابی ناموفق';
+      alert(msg);
     }
   };
 
-const seedCategories = async () => {
+  const seedCategories = async () => {
     try {
       await apiClient.post('/blog/admin/seed-categories', {});
       bump();
@@ -626,7 +650,7 @@ const seedCategories = async () => {
           <h2 className="text-lg font-bold text-gray-900">{listMode === 'trash' ? 'سطل زباله' : 'مقالات'} {channelLabel(channel)}</h2>
           <p className="mt-0.5 text-sm text-gray-500">
             {posts.length.toLocaleString('fa-IR')}{' '}
-            {listMode === 'trash' ? 'مطلب حذف‌شده' : مطلب روی }
+            {listMode === 'trash' ? 'مطلب حذف‌شده' : `مطلب روی ${channelPublicHost(channel)}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -778,23 +802,25 @@ const seedCategories = async () => {
                               onClick={() => handleRestore(p.id)}
                               className="text-gray-400 hover:text-green-600"
                               title="بازیابی"
-                              aria-label={بازیابی }
+                              aria-label={`بازیابی ${p.title}`}
                             >
                               <RotateCcw className="h-4 w-4" aria-hidden />
                             </button>
+                            {canHardDelete && (
                             <button
                               type="button"
                               onClick={() => {
-                                if (window.confirm(حذف دائمی «»؟ این کار قابل بازگشت نیست.)) {
+                                if (window.confirm(`حذف دائمی «${p.title}»؟ این کار قابل بازگشت نیست.`)) {
                                   void handleDelete(p.id, true);
                                 }
                               }}
                               className="text-gray-400 hover:text-error"
                               title="حذف دائمی"
-                              aria-label={حذف دائمی }
+                              aria-label={`حذف دائمی ${p.title}`}
                             >
                               <Trash2 className="h-4 w-4" aria-hidden />
                             </button>
+                            )}
                           </>
                         ) : (
                           <>

@@ -412,6 +412,7 @@ export class AuthService {
       phone: u.phone,
       email: u.email,
       role: u.role,
+      blogRole: u.blogRole ?? null,
       lastLoginAt: u.lastLoginAt,
       addresses: [],
     };

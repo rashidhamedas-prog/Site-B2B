@@ -50,24 +50,24 @@ type RedirectRow = {
   createdBy?: string | null;
 };
 
-function makeService() {
+function makeService(opts?: { failSaveUnique?: boolean; failRestoreUnique?: boolean }) {
   const posts: PostRow[] = [];
   const redirects: RedirectRow[] = [];
   const audits: Array<Record<string, unknown>> = [];
   let seq = 0;
 
   const postRepo: any = {
-    findOne: async (opts: {
+    findOne: async (findOpts: {
       where: Partial<PostRow> & { id?: string };
       withDeleted?: boolean;
     }) => {
-      const w = opts.where || {};
+      const w = findOpts.where || {};
       return (
         posts.find((p) => {
           if (w.id && p.id !== w.id) return false;
           if (w.slug && p.slug !== w.slug) return false;
           if (w.channel && p.channel !== w.channel) return false;
-          if (!opts.withDeleted && p.deletedAt) return false;
+          if (!findOpts.withDeleted && p.deletedAt) return false;
           return true;
         }) || null
       );
@@ -75,6 +75,11 @@ function makeService() {
     find: async () => posts.filter((p) => !p.deletedAt),
     create: (data: Partial<PostRow>) => ({ ...data }),
     save: async (row: PostRow) => {
+      if (opts?.failSaveUnique) {
+        const err = new Error('duplicate') as Error & { code: string };
+        err.code = '23505';
+        throw err;
+      }
       if (!row.id) {
         row.id = `p${++seq}`;
         row.createdAt = new Date();
@@ -92,6 +97,11 @@ function makeService() {
       return { affected: p ? 1 : 0 };
     },
     restore: async (id: string) => {
+      if (opts?.failRestoreUnique) {
+        const err = new Error('duplicate') as Error & { code: string };
+        err.code = '23505';
+        throw err;
+      }
       const p = posts.find((x) => x.id === id);
       if (!p || !p.deletedAt) return { affected: 0 };
       p.deletedAt = null;
@@ -109,9 +119,9 @@ function makeService() {
             const name = entity?.name || '';
             if (name.includes('SeoRedirect') || name === 'SeoRedirectEntity') {
               return {
-                find: async (opts: { where: Partial<RedirectRow> }) =>
+                find: async (findOpts: { where: Partial<RedirectRow> }) =>
                   redirects.filter((r) => {
-                    const w = opts.where || {};
+                    const w = findOpts.where || {};
                     if (w.channel && r.channel !== w.channel) return false;
                     if (w.sourcePath && r.sourcePath !== w.sourcePath) return false;
                     if (w.reason && r.reason !== w.reason) return false;
@@ -137,7 +147,9 @@ function makeService() {
               };
             }
             return {
+              findOne: postRepo.findOne,
               save: async (row: PostRow) => postRepo.save(row),
+              restore: async (id: string) => postRepo.restore(id),
             };
           },
         };
@@ -279,6 +291,45 @@ async function run() {
     }
     assert(hit, 'restore conflict 409');
     assert(posts.find((p) => p.id === old.id)?.deletedAt != null, 'tombstone remains');
+  }
+
+  // create maps Postgres 23505 → ConflictException
+  {
+    const { svc } = makeService({ failSaveUnique: true });
+    // bypass live check by using a free slug, then fail on save
+    let hit = false;
+    try {
+      await svc.create({
+        channel: 'RETAIL',
+        title: 'race',
+        slug: 'race-slug',
+        content: 'x',
+      } as any);
+    } catch (e) {
+      hit = e instanceof ConflictException && String((e as any).message).includes(BLOG_SLUG_LIVE_CONFLICT);
+    }
+    assert(hit, 'create 23505 → live conflict');
+  }
+
+  // restore maps Postgres 23505 → ConflictException (race after live check)
+  {
+    const { svc } = makeService({ failRestoreUnique: true });
+    const old = await svc.create({
+      channel: 'RETAIL',
+      title: 'tomb',
+      slug: 'race-restore',
+      content: 'a',
+    } as any);
+    await svc.remove(old.id, {});
+    let hit = false;
+    try {
+      await svc.restore(old.id);
+    } catch (e) {
+      hit =
+        e instanceof ConflictException &&
+        String((e as any).message).includes(BLOG_RESTORE_SLUG_CONFLICT);
+    }
+    assert(hit, 'restore 23505 → restore conflict');
   }
 
   console.log('blog-soft-deleted-slug.spec ok');

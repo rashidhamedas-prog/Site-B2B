@@ -38,6 +38,7 @@ import {
   BLOG_SLUG_LIVE_CONFLICT,
   blogArticlePath,
   softDeletedSlugHint,
+  isPgUniqueViolation,
 } from './blog-slug-live';
 import type {
   CreateBlogPostDto,
@@ -414,12 +415,18 @@ export class BlogService {
     }
 
     const post = this.repo.create(enriched);
-    const saved = await this.repo.manager.transaction(async (manager) => {
-      const row = await manager.getRepository(BlogPostEntity).save(post);
-      await this.deactivateArticleDeletedRedirects(manager, channel, slug, actor?.id);
-      await this.enqueueBlogPublished(row, `${row.id}:create`, manager);
-      return row;
-    });
+    let saved: BlogPostEntity;
+    try {
+      saved = await this.repo.manager.transaction(async (manager) => {
+        const row = await manager.getRepository(BlogPostEntity).save(post);
+        await this.deactivateArticleDeletedRedirects(manager, channel, slug, actor?.id);
+        await this.enqueueBlogPublished(row, `${row.id}:create`, manager);
+        return row;
+      });
+    } catch (err) {
+      if (isPgUniqueViolation(err)) throw new ConflictException(BLOG_SLUG_LIVE_CONFLICT);
+      throw err;
+    }
     if (Array.isArray(data.tags) && data.tags.length) {
       await this.syncTagsFromNames(saved.channel, data.tags, actor);
     }
@@ -484,13 +491,19 @@ export class BlogService {
     next.updatedBy = actor?.id || null;
     next.version = (post.version || 1) + 1;
     Object.assign(post, next);
-    const saved = await this.repo.manager.transaction(async (manager) => {
-      const row = await manager.getRepository(BlogPostEntity).save(post);
-      if (data.status === 'PUBLISHED') {
-        await this.enqueueBlogPublished(row, `${row.id}:update:${row.version}`, manager);
-      }
-      return row;
-    });
+    let saved: BlogPostEntity;
+    try {
+      saved = await this.repo.manager.transaction(async (manager) => {
+        const row = await manager.getRepository(BlogPostEntity).save(post);
+        if (data.status === 'PUBLISHED') {
+          await this.enqueueBlogPublished(row, `${row.id}:update:${row.version}`, manager);
+        }
+        return row;
+      });
+    } catch (err) {
+      if (isPgUniqueViolation(err)) throw new ConflictException(BLOG_SLUG_LIVE_CONFLICT);
+      throw err;
+    }
     if (Array.isArray(data.tags)) {
       await this.syncTagsFromNames(saved.channel, data.tags, actor);
     }
@@ -639,11 +652,21 @@ export class BlogService {
     const post = await this.repo.findOne({ where: { id }, withDeleted: true });
     if (!post || !post.deletedAt) throw new NotFoundException('مطلب یافت نشد');
 
-    const live = await this.repo.findOne({ where: { channel: post.channel, slug: post.slug } });
-    if (live) throw new ConflictException(BLOG_RESTORE_SLUG_CONFLICT);
+    try {
+      await this.repo.manager.transaction(async (manager) => {
+        const live = await manager.getRepository(BlogPostEntity).findOne({
+          where: { channel: post.channel, slug: post.slug },
+        });
+        if (live) throw new ConflictException(BLOG_RESTORE_SLUG_CONFLICT);
+        const res = await manager.getRepository(BlogPostEntity).restore(id);
+        if (!res.affected) throw new NotFoundException('مطلب یافت نشد');
+      });
+    } catch (err) {
+      if (err instanceof ConflictException || err instanceof NotFoundException) throw err;
+      if (isPgUniqueViolation(err)) throw new ConflictException(BLOG_RESTORE_SLUG_CONFLICT);
+      throw err;
+    }
 
-    const res = await this.repo.restore(id);
-    if (!res.affected) throw new NotFoundException('مطلب یافت نشد');
     await this.audit({
       action: 'blog.post.restore',
       channel: post.channel,

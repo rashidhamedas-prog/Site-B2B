@@ -52,7 +52,7 @@ async function main() {
   );
   assert.throws(() => rejectTruncatedJpeg(cut), ProductImageProcessingError);
 
-  const sharp = require('sharp') as typeof import('sharp').default;
+  const sharp = require('sharp') as typeof import('sharp');
   const jpeg = await sharp({
     create: { width: 32, height: 24, channels: 3, background: { r: 20, g: 40, b: 60 } },
   })

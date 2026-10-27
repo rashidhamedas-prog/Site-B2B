@@ -73,9 +73,9 @@ export async function mapLimit<T, R>(
   return out;
 }
 
-function loadSharp(): typeof import('sharp').default | null {
+function loadSharp(): typeof import('sharp') | null {
   try {
-    return require('sharp') as typeof import('sharp').default;
+    return require('sharp') as typeof import('sharp');
   } catch {
     return null;
   }

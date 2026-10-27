@@ -5,6 +5,7 @@ import {
   BLOG_RESTORE_SLUG_CONFLICT,
   BLOG_SLUG_LIVE_CONFLICT,
   blogArticlePath,
+  isPgUniqueViolation,
   softDeletedSlugHint,
 } from './blog-slug-live';
 
@@ -21,4 +22,7 @@ assert(
 );
 assert(BLOG_SLUG_LIVE_CONFLICT.includes('تکراری'), 'live conflict fa');
 assert(BLOG_RESTORE_SLUG_CONFLICT.includes('فعال'), 'restore conflict fa');
+assert(isPgUniqueViolation({ code: '23505' }), 'direct 23505');
+assert(isPgUniqueViolation({ driverError: { code: '23505' } }), 'nested 23505');
+assert(!isPgUniqueViolation({ code: '23503' }), 'non-unique ignored');
 console.log('blog-slug-live.spec ok');
