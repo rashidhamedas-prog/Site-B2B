@@ -250,7 +250,10 @@ async function main() {
     });
     assert(textOnly.providerMessageId === '95', 'bad photo skipped → text');
     assert(calls[0].url.endsWith('/sendMessage'), 'sendMessage when all photos skipped');
-    assert(adapter.lastDeliveryWarnings.some((w) => w.includes('photo_skipped')), 'warning recorded');
+    assert(
+      Array.isArray(textOnly.warnings) && textOnly.warnings.some((w) => w.includes('photo_skipped')),
+      'warnings returned from create (not shared mutable state)',
+    );
     adapter.photoLoader = null;
     delete process.env.BALE_MEDIA_UPLOAD_MODE;
 

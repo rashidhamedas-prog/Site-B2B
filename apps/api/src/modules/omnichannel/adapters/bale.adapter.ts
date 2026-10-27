@@ -71,8 +71,6 @@ export class BaleAdapter implements ChannelAdapter {
   /** Set by the Nest factory. Tests leave this null and stub `photoLoader` when they need bytes. */
   images: OwnedImageReader | null = null;
   photoLoader: ((url: string) => Promise<Buffer>) | null = null;
-  /** Human-readable skips from the last `create` (undecodable photos in upload mode). */
-  lastDeliveryWarnings: string[] = [];
 
   private assertEnabled() {
     if (!isOmnichannelProviderEnabled(this.provider)) throw new ConnectorDisabledError(this.provider);
@@ -205,9 +203,9 @@ export class BaleAdapter implements ChannelAdapter {
     return { provider: this.provider, method, dryRun: true, textLength: baleText(String(input.text || ''), input.parseMode).length, photoCount: photos.length };
   }
 
-  async create(input: Record<string, unknown>): Promise<{ providerMessageId: string }> {
+  async create(input: Record<string, unknown>): Promise<{ providerMessageId: string; warnings?: string[] }> {
     this.assertEnabled();
-    this.lastDeliveryWarnings = [];
+    const warnings: string[] = [];
     const token = resolveBaleToken(String(input.secretRef || ''));
     const chatId = String(input.chatId || input.destinationKey || '');
     if (!token) throw new Error('invalid_credential');
@@ -222,7 +220,7 @@ export class BaleAdapter implements ChannelAdapter {
     const uploadMode = photos.length > 0 && baleMediaUploadMode() === 'upload';
 
     if (uploadMode) {
-      const prepared = await this.prepareOwnedPhotosForUpload(photos);
+      const prepared = await this.prepareOwnedPhotosForUpload(photos, warnings);
       if (prepared.length >= 2) {
         const caption = text.length <= BALE_ALBUM_CAPTION_LIMIT ? text : '';
         overflow = caption ? '' : text;
@@ -291,7 +289,10 @@ export class BaleAdapter implements ChannelAdapter {
       });
       ids.push(String(extra.message_id));
     }
-    return { providerMessageId: ids.filter(Boolean).join(',') };
+    return {
+      providerMessageId: ids.filter(Boolean).join(','),
+      ...(warnings.length ? { warnings } : {}),
+    };
   }
 
   async update(input: Record<string, unknown>): Promise<{ providerMessageId: string }> {
@@ -342,7 +343,10 @@ export class BaleAdapter implements ChannelAdapter {
     return sanitizePhotoUrls(channel, input.photoUrls);
   }
 
-  private async prepareOwnedPhotosForUpload(urls: string[]): Promise<PreparedBalePhoto[]> {
+  private async prepareOwnedPhotosForUpload(
+    urls: string[],
+    warnings: string[],
+  ): Promise<PreparedBalePhoto[]> {
     const out: PreparedBalePhoto[] = [];
     for (const url of urls) {
       try {
@@ -350,7 +354,7 @@ export class BaleAdapter implements ChannelAdapter {
       } catch (err: unknown) {
         const reason = err instanceof Error ? err.message : String(err);
         const warning = `photo_skipped:${url}:${reason}`;
-        this.lastDeliveryWarnings.push(warning);
+        warnings.push(warning);
         this.logger.warn(warning);
       }
     }

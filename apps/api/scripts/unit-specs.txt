@@ -41,6 +41,7 @@ src/modules/inventory/inventory-movement.policy.spec.ts
 src/modules/upload/storage-delete.spec.ts
 src/modules/upload/channel-image.spec.ts
 src/modules/upload/storage-upload-channel.spec.ts
+src/modules/upload/storage.service.spec.ts
 src/modules/omnichannel/omnichannel-secrets.spec.ts
 src/modules/omnichannel/omnichannel-token-vault.spec.ts
 src/modules/omnichannel/oos-policy.spec.ts
@@ -57,6 +58,7 @@ src/modules/omnichannel/media-references.spec.ts
 src/modules/omnichannel/media-registry.spec.ts
 src/modules/upload/upload-bytes.spec.ts
 src/modules/omnichannel/adapters/telegram-media.spec.ts
+src/modules/omnichannel/adapters/telegram-errors.spec.ts
 src/modules/omnichannel/adapters/telegram.adapter.spec.ts
 src/modules/omnichannel/adapters/connector-gate.spec.ts
 src/modules/omnichannel/adapters/rich-text.spec.ts

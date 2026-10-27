@@ -409,8 +409,12 @@ export class OutboxService {
     await this.dataSource.query(MARK_DONE_SQL, [id]);
   }
 
-  async markFailure(row: OutboxEventEntity, error: string): Promise<void> {
-    const dead = shouldDeadLetter(row.attempts, row.maxAttempts);
+  async markFailure(
+    row: OutboxEventEntity,
+    error: string,
+    opts?: { forceDead?: boolean },
+  ): Promise<void> {
+    const dead = shouldDeadLetter(row.attempts, row.maxAttempts, opts);
     const availableAt = dead ? row.availableAt : nextAvailableAt(row.attempts, new Date(), Math.random());
     await this.dataSource.query(MARK_FAILURE_SQL, [
       row.id,

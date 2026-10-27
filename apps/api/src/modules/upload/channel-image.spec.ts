@@ -27,13 +27,20 @@ async function main() {
   const sharp = require('sharp');
 
   const noisyPng = await sharp({
-    create: { width: 4000, height: 4000, channels: 3, background: { r: 120, g: 80, b: 200 } },
+    create: {
+      width: 4000,
+      height: 4000,
+      channels: 3,
+      noise: { type: 'gaussian', mean: 128, sigma: 60 },
+    },
   })
     .png()
     .toBuffer();
   const fromNoisy = await prepareChannelJpeg(noisyPng, { maxBytes: CHANNEL_PHOTO_MAX_BYTES, longEdge: 1600, minQuality: 55 });
   assertFn(fromNoisy.bytes.length <= CHANNEL_PHOTO_MAX_BYTES, 'noisy 4000 PNG fits under 1.8MB');
   assertFn(isCompleteJpeg(fromNoisy.bytes), 'noisy PNG → complete JPEG');
+  const noisyMeta = await sharp(fromNoisy.bytes).metadata();
+  assertFn((noisyMeta.width ?? 0) > 0 && (noisyMeta.height ?? 0) > 0, 'noisy JPEG decodes');
 
   const alpha = await sharp({
     create: { width: 64, height: 64, channels: 4, background: { r: 10, g: 20, b: 30, alpha: 0.5 } },

@@ -24,7 +24,8 @@ export function isPermissionDeniedDescription(description = ''): boolean {
 export function isUnsupportedMediaDescription(description = ''): boolean {
   const text = String(description || '').toLowerCase();
   return (
-    text.includes('unsupported_file')
+    text.includes('unsupported_media')
+    || text.includes('unsupported_file')
     || text.includes('unsupported file')
     || text.includes('file_too_large')
     || text.includes('file too large')
@@ -43,6 +44,11 @@ export function classifyTelegramHttpError(status: number, description = ''): Tel
   if (status >= 500) return 'provider_unavailable';
   if (status === 409 || text.includes('message is not modified') || text.includes('already')) return 'duplicate';
   return 'validate_failed';
+}
+
+/** Bale UNSUPPORTED_FILE / oversized media will not succeed on retry with the same bytes. */
+export function isNonRetryableProviderError(err: unknown): boolean {
+  return classifyTelegramThrow(err) === 'unsupported_media';
 }
 
 export function classifyTelegramThrow(err: unknown): TelegramErrorCode {

@@ -1,4 +1,15 @@
-<<<<<<< HEAD
+## 2026-10-27 — عکس امن کانال: follow-up PR #109 (بدون merge/deploy)
+
+- `unsupported_media` غیرقابل‌retry → DEAD فوری؛ هشدارهای بله از `create().warnings` (بدون state مشترک).
+- تست noise واقعی + StorageService با MinIO جعلی؛ flatten+mozjpeg تلگرام در توضیح PR.
+
+## 2026-10-27 — عکس امن کانال (channel JPEG + Bale/Rubika، بدون merge/deploy)
+
+- `prepareChannelJpeg` مشترک؛ آپلود پنل: WebP سایت + `.channel.jpg` ≤1.8MB؛ اختیاری `KEEP_ORIGINAL_UPLOADS`.
+- بله: `BALE_MEDIA_UPLOAD_MODE=upload|url` (پیش‌فرض url)؛ multipart + skip عکس خراب؛ `unsupported_media`.
+- روبیکا: قبل از requestSendFile به JPEG فشرده می‌شود. جاب dry-run `audit-product-images.ts`.
+- محصول ۵۰۴۷: دوباره از پنل آپلود شود. بدون دیپلوی/تغییر env سرور.
+
 ## 2026-10-27 — PR #108 e2e product-card deterministic: merge (deploy SSH blocked)
 
 - Squash-merge به `master` (`eeefbf88`). CI سبز بود.
@@ -6,14 +17,6 @@
 - دیپلوی دستی از این agent: `VPS_SSH_KEY` تزریقی کلید Hetzner (`wholesale-admin@server2`) است و `tnadmin@185.213.167.61:3031` آن را رد می‌کند؛ `workflow_dispatch` هم برای توکن cursor 403 است.
 - تا کلید ایران (`id_ed25519_taranom_storefront_ir`) در secret جایگزین شود یا روی ویندوز deploy زده شود، timer ایران (`taranom-autodeploy`) در صورت روشن بودن خودش `origin/master` را می‌کشد.
 - Hetzner دست نخورده.
-=======
-## 2026-10-27 — عکس امن کانال (channel JPEG + Bale/Rubika، بدون merge/deploy)
-
-- `prepareChannelJpeg` مشترک؛ آپلود پنل: WebP سایت + `.channel.jpg` ≤1.8MB؛ اختیاری `KEEP_ORIGINAL_UPLOADS`.
-- بله: `BALE_MEDIA_UPLOAD_MODE=upload|url` (پیش‌فرض url)؛ multipart + skip عکس خراب؛ `unsupported_media`.
-- روبیکا: قبل از requestSendFile به JPEG فشرده می‌شود. جاب dry-run `audit-product-images.ts`.
-- محصول ۵۰۴۷: دوباره از پنل آپلود شود. بدون دیپلوی/تغییر env سرور.
->>>>>>> c105b2e9 (feat(upload): channel-safe JPEG derivatives for Bale/Rubika)
 
 ## 2026-10-26 — PR #107 پنل پیامک: merge + deploy ایران
 

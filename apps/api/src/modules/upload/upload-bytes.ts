@@ -1,4 +1,4 @@
-import { MAX_INPUT_PIXELS, ProductImageProcessingError } from './image-processor';
+import { MAX_INPUT_PIXELS, ProductImageProcessingError, type SharpFactory } from './image-processor';
 
 /**
  * Busboy / @fastify/multipart ends the file stream at `limits.fileSize` and sets
@@ -65,7 +65,7 @@ export async function assertDecodableImage(
 ): Promise<{ format: string; width: number; height: number }> {
   if (!buffer.length) throw new ProductImageProcessingError(new Error('empty image'));
   rejectTruncatedJpeg(buffer);
-  const sharp = require('sharp') as typeof import('sharp').default;
+  const sharp = require('sharp') as SharpFactory;
   let meta: { format?: string; width?: number; height?: number };
   try {
     meta = await sharp(buffer, { failOn: 'warning', limitInputPixels: MAX_INPUT_PIXELS }).metadata();
