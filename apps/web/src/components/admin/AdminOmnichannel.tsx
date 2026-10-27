@@ -35,6 +35,7 @@ import {
   isOutboxRowForConfiguredChannels,
   outboxChannelCellLabel,
   isConnectorDisabledError,
+  isDeliveryPhotoWarning,
   isIntentionalError,
   isProvider,
   outboxStatus,
@@ -2009,6 +2010,7 @@ export function AdminOmnichannel() {
                         {rows.map((row) => {
                           const ds = deliveryStatus(row.status);
                           const intentional = isIntentionalError(row.lastError);
+                          const photoWarning = row.status === 'SUCCEEDED' && isDeliveryPhotoWarning(row.lastError);
                           const failTone = (row.status === 'DEAD' || row.status === 'FAILED')
                             ? deliveryFailureTone(row.lastError)
                             : ds.tone;
@@ -2020,8 +2022,17 @@ export function AdminOmnichannel() {
                               <span className="text-gray-500">{actionLabel(row.action)}</span>
                               <Badge tone={failTone}>{intentional ? 'عمدی' : ds.label}</Badge>
                               {row.lastError && (
-                                <span className={`truncate max-w-[16rem] ${intentional ? 'text-gray-500' : 'text-red-700'}`} title={row.lastError}>
-                                  {errorLabel(row.lastError)}
+                                <span
+                                  className={`truncate max-w-[16rem] ${
+                                    photoWarning
+                                      ? 'text-amber-700'
+                                      : intentional
+                                        ? 'text-gray-500'
+                                        : 'text-red-700'
+                                  }`}
+                                  title={row.lastError}
+                                >
+                                  {photoWarning ? 'هشدار' : errorLabel(row.lastError)}
                                 </span>
                               )}
                               {row.nextAttemptAt && (row.status === 'RETRY' || row.status === 'PENDING') && <span className="text-gray-400">تلاش بعدی {relativeTime(row.nextAttemptAt)}</span>}

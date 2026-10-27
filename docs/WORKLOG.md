@@ -5,13 +5,30 @@
 - `stop_grace_period: 90s` برای worker؛ قاعده agent: بدون GO نوشتاری حامد push/deploy ممنوع.
 - تست: `node --test scripts/deploy-gate.spec.mjs`. شاخه `chore/pr0-deploy-gate-drain`.
 
+## 2026-10-27 — PR #109: merge master + هشدار UI + deploy ایران
+
+- merge `origin/master` (شامل #110)؛ UI: SUCCEEDED + `warnings:` → «هشدار» کهربایی (`isDeliveryPhotoWarning`).
+- بدون تغییر فلگ Bale/Rubika روی سرور؛ بدون workflow_dispatch.
+
+## 2026-10-27 — عکس امن کانال: follow-up PR #109 (بدون merge/deploy)
+
+- `unsupported_media` غیرقابل‌retry → DEAD فوری؛ هشدارهای بله از `create().warnings` (بدون state مشترک).
+- تست noise واقعی + StorageService با MinIO جعلی؛ flatten+mozjpeg تلگرام در توضیح PR.
+
+## 2026-10-27 — عکس امن کانال (channel JPEG + Bale/Rubika، بدون merge/deploy)
+
+- `prepareChannelJpeg` مشترک؛ آپلود پنل: WebP سایت + `.channel.jpg` ≤1.8MB؛ اختیاری `KEEP_ORIGINAL_UPLOADS`.
+- بله: `BALE_MEDIA_UPLOAD_MODE=upload|url` (پیش‌فرض url)؛ multipart + skip عکس خراب؛ `unsupported_media`.
+- روبیکا: قبل از requestSendFile به JPEG فشرده می‌شود. جاب dry-run `audit-product-images.ts`.
+- محصول ۵۰۴۷: دوباره از پنل آپلود شود. بدون دیپلوی/تغییر env سرور.
+
 ## 2026-10-27 — فیکس اسلاگ بلاگ بعد از soft-delete (بدون merge/deploy)
 
 - ایندکس یکتا جزئی UQ_blog_posts_channel_slug_live / UQ_blog_categories_channel_slug_live (WHERE deletedAt IS NULL).
 - create/update فقط بین ردیف‌های زنده چک می‌کند؛ restore در صورت اشغال اسلاگ 409 می‌دهد؛ race 23505 هم به Conflict نگاشت می‌شود.
 - سطل زباله ادمین (deleted=only) + بازیابی / حذف دائمی (فقط blog:delete_hard / SUPER_ADMIN)؛ ریدایرکت ARTICLE_DELETED هنگام ساخت مجدد غیرفعال می‌شود.
 - تگ‌های بلاگ هنوز ایندکس کامل دارند. Migration فقط با دیپلوی بعدی روی ایران.
-- برنچ ix/blog-soft-deleted-slug-reuse — بدون دیپلوی و بدون دست زدن به DB پروداکشن.
+- برنچ fix/blog-soft-deleted-slug-reuse — بدون دیپلوی و بدون دست زدن به DB پروداکشن.
 
 ## 2026-10-27 — PR #108 e2e product-card deterministic: merge (deploy SSH blocked)
 

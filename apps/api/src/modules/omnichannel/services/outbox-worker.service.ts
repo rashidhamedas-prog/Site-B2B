@@ -20,7 +20,7 @@ import {
 } from './publication-deliver';
 import { OutboxService } from './outbox.service';
 import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
-import { safeWorkerError } from '../adapters/telegram-errors';
+import { isNonRetryableProviderError, safeWorkerError } from '../adapters/telegram-errors';
 import { OmnichannelService } from './omnichannel.service';
 import { OmnichannelTokenVaultService } from './omnichannel-token-vault.service';
 import { PHASE4_EVENT_TYPES, shouldDeadLetter } from './outbox-lease';
@@ -191,8 +191,11 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
             this.logger.warn(`outbox ${row.eventType} ${row.id} unconfirmed send → HOLD`);
           } else {
             const message = safeWorkerError(err);
-            this.logger.warn(`outbox ${row.eventType} ${row.id} failed: ${message}`);
-            await this.outbox.markFailure(row, message);
+            const forceDead = isNonRetryableProviderError(err);
+            this.logger.warn(
+              `outbox ${row.eventType} ${row.id} failed: ${message}${forceDead ? ' (non-retryable → DEAD)' : ''}`,
+            );
+            await this.outbox.markFailure(row, message, { forceDead });
           }
         }
         this.beat();
@@ -461,7 +464,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     try {
       const row = await this.findDelivery(payload, event.id);
       if (!row || row.status === 'SUCCEEDED' || row.status === 'HOLD') return;
-      const dead = shouldDeadLetter(event.attempts, event.maxAttempts);
+      const dead = shouldDeadLetter(event.attempts, event.maxAttempts, {
+        forceDead: isNonRetryableProviderError(err),
+      });
       row.status = dead ? 'DEAD' : 'RETRY';
       row.attempts = Number(event.attempts || 0);
       row.lastError = safeWorkerError(err);
@@ -529,6 +534,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       }
     }
     let providerMessageId: string | undefined;
+    let deliveryWarnings: string[] = [];
     if (action === 'UPDATE') {
       try {
         providerMessageId = (await adapter.update(input)).providerMessageId;
@@ -545,7 +551,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       }
     } else {
       try {
-        providerMessageId = (await adapter.create(input)).providerMessageId;
+        const created = await adapter.create(input);
+        providerMessageId = created.providerMessageId;
+        deliveryWarnings = Array.isArray(created.warnings) ? created.warnings.map(String) : [];
       } catch (err: unknown) {
         if (isConnectorDisabledError(err)) throw err;
         if (isUnconfirmedSendError(err)) {
@@ -563,14 +571,25 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       );
       return;
     }
+    if (deliveryWarnings.length) {
+      this.logger.warn(
+        `publication deliver ${row.id} warnings: ${deliveryWarnings.join(' | ')}`.slice(0, 500),
+      );
+    }
     if (action === 'CREATE') {
-      const saved = await this.omnichannel.markCreateSucceeded(row.id, providerMessageId || row.providerMessageId);
+      const saved = await this.omnichannel.markCreateSucceeded(
+        row.id,
+        providerMessageId || row.providerMessageId,
+        deliveryWarnings,
+      );
       if (!saved) return;
     } else {
       row.status = 'SUCCEEDED';
       row.sentAt = new Date();
       row.providerMessageId = providerMessageId || row.providerMessageId;
-      row.lastError = null;
+      row.lastError = deliveryWarnings.length
+        ? `warnings:${deliveryWarnings.join('|')}`.slice(0, 2000)
+        : null;
       row.deferredReason = null;
       await this.deliveries.save(row);
     }

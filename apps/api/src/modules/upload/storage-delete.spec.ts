@@ -1,7 +1,13 @@
 /**
  * npx ts-node --transpile-only src/modules/upload/storage-delete.spec.ts
  */
-import { isMissingObjectError, sanitizeObjectKey } from './storage-delete';
+import {
+  channelDerivativeKey,
+  isMissingObjectError,
+  keepOriginalUploads,
+  relatedObjectKeys,
+  sanitizeObjectKey,
+} from './storage-delete';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -19,5 +25,9 @@ assert(sanitizeObjectKey('products/%2e%2e/x') === null, 'encoded dotdot rejected
 assert(sanitizeObjectKey('../../other-prefix/object') === null, 'traversal rejected');
 assert(sanitizeObjectKey('tmp/secret.bin') === null, 'prefix denylist');
 assert(sanitizeObjectKey('products/foo\\bar') === null, 'backslash rejected');
+
+assert(channelDerivativeKey('products/x.webp') === 'products/x.webp.channel.jpg', 'channel derivative');
+assert(relatedObjectKeys('products/x.webp').join(',') === 'products/x.webp,products/x.webp.channel.jpg,originals/products/x.webp', 'delete removes siblings');
+assert(keepOriginalUploads({ KEEP_ORIGINAL_UPLOADS: '1' }) === false, 'only true enables originals');
 
 console.log('storage-delete.spec.ts: ok');

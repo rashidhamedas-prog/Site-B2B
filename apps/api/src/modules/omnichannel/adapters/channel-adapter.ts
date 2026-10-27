@@ -35,7 +35,7 @@ export interface ChannelAdapter {
   inspectDestination(secretRef: string, chatId: string): Promise<DestinationInspection>;
   discoverChats(secretRef: string): Promise<{ ok: boolean; error?: string; chats: DiscoveredChat[] }>;
   preview(input: Record<string, unknown>): Promise<Record<string, unknown>>;
-  create(input: Record<string, unknown>): Promise<{ providerMessageId: string }>;
+  create(input: Record<string, unknown>): Promise<{ providerMessageId: string; warnings?: string[] }>;
   update(input: Record<string, unknown>): Promise<{ providerMessageId: string }>;
   delete(input: Record<string, unknown>): Promise<void>;
 }

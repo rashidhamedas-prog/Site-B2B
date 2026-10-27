@@ -24,6 +24,8 @@ function assert(cond: boolean, msg: string) {
 
 assert(shouldDeadLetter(8, 8) === true, 'at max is dead');
 assert(shouldDeadLetter(7, 8) === false, 'below max retries');
+assert(shouldDeadLetter(1, 8, { forceDead: true }) === true, 'forceDead skips attempt budget');
+assert(shouldDeadLetter(1, 8, { forceDead: false }) === false, 'forceDead false keeps retries');
 assert(PHASE3_EVENT_TYPES.includes(OUTBOX_EVENT_TYPES.SEARCH_REINDEX_REQUESTED), 'search handled');
 assert(PHASE3_EVENT_TYPES.includes(OUTBOX_EVENT_TYPES.PRODUCT_STOCK_CHANGED), 'stock_changed is consumed');
 assert(

@@ -5,8 +5,20 @@ import { DataSource } from 'typeorm';
 import { Readable } from 'stream';
 
 import { processUploadImage, ProductImageProcessingError, type ImageProcessProfile } from './image-processor';
+import {
+  CHANNEL_PHOTO_LONG_EDGE,
+  CHANNEL_PHOTO_MAX_BYTES,
+  prepareChannelJpeg,
+} from './channel-image';
 import { confirmStoredImage, rejectTruncatedJpeg } from './upload-bytes';
-import { isMissingObjectError, sanitizeObjectKey } from './storage-delete';
+import {
+  channelDerivativeKey,
+  isMissingObjectError,
+  keepOriginalUploads,
+  originalUploadKey,
+  relatedObjectKeys,
+  sanitizeObjectKey,
+} from './storage-delete';
 import { assertUrlsUnreferenced } from '../omnichannel/media-references';
 import { OmnichannelMediaAssetEntity } from '../omnichannel/entities/omnichannel-media-asset.entity';
 import { isMissingRelationError, mediaAssetDeleteMatch, mediaAssetRow } from '../omnichannel/media-registry';
@@ -94,21 +106,59 @@ export class StorageService implements OnModuleInit {
     const processed = await processUploadImage(buffer, mimetype, profile);
     const prefix = profile === 'categoryBanner' ? 'categories' : keyPrefix;
     const key = `${prefix}/${Date.now()}-${Math.random().toString(16).slice(2)}.${processed.extension}`;
-    const stream = Readable.from(processed.buffer);
-    await this.minioClient.putObject(this.bucket, key, stream, processed.buffer.length, {
-      'Content-Type': processed.mimetype,
-    });
+    const written: string[] = [];
+    const put = async (objectKey: string, body: Buffer, contentType: string) => {
+      await this.minioClient.putObject(this.bucket, objectKey, Readable.from(body), body.length, {
+        'Content-Type': contentType,
+      });
+      written.push(objectKey);
+    };
+    const rollback = async () => {
+      for (const objectKey of written) {
+        try {
+          await this.minioClient.removeObject(this.bucket, objectKey);
+        } catch {
+          // Integrity / encode error is what the caller needs.
+        }
+      }
+    };
     try {
+      await put(key, processed.buffer, processed.mimetype);
       // Read the object we just wrote. Do not use readOwnedImage: that allowlist
       // is products|blog only, and category banners live under categories/.
       const stored = await this.readObjectBytes(key, processed.buffer.length);
       await confirmStoredImage(stored, processed.buffer.length);
-    } catch (err) {
-      try {
-        await this.minioClient.removeObject(this.bucket, key);
-      } catch {
-        // The integrity error is the one the caller needs.
+
+      if (profile === 'product' && (prefix === 'products' || prefix === 'blog')) {
+        let channel;
+        try {
+          channel = await prepareChannelJpeg(processed.buffer, {
+            maxBytes: CHANNEL_PHOTO_MAX_BYTES,
+            longEdge: CHANNEL_PHOTO_LONG_EDGE,
+            minQuality: 55,
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          if (message === 'photo_too_large') {
+            throw new ProductImageProcessingError(new Error('channel jpeg too large'));
+          }
+          throw new ProductImageProcessingError(err);
+        }
+        const channelKey = channelDerivativeKey(key);
+        if (!channelKey) {
+          throw new ProductImageProcessingError(new Error('channel jpeg key invalid'));
+        }
+        await put(channelKey, channel.bytes, channel.contentType);
       }
+
+      if (keepOriginalUploads() && (prefix === 'products' || prefix === 'blog')) {
+        const originalKey = originalUploadKey(key);
+        if (originalKey) {
+          await put(originalKey, buffer, mimetype || 'application/octet-stream');
+        }
+      }
+    } catch (err) {
+      await rollback();
       if (err instanceof ProductImageProcessingError) throw err;
       throw new ProductImageProcessingError(err);
     }
@@ -197,9 +247,10 @@ export class StorageService implements OnModuleInit {
       if (!key) throw new BadRequestException('آدرس فایل نامعتبر است');
       return key;
     });
+    const removeKeys = [...new Set(keys.flatMap((key) => relatedObjectKeys(key)))];
     const failures: string[] = [];
     await Promise.all(
-      keys.map(async (key) => {
+      removeKeys.map(async (key) => {
         try {
           await this.minioClient.removeObject(this.bucket, key);
         } catch (err) {
