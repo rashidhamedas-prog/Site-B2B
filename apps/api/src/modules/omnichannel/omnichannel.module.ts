@@ -9,6 +9,7 @@ import { PublicationEntity } from './entities/publication.entity';
 import { PublicationDeliveryEntity } from './entities/publication-delivery.entity';
 import { OmnichannelAdminController } from './controllers/omnichannel-admin.controller';
 import { OmnichannelService } from './services/omnichannel.service';
+import { OmnichannelHealthService } from './services/omnichannel-health';
 import { OutboxService } from './services/outbox.service';
 import { ChannelProjectionService } from './services/channel-projection.service';
 import { TelegramAdapter } from './adapters/telegram.adapter';
@@ -53,6 +54,7 @@ import { StorageService } from '../upload/storage.service';
   controllers: [OmnichannelAdminController],
   providers: [
     OmnichannelService,
+    OmnichannelHealthService,
     OutboxService,
     ChannelProjectionService,
     {

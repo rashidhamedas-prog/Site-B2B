@@ -7,6 +7,7 @@ import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { OmnichannelAdminGuard } from '../guards/omnichannel-admin.guard';
 import { OmnichannelService } from '../services/omnichannel.service';
+import { OmnichannelHealthService } from '../services/omnichannel-health';
 import {
   ActorReasonDto,
   BulkWithdrawPublicationsDto,
@@ -43,7 +44,16 @@ type Authed = { omnichannelActor?: { id: string } };
 @Roles('ADMIN')
 @Controller({ path: 'omnichannel', version: '1' })
 export class OmnichannelAdminController {
-  constructor(private readonly svc: OmnichannelService) {}
+  constructor(
+    private readonly svc: OmnichannelService,
+    private readonly health: OmnichannelHealthService,
+  ) {}
+
+  @Get('health')
+  @ApiOperation({ summary: 'سلامت خواندنی کانال‌ها (heartbeat، kill-switch api/worker، کارت provider)' })
+  getHealth() {
+    return this.health.getHealth();
+  }
 
   @Get('status')
   @ApiOperation({ summary: 'وضعیت پرچم Omnichannel' })
