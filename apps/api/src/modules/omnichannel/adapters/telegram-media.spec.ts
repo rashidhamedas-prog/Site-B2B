@@ -78,7 +78,7 @@ async function main() {
   }
   assertFn(rejected, 'loader does not fetch a foreign host');
 
-  const sharp = require('sharp') as SharpFactory;
+  const sharp = ((require('sharp') as any).default ?? require('sharp')) as SharpFactory;
   const wide = await sharp({
     create: { width: 4000, height: 1000, channels: 3, background: { r: 180, g: 40, b: 40 } },
   })

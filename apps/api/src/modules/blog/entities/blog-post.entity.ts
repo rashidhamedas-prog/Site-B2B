@@ -19,7 +19,10 @@ export type BlogPostStatus =
   | 'ARCHIVED';
 
 @Entity('blog_posts')
-@Index('UQ_blog_posts_channel_slug', ['channel', 'slug'], { unique: true })
+@Index('UQ_blog_posts_channel_slug_live', ['channel', 'slug'], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 export class BlogPostEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

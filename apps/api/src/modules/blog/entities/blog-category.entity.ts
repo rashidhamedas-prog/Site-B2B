@@ -9,7 +9,10 @@ import {
 } from 'typeorm';
 
 @Entity('blog_categories')
-@Index('UQ_blog_categories_channel_slug', ['channel', 'slug'], { unique: true })
+@Index('UQ_blog_categories_channel_slug_live', ['channel', 'slug'], {
+  unique: true,
+  where: '"deletedAt" IS NULL',
+})
 export class BlogCategoryEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Plus, Edit2, Trash2, X, Save, Eye, FileText, ImagePlus, Loader2,
-  Upload, Send, CheckCircle, Ban, Copy, Sparkles,
+  Upload, Send, CheckCircle, Ban, Copy, Sparkles, RotateCcw,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
@@ -407,6 +407,8 @@ export function AdminBlog() {
   const [deleteStrategy, setDeleteStrategy] = useState('UNPUBLISH');
   const [deleteRedirect, setDeleteRedirect] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [listMode, setListMode] = useState<'live' | 'trash'>('live');
+  const [canHardDelete, setCanHardDelete] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importing, setImporting] = useState(false);
@@ -422,7 +424,8 @@ export function AdminBlog() {
     setLoading(true);
     try {
       const qs = new URLSearchParams({ channel });
-      if (statusFilter) qs.set('status', statusFilter);
+      if (listMode === 'trash') qs.set('deleted', 'only');
+      else if (statusFilter) qs.set('status', statusFilter);
       const [list, cats, authorList] = await Promise.all([
         apiClient.get<Post[]>(`/blog/admin/posts?${qs}`),
         apiClient.get<Category[]>(`/blog/admin/categories?channel=${channel}`).catch(() => []),
@@ -436,11 +439,33 @@ export function AdminBlog() {
     } finally {
       setLoading(false);
     }
-  }, [channel, statusFilter]);
+  }, [channel, statusFilter, listMode]);
 
   useEffect(() => {
     void load();
   }, [load, syncEpoch]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiClient
+      .get<{ role?: string; blogRole?: string | null }>('/auth/me/profile')
+      .then((p) => {
+        if (cancelled) return;
+        // Mirror API resolveBlogRole: ADMIN without blogRole ⇒ SUPER_ADMIN (only role with blog:delete_hard)
+        const blogRole = p?.blogRole;
+        const isSuper =
+          blogRole === 'SUPER_ADMIN' ||
+          (p?.role === 'ADMIN' && (blogRole == null || blogRole === ''));
+        setCanHardDelete(!!isSuper);
+      })
+      .catch(() => {
+        if (!cancelled) setCanHardDelete(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   useEffect(() => {
     if (!modal || !editId) return;
@@ -558,17 +583,29 @@ export function AdminBlog() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, hard = false) => {
     try {
-      await apiClient.delete(`/blog/admin/posts/${id}`, {
-        strategy: deleteStrategy,
-        redirectTarget: deleteRedirect || undefined,
-      });
+      await apiClient.delete(`/blog/admin/posts/${id}`, hard
+        ? { hard: true }
+        : {
+            strategy: deleteStrategy,
+            redirectTarget: deleteRedirect || undefined,
+          });
       setDeleteId(null);
       setDeleteRedirect('');
       bump();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'حذف ناموفق');
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await apiClient.post(`/blog/admin/posts/${id}/restore`, {});
+      bump();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'بازیابی ناموفق';
+      alert(msg);
     }
   };
 
@@ -610,12 +647,37 @@ export function AdminBlog() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">مقالات {channelLabel(channel)}</h2>
+          <h2 className="text-lg font-bold text-gray-900">{listMode === 'trash' ? 'سطل زباله' : 'مقالات'} {channelLabel(channel)}</h2>
           <p className="mt-0.5 text-sm text-gray-500">
-            {posts.length.toLocaleString('fa-IR')} مطلب روی {channelPublicHost(channel)}
+            {posts.length.toLocaleString('fa-IR')}{' '}
+            {listMode === 'trash' ? 'مطلب حذف‌شده' : `مطلب روی ${channelPublicHost(channel)}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-lg border border-gray-200 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setListMode('live')}
+              className={cn(
+                'rounded-md px-2.5 py-1.5 font-medium',
+                listMode === 'live' ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-gray-50',
+              )}
+            >
+              مقالات
+            </button>
+            <button
+              type="button"
+              onClick={() => setListMode('trash')}
+              className={cn(
+                'rounded-md px-2.5 py-1.5 font-medium',
+                listMode === 'trash' ? 'bg-primary/10 text-primary' : 'text-gray-500 hover:bg-gray-50',
+              )}
+            >
+              سطل زباله
+            </button>
+          </div>
+          {listMode === 'live' && (
+          <>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -654,6 +716,8 @@ export function AdminBlog() {
             <Plus className="h-4 w-4" />
             مطلب جدید
           </button>
+          </>
+          )}
         </div>
       </div>
 
@@ -686,10 +750,14 @@ export function AdminBlog() {
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center">
                     <FileText className="mx-auto mb-2 h-8 w-8 text-gray-300" />
-                    <p className="mb-3 text-gray-400">مطلبی ثبت نشده</p>
+                    <p className="mb-3 text-gray-400">
+                      {listMode === 'trash' ? 'سطل زباله خالی است' : 'مطلبی ثبت نشده'}
+                    </p>
+                    {listMode === 'live' && (
                     <button type="button" onClick={openCreate} className="btn btn-primary btn-sm">
                       نوشتن اولین مطلب
                     </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -727,6 +795,35 @@ export function AdminBlog() {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1.5">
+                        {listMode === 'trash' ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleRestore(p.id)}
+                              className="text-gray-400 hover:text-green-600"
+                              title="بازیابی"
+                              aria-label={`بازیابی ${p.title}`}
+                            >
+                              <RotateCcw className="h-4 w-4" aria-hidden />
+                            </button>
+                            {canHardDelete && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`حذف دائمی «${p.title}»؟ این کار قابل بازگشت نیست.`)) {
+                                  void handleDelete(p.id, true);
+                                }
+                              }}
+                              className="text-gray-400 hover:text-error"
+                              title="حذف دائمی"
+                              aria-label={`حذف دائمی ${p.title}`}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden />
+                            </button>
+                            )}
+                          </>
+                        ) : (
+                          <>
                         <button type="button" onClick={() => openEdit(p)} className="text-gray-400 hover:text-primary" title="ویرایش" aria-label={`ویرایش ${p.title}`}>
                           <Edit2 className="h-4 w-4" aria-hidden />
                         </button>
@@ -772,6 +869,8 @@ export function AdminBlog() {
                         <button type="button" onClick={() => setDeleteId(p.id)} className="text-gray-400 hover:text-error" title="حذف">
                           <Trash2 className="h-4 w-4" />
                         </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
