@@ -119,6 +119,9 @@ export class SmsCampaignEntity {
   audienceSpec: { sources?: string[]; rules?: unknown[] } | null;
 
   @Column({ type: 'jsonb', nullable: true })
+  varFallbacks: Record<string, string> | null;
+
+  @Column({ type: 'jsonb', nullable: true })
   segmentFilter: Record<string, unknown> | null;
 
   @Column({ type: 'varchar', length: 128, nullable: true })

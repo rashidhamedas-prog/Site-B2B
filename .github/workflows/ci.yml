@@ -32,7 +32,7 @@ jobs:
         working-directory: apps/api
 
       - name: Web unit suite (product-transition)
-        run: npx --yes tsx src/components/motion/product-transition.spec.ts
+        run: npx --yes tsx src/components/motion/product-transition.spec.ts && npx --yes tsx src/components/admin/sms/template-vars.spec.ts
         working-directory: apps/web
 
       - name: Dependency audit (high+)

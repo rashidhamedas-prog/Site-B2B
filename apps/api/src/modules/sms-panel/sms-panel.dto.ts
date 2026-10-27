@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsObject, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 export const SMS_MESSAGE_CLASSES = ['OTP', 'TRANSACTIONAL', 'PROMO'] as const;
 export const SMS_CAMPAIGN_CLASSES = ['TRANSACTIONAL', 'PROMO'] as const;
@@ -54,6 +54,10 @@ export class SmsCreateCampaignDto {
   @IsOptional()
   @IsString()
   scheduledAt?: string;
+
+  @IsOptional()
+  @IsObject()
+  varFallbacks?: Record<string, string>;
 }
 
 export class SmsConfirmDto {

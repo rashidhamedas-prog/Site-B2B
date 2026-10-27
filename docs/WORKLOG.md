@@ -1,3 +1,9 @@
+## 2026-10-27 — پنل پیامک مرحله ۳: متغیر به‌ازای گیرنده
+
+- whitelist: name، city، businessName، partnerName، lastOrderNumber، link. مقدار خالی از fallback کمپین پر می‌شود و سقف طول دارد.
+- enqueue متن هر گیرنده را در `sms_message.body` و پارت را روی گیرنده ذخیره می‌کند. هش تأیید شامل قالب و fallback است.
+- OTP همچنان `{code}` را می‌پذیرد. ستون `sms_campaign.varFallbacks`.
+
 ## 2026-10-27 — Omnichannel PR-1 Health read-only (بدون merge/deploy)
 
 - `GET /v1/omnichannel/health` + کارت provider و بنر ناهمخوانی api/worker.
