@@ -73,9 +73,10 @@ export async function mapLimit<T, R>(
   return out;
 }
 
-function loadSharp(): typeof import('sharp') | null {
+function loadSharp(): ((...args: any[]) => any) | null {
   try {
-    return require('sharp') as typeof import('sharp');
+    const mod = require('sharp') as any;
+    return typeof mod === 'function' ? mod : mod.default;
   } catch {
     return null;
   }

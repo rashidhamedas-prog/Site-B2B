@@ -361,7 +361,7 @@ async function main() {
 
   // upload mode: bytes from our storage, multipart attach:// — not an Iran-only URL
   process.env.TELEGRAM_MEDIA_UPLOAD_MODE = 'upload';
-  const sharp = require('sharp') as typeof import('sharp');
+  const sharp = ((require('sharp') as any).default ?? require('sharp')) as (...args: any[]) => any;
   const webp = await sharp({
     create: { width: 16, height: 16, channels: 3, background: { r: 9, g: 40, b: 70 } },
   }).webp().toBuffer();
