@@ -1,4 +1,11 @@
-<<<<<<< HEAD
+## 2026-10-27 — PR #108 e2e product-card deterministic: merge (deploy SSH blocked)
+
+- Squash-merge به `master` (`eeefbf88`). CI سبز بود.
+- کد محصول/ویترین تغییر نکرد؛ فقط mock محلی e2e + tripwire production.
+- دیپلوی دستی از این agent: `VPS_SSH_KEY` تزریقی کلید Hetzner (`wholesale-admin@server2`) است و `tnadmin@185.213.167.61:3031` آن را رد می‌کند؛ `workflow_dispatch` هم برای توکن cursor 403 است.
+- تا کلید ایران (`id_ed25519_taranom_storefront_ir`) در secret جایگزین شود یا روی ویندوز deploy زده شود، timer ایران (`taranom-autodeploy`) در صورت روشن بودن خودش `origin/master` را می‌کشد.
+- Hetzner دست نخورده.
+
 ## 2026-10-26 — PR #107 پنل پیامک: merge + deploy ایران
 
 - Squash-merge به `master` (`4e1929ea`). Conflict فقط WORKLOG با #106 بود.
@@ -19,13 +26,12 @@
 - Adapter (`SmsIr`/`Mock`)، صف DB، تأیید دومرحله‌ای انبوه، نقش‌های SMS، UI `/admin/sms`.
 - هیچ پیامک واقعی، هیچ دیپلوی/SSH؛ فقط PR به master.
 - گزارش: `docs/reports/2026-10-26-sms-panel.md`.
-=======
+
 ## 2026-10-26 — sales-partner QA B1–B9 merge + deploy ایران
 
 - PR #106 squash-merge به `master` (`13d0b810`). Draft → ready؛ CI/CodeQL سبز.
 - دیپلوی ایران: `/opt/taranom` روی همان SHA؛ api/web/worker پس از merge rebuild شدند؛ `/v1/health` ok.
 - Hetzner دست نخورده.
->>>>>>> origin/master
 
 ## 2026-10-25 — VT update sync + standalone e2e runner (بدون دیپلوی)
 

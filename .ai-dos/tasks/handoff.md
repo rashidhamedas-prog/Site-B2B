@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-27T11:12:00Z — TASK-20261027-001 merged; Iran SSH blocked
+
+- PR #108 squash-merged to `master` as `eeefbf88`.
+- Cloud `VPS_SSH_KEY` is Hetzner (`wholesale-admin@server2`); Iran `tnadmin` rejects it. `workflow_dispatch` 403 for this token.
+- Need Iran key in agent secrets (or user runs deploy from Windows). Autodeploy timer on Iran may still pick up `origin/master`.
+- No access to the user's Windows clone from this cloud agent; they must `git pull origin master` locally (or grant Remote/SSH + path).
+
 ## 2026-10-27T08:45:00Z — TASK-20261027-001 product-card e2e mock
 
 - Branch `fix/e2e-product-card-deterministic` from `origin/master`. No merge, no deploy, no workflow_dispatch.
