@@ -54,19 +54,23 @@ docs/
 - پس از deploy: health check + در صورت امکان `scripts/e2e-purchase-test.sh`
 - جزئیات: `docs/deployment-runbook.md` و قانون `.cursor/rules/sole-iran-origin.mdc`
 
-### Deploy خودکار بعد از هر تغییر (الزامی)
+### Deploy فقط با GO نوشتاری حامد (الزامی)
 
-بعد از اتمام هر کار معنادار که روی ویترین/API اثر دارد، agent **باید بدون درخواست مجدد** این زنجیره را اجرا کند:
+**بدون GO نوشتاری حامد، push به `master` یا deploy ممنوع است.**
+
+بعد از اتمام کار معنادار:
 
 1. به‌روزرسانی `docs/WORKLOG.md` (+ report در صورت نیاز)
 2. `git add` فایل‌های مربوط + `git commit` (Conventional Commits)
-3. `git push origin HEAD` (معمولاً `master`)
-4. Deploy **فقط روی ایران**:
+3. باز کردن PR؛ merge/`push` به `master` فقط با GO همان تغییر
+4. Deploy **فقط روی ایران** و فقط با فایل تأیید:
+   - روی VPS: `/opt/taranom/deploy-approval.json` با `commit` (SHA کامل) و `goRef`
+   - `TARANOM_DEPLOY_FORCE=1` این گیت را دور نمی‌زند
    - `ssh -p 3031 -i <id_ed25519_taranom_storefront_ir> -o IdentitiesOnly=yes tnadmin@185.213.167.61`
    - سپس `cd /opt/taranom && bash scripts/auto-deploy.sh` یا `sudo systemctl start taranom-autodeploy.service`
 5. Health check: API `/v1/health` و در صورت امکان صفحهٔ تکی/عمده
 
-استثنا: تغییرات فقط-مستندات بدون اثر runtime می‌توانند بدون rebuild docker تمام شوند، ولی push همچنان انجام شود.
+قبل از recreate، worker soft-drain می‌شود (حداکثر ۱۲۰ث؛ در صورت timeout، deploy متوقف و worker کشته نمی‌شود). `stop_grace_period` ورکر ۹۰ث است.
 
 ## Commit
 

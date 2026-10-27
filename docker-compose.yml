@@ -149,6 +149,8 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: taranom_worker
     restart: unless-stopped
+    # Allow in-flight Rubika/Bale sends (~45s) to finish on SIGTERM before SIGKILL.
+    stop_grace_period: 90s
     env_file: .env
     environment:
       NODE_ENV: production
@@ -190,6 +192,7 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: taranom_worker_b
     restart: unless-stopped
+    stop_grace_period: 90s
     env_file: .env
     environment:
       NODE_ENV: production

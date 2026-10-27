@@ -1,4 +1,4 @@
-import { writeFileSync } from 'fs';
+import { existsSync, unlinkSync, writeFileSync } from 'fs';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { hostname } from 'os';
@@ -45,12 +45,19 @@ const HANDLE_TIMEOUT_MS = 35_000;
  */
 const HANDLE_TIMEOUT_CREATE_MEDIA_MS = 50_000;
 
+const DRAIN_FLAG = () => process.env.OMNICHANNEL_WORKER_DRAIN || '/tmp/omnichannel-worker.drain';
+const DRAINED_FLAG = () => process.env.OMNICHANNEL_WORKER_DRAINED || '/tmp/omnichannel-worker.drained';
+/** Soft-drain / SIGTERM wait for in-flight sends (Rubika ~45s; deploy aborts at 120s). */
+const DRAIN_WAIT_MS = Number(process.env.OMNICHANNEL_WORKER_DRAIN_WAIT_MS || 120_000);
+
 @Injectable()
 export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OutboxWorkerService.name);
   private readonly workerId = `worker:${hostname()}:${process.pid}`;
   private timer: NodeJS.Timeout | null = null;
   private running = false;
+  /** When true, do not lease new outbox batches; finish in-flight work then mark drained. */
+  private stopping = false;
 
   constructor(
     private readonly outbox: OutboxService,
@@ -81,6 +88,16 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     if (!isOmnichannelWorkerProcess()) return;
     this.logger.log(`outbox worker started id=${this.workerId}`);
+    try {
+      unlinkSync(DRAIN_FLAG());
+    } catch {
+      /* no stale drain request */
+    }
+    try {
+      unlinkSync(DRAINED_FLAG());
+    } catch {
+      /* no stale drained marker */
+    }
     this.beat();
     this.timer = setInterval(() => {
       void this.tick();
@@ -88,9 +105,42 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     void this.tick();
   }
 
-  onModuleDestroy() {
+  async onModuleDestroy() {
+    this.beginDrain('shutdown');
+    await this.waitForIdle(DRAIN_WAIT_MS);
+  }
+
+  private beginDrain(reason: string) {
+    if (this.stopping) return;
+    this.stopping = true;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    this.logger.log(`outbox worker drain start reason=${reason} id=${this.workerId}`);
+  }
+
+  private drainRequested() {
+    try {
+      return existsSync(DRAIN_FLAG());
+    } catch {
+      return false;
+    }
+  }
+
+  private markDrained() {
+    try {
+      writeFileSync(DRAINED_FLAG(), String(Date.now()));
+    } catch {
+      /* best-effort marker for deploy script */
+    }
+  }
+
+  private async waitForIdle(maxMs: number) {
+    const deadline = Date.now() + maxMs;
+    while (this.running && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    if (!this.running) this.markDrained();
+    else this.logger.warn(`outbox worker drain timeout after ${maxMs}ms id=${this.workerId}`);
   }
 
   private beat() {
@@ -105,6 +155,11 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   async tick() {
+    if (this.drainRequested()) this.beginDrain('file');
+    if (this.stopping) {
+      if (!this.running) this.markDrained();
+      return;
+    }
     if (this.running) return;
     this.running = true;
     this.beat();
@@ -150,6 +205,10 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     } finally {
       this.running = false;
       this.beat();
+      if (this.stopping || this.drainRequested()) {
+        this.beginDrain(this.stopping ? 'inflight-done' : 'file');
+        this.markDrained();
+      }
     }
   }
 

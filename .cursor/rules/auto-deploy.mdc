@@ -1,26 +1,34 @@
 ---
-description: After every meaningful change, commit, push, and deploy to the sole Iran production origin automatically
+description: Push to master and production deploy require written GO from Hamed; sole Iran origin
 alwaysApply: true
 ---
 
-# Auto-deploy after every change (الزامی)
+# Deploy gate (الزامی — GO حامد)
 
 **Sole production origin:** Iran storefront host only. Never deploy to Hetzner/Germany (`5.75.200.102`) — that origin is decommissioned.
 
-When finishing any meaningful code/docs change that affects the live wholesale or retail sites:
+## Hard rule
+
+**بدون GO نوشتاری حامد، push به `master` یا deploy ممنوع است.**
+
+- Agentها نباید خودشان به `master` push کنند یا `scripts/auto-deploy.sh` / `taranom-autodeploy.service` را اجرا کنند مگر اینکه در همان پیام کاربر یک **GO نوشتاری صریح از حامد** برای همان commit آمده باشد.
+- `TARANOM_DEPLOY_FORCE=1` گیت تأیید را دور نمی‌زند.
+- Deploy فقط وقتی مجاز است که فایل تأیید روی سرور (`/opt/taranom/deploy-approval.json`) با **همان commit** و `goRef` ثبت شده باشد؛ بعد از deploy موفق مصرف می‌شود.
+
+## وقتی GO صادر شده
 
 1. Update `docs/WORKLOG.md` (and a report under `docs/reports/` for larger changes).
 2. Commit with Conventional Commits (never commit `.env` or secrets).
-3. `git push origin HEAD` (usually `master`).
-4. Deploy on the **Iran** VPS without waiting for the user to ask again:
+3. Push / merge to `master` فقط با GO همان تغییر.
+4. روی سرور ایران تأیید را بنویس، سپس deploy:
    - SSH (Windows PowerShell):
      `ssh -p 3031 -i $env:USERPROFILE\.ssh\id_ed25519_taranom_storefront_ir -o IdentitiesOnly=yes tnadmin@185.213.167.61`
    - SSH (POSIX):
      `ssh -p 3031 -i ~/.ssh/id_ed25519_taranom_storefront_ir -o IdentitiesOnly=yes tnadmin@185.213.167.61`
-   - On server: `cd /opt/taranom && bash scripts/auto-deploy.sh`
-   - Or: `sudo systemctl start taranom-autodeploy.service`
+   - Approval example: `{"commit":"<full sha>","goRef":"GO حامد <date/ref>"}` → `/opt/taranom/deploy-approval.json`
+   - سپس `cd /opt/taranom && bash scripts/auto-deploy.sh` یا `sudo systemctl start taranom-autodeploy.service`
 5. Verify health (`/v1/health`) and that the relevant storefront responds.
 
-Do **not** skip deploy for runtime/UI/API changes. Docs-only pushes may skip docker rebuild if nothing runtime-related changed.
+Docs-only pushes still need GO before `master`. Timer هر ۳ دقیقه فقط با فایل تأیید معتبر deploy می‌کند.
 
 Also keep storefront behavior editable from admin (`/admin/site-content`, `/admin/settings`, entity admin) — see `docs/conventions.md`.
