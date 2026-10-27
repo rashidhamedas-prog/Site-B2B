@@ -236,6 +236,92 @@ async function mockApi(page, opts = {}) {
   return state;
 }
 
+const PRODUCTION_HOST = /(^|\.)poshaktaranom\.(com|ir)$/i;
+const MOCK_API_BASE = (
+  process.env.E2E_MOCK_API_URL ||
+  `http://127.0.0.1:${process.env.E2E_MOCK_API_PORT || '4010'}/v1`
+).replace(/\/$/, '');
+
+function isKnownStorefrontApi(pathname) {
+  const path = pathname.replace(/^\/api(?=\/)/, '').replace(/^\/v1(?=\/|$)/, '') || '/';
+  return /^\/(products|settings|categories|collections|cms|blog)(\/|$)/.test(path);
+}
+
+function toMockApiUrl(raw) {
+  const url = new URL(raw);
+  let path = url.pathname.replace(/^\/api(?=\/)/, '');
+  if (path === '/v1') path = '/v1/';
+  if (!path.startsWith('/v1/') && path !== '/v1') {
+    path = `/v1${path.startsWith('/') ? path : `/${path}`}`;
+  }
+  const suffix = path.replace(/^\/v1/, '') || '/';
+  return `${MOCK_API_BASE}${suffix}${url.search}`;
+}
+
+/**
+ * Browser requests to the production store must never leave the machine.
+ * Known catalog/settings reads are answered by the local mock. Anything else
+ * is aborted and recorded so the spec can fail.
+ * Register this AFTER mockApi — Playwright runs the newest route first.
+ */
+async function guardProductionHosts(page) {
+  const leaks = [];
+  await page.route(
+    (url) => PRODUCTION_HOST.test(url.hostname),
+    async (route) => {
+      const req = route.request();
+      const url = new URL(req.url());
+      const method = req.method();
+      const known = isKnownStorefrontApi(url.pathname);
+      const safeMethod = method === 'GET' || method === 'HEAD' || method === 'OPTIONS' || method === 'POST';
+      if (!known || !safeMethod) {
+        leaks.push(`${method} ${url.hostname}${url.pathname}`);
+        await route.abort('blockedbyclient');
+        return;
+      }
+      const target = new URL(toMockApiUrl(req.url()));
+      const lib = target.protocol === 'https:' ? require('https') : require('http');
+      const body = req.postDataBuffer();
+      try {
+        const upstream = await new Promise((resolve, reject) => {
+          const upstreamReq = lib.request(
+            {
+              protocol: target.protocol,
+              hostname: target.hostname,
+              port: target.port,
+              path: `${target.pathname}${target.search}`,
+              method,
+              headers: { accept: 'application/json' },
+            },
+            (upstreamRes) => {
+              const chunks = [];
+              upstreamRes.on('data', (chunk) => chunks.push(chunk));
+              upstreamRes.on('end', () => {
+                resolve({
+                  status: upstreamRes.statusCode || 502,
+                  body: Buffer.concat(chunks),
+                });
+              });
+            },
+          );
+          upstreamReq.on('error', reject);
+          if (body && method !== 'GET' && method !== 'HEAD') upstreamReq.write(body);
+          upstreamReq.end();
+        });
+        await route.fulfill({
+          status: upstream.status,
+          contentType: 'application/json',
+          body: upstream.body,
+        });
+      } catch (error) {
+        leaks.push(`${method} ${url.hostname}${url.pathname} (mock failed: ${error && error.message ? error.message : error})`);
+        await route.abort('failed');
+      }
+    },
+  );
+  return leaks;
+}
+
 /** Collect page errors; React #418 is a hydration mismatch. */
 function watchPageErrors(page) {
   const errors = [];
@@ -278,6 +364,7 @@ module.exports = {
   gtagLog,
   hydrationErrors,
   installGtagSpy,
+  guardProductionHosts,
   mockApi,
   redact,
   seedStorage,

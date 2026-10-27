@@ -66,10 +66,31 @@ jobs:
         working-directory: apps/web
         env:
           E2E_BASE_URL: http://127.0.0.1:3000
-          API_INTERNAL_URL: https://poshaktaranom.com/api/v1
-          NEXT_PUBLIC_API_URL: https://poshaktaranom.com/api/v1
+          E2E_MOCK_API_PORT: "4010"
+          E2E_MOCK_API_URL: http://127.0.0.1:4010/v1
+          # Runtime server reads API_INTERNAL_URL. NEXT_PUBLIC_API_URL is inlined
+          # at build (https://api.poshaktaranom.com); the spec tripwire mocks that
+          # host and fails if any other request reaches poshaktaranom.com.
+          API_INTERNAL_URL: http://127.0.0.1:4010/v1
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:4010/v1
         run: |
           set -euo pipefail
+          mock_pid=""
+          pid=""
+          cleanup() {
+            if [ -n "${pid}" ]; then kill "$pid" 2>/dev/null || true; fi
+            if [ -n "${mock_pid}" ]; then kill "$mock_pid" 2>/dev/null || true; fi
+          }
+          trap cleanup EXIT
+          node e2e/mock-api-server.cjs &
+          mock_pid=$!
+          for i in $(seq 1 50); do
+            if curl -sf "http://127.0.0.1:4010/health" >/dev/null; then
+              break
+            fi
+            sleep 0.1
+          done
+          curl -sf "http://127.0.0.1:4010/health" >/dev/null
           # output:standalone — `next start` is unsupported; match Docker runner.
           STANDALONE_WEB=".next/standalone/apps/web"
           mkdir -p "$STANDALONE_WEB/.next"
@@ -77,18 +98,25 @@ jobs:
           cp -a .next/static "$STANDALONE_WEB/.next/static"
           cp -a public "$STANDALONE_WEB/public"
           test -f "$STANDALONE_WEB/server.js"
-          PORT=3000 HOSTNAME=127.0.0.1 node "$STANDALONE_WEB/server.js" &
+          # /products is force-static and was prerendered against production.
+          # Drop that HTML so this server renders the fixture catalog.
+          node e2e/purge-product-prerender.cjs
+          PORT=3000 HOSTNAME=127.0.0.1 \
+            NODE_OPTIONS="--require ${PWD}/e2e/block-production-hosts.cjs" \
+            node "$STANDALONE_WEB/server.js" &
           pid=$!
-          trap 'kill $pid' EXIT
           for i in $(seq 1 60); do
-            if curl -sf "http://127.0.0.1:3000/products" >/dev/null; then
+            if curl -sf "http://127.0.0.1:3000/products" | grep -q 'e2e-linen-blouse'; then
               break
             fi
             sleep 2
           done
-          curl -sf "http://127.0.0.1:3000/products" >/dev/null
+          curl -sf "http://127.0.0.1:3000/products" | grep -q 'e2e-linen-blouse'
           curl -sf "http://127.0.0.1:3000/icon-192.png" >/dev/null
           curl -sf "http://127.0.0.1:3000/icon-512.png" >/dev/null
+          if ! grep -Eq '[[:space:]]localhost\.ir([[:space:]]|$)' /etc/hosts; then
+            echo '127.0.0.1 localhost.ir' | sudo tee -a /etc/hosts >/dev/null
+          fi
           npx playwright test -c e2e/playwright.product-card.config.ts
 
   omnichannel-migrate:

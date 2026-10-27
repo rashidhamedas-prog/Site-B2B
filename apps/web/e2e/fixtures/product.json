@@ -1,0 +1,27 @@
+{
+  "id": "e2e-prod-linen-1",
+  "name": "مانتو آزمون کتان",
+  "slug": "e2e-linen-blouse",
+  "sku": "E2E-SKU-1",
+  "status": "ACTIVE",
+  "fabric": "کتان",
+  "description": "محصول ثابت تست ناوبری کارت. این داده از API تولید نمی‌آید.",
+  "wholesalePrice": 12000000,
+  "retailPrice": 1500000,
+  "wholesaleStock": 12,
+  "retailStock": 4,
+  "minOrderQty": 1,
+  "sizeType": "FREE",
+  "images": ["/icon-192.png"],
+  "variants": [
+    {
+      "id": "e2e-var-linen-1",
+      "color": "کرم",
+      "colorHex": "#F3EEE6",
+      "size": "FREE",
+      "stock": 4,
+      "wholesaleStock": 12,
+      "retailStock": 4
+    }
+  ]
+}

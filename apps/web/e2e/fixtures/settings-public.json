@@ -1,0 +1,28 @@
+{
+  "business": {
+    "businessName": "پوشاک ترنم",
+    "phone": "02100000000",
+    "email": "e2e@example.com",
+    "address": "مشهد",
+    "logoUrl": "/logo-128.png",
+    "logoAlt": "پوشاک ترنم"
+  },
+  "shipping": {
+    "wholesale": { "freeThreshold": 50000000, "baseFee": 0 },
+    "retail": { "freeThreshold": 0, "baseFee": 0 }
+  },
+  "installments": {
+    "minDownPaymentPercent": 0,
+    "minDownPaymentAmount": 0,
+    "maxMonths": 0
+  },
+  "payment": {
+    "enabled": false,
+    "wholesaleCashEnabled": true,
+    "retailCashEnabled": true
+  },
+  "theme": {},
+  "menus": {},
+  "marketing": {},
+  "seo": {}
+}
