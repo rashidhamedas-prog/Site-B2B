@@ -126,12 +126,23 @@ jobs:
       - name: Empty-DB omnichannel migrations up/down/up
         run: bash scripts/omnichannel-migrations-disposable-updown.sh
 
+  deploy-lock-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+      - name: shellcheck deploy scripts
+        run: shellcheck scripts/auto-deploy.sh scripts/lib/*.sh scripts/tests/*.sh
+      - name: Deploy lock tests (no Docker)
+        run: bash scripts/tests/deploy-lock.test.sh
+
   # Manual deploy only. Requires /opt/taranom/deploy-approval.json on the VPS
   # for the exact origin/master SHA + goRef. TARANOM_DEPLOY_FORCE does not bypass
   # that gate. Recommend GitHub Environment "production" required reviewers
   # (configure in repo Settings → Environments; not applied by this workflow file).
   deploy:
-    needs: [lint-and-build, omnichannel-migrate]
+    needs: [lint-and-build, omnichannel-migrate, deploy-lock-tests]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     environment: production
