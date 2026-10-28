@@ -8,7 +8,7 @@ PR #122 added a post-`compose up` `chown` in `scripts/auto-deploy.sh` so the nam
 
 | Layer | Change |
 | --- | --- |
-| `apps/api/docker-entrypoint.sh` | If `/ipc` exists and is writable: `chown -R taranom:taranom /ipc` + `chmod 775`; then `exec su-exec taranom "$@"`. Skip chown on `:ro` mounts (API). |
+| `apps/api/docker-entrypoint.sh` | If root and `/ipc` exists and is writable: `chown -R taranom:taranom /ipc` + `chmod 775`, then `exec su-exec taranom "$@"`. If already non-root: skip chown and `exec "$@"`. Skip chown on `:ro` mounts (API). |
 | `apps/api/Dockerfile` | Install Alpine `su-exec`; `COPY` entrypoint; remove `USER taranom`; `ENTRYPOINT` keeps root until drop. Same image for API CMD and worker `command`. |
 | `scripts/auto-deploy.sh` | Keep deploy-time chown as defense-in-depth; run **before** worker up; **fail loudly** on error (no silent `\|\| true`). |
 

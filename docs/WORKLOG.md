@@ -1,9 +1,10 @@
 ## 2026-10-28 — Omnichannel `/ipc` entrypoint chown (بدون merge/deploy)
 
-- شکاف: chown فقط در `auto-deploy.sh` بعد از `compose up` بود؛ image/entrypoint نداشت.
-- Dockerfile API: `su-exec` + entrypoint که اگر `/ipc` rw باشد chown/chmod می‌کند و با `su-exec taranom` اجرا می‌شود؛ ENTRYPOINT برای api و worker.
+- شکاف: chown فقط در `auto-deploy.sh` بود؛ image/entrypoint نداشت — volume اگر خارج از auto-deploy ساخته شود worker (uid 100) نمی‌تواند heartbeat بنویسد.
+- Dockerfile API: `su-exec`؛ بدون `USER`؛ `ENTRYPOINT` + `CMD node dist/main` (worker command از همان entrypoint رد می‌شود).
+- entrypoint: فقط اگر root باشد و `/ipc` rw باشد → `chown`/`chmod 775` سپس `su-exec taranom`؛ اگر non-root → فقط `exec "$@"`.
 - `auto-deploy.sh`: همان chown به‌عنوان defense-in-depth، قبل از worker up، با fail بلند.
-- گزارش: `docs/reports/2026-10-28-omnichannel-ipc-entrypoint.md`. شاخه `fix/omnichannel-ipc-entrypoint`.
+- گزارش: `docs/reports/2026-10-28-omnichannel-ipc-entrypoint.md`. شاخه `fix/omnichannel-ipc-entrypoint`. PR #128.
 
 ## 2026-10-28 — Omnichannel PR-5 (ساعت سکوت هنگام claim، بدون merge/deploy)
 
