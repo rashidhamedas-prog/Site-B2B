@@ -220,6 +220,59 @@ async function main() {
     assert((await done.reserve()).kind === 'stop', 'SUCCEEDED row never sends again');
   }
 
+  {
+    // PR-4: revive takes exactly one row unless the rollback flag is on; never touches HOLD rows.
+    const runRevive = async (bulkFlag: string | undefined, requested: number) => {
+      const prevConnectors = process.env.OMNICHANNEL_CONNECTORS_ENABLED;
+      const prevBulk = process.env.OMNICHANNEL_BULK_REVIVE_ENABLED;
+      process.env.OMNICHANNEL_CONNECTORS_ENABLED = 'true';
+      if (bulkFlag === undefined) delete process.env.OMNICHANNEL_BULK_REVIVE_ENABLED;
+      else process.env.OMNICHANNEL_BULK_REVIVE_ENABLED = bulkFlag;
+      try {
+        const seen: { take?: number; wheres: string[]; reactivated: string[] } = { wheres: [], reactivated: [] };
+        const dead = ['a', 'b', 'c'].map((id) => ({ id, status: 'DEAD' }));
+        const qb = {
+          where(sql: string) { seen.wheres.push(sql); return qb; },
+          andWhere(sql: string) { seen.wheres.push(sql); return qb; },
+          orderBy() { return qb; },
+          take(n: number) { seen.take = n; return qb; },
+          getMany: async () => dead.slice(0, seen.take),
+        };
+        const svc = Object.create(OmnichannelService.prototype) as Record<string, unknown>;
+        svc.deliveries = { createQueryBuilder: () => qb };
+        svc.requireActor = () => ({ id: 'u1', role: 'OWNER' });
+        svc.reactivateDelivery = async (row: { id: string }) => {
+          seen.reactivated.push(row.id);
+          return { retried: true, superseded: false };
+        };
+        svc.audit = async () => undefined;
+        svc.outboxMetrics = async () => ({});
+        const result = await (svc as unknown as {
+          reviveConnectorDisabledDead: (dto: unknown, actor: unknown) => Promise<{ limitApplied: number; bulk: boolean; revivedDeliveries: number }>;
+        }).reviveConnectorDisabledDead({ confirm: true, reason: 'ok', limit: requested }, { id: 'u1' });
+        return { seen, result };
+      } finally {
+        if (prevConnectors === undefined) delete process.env.OMNICHANNEL_CONNECTORS_ENABLED;
+        else process.env.OMNICHANNEL_CONNECTORS_ENABLED = prevConnectors;
+        if (prevBulk === undefined) delete process.env.OMNICHANNEL_BULK_REVIVE_ENABLED;
+        else process.env.OMNICHANNEL_BULK_REVIVE_ENABLED = prevBulk;
+      }
+    };
+
+    const single = await runRevive(undefined, 200);
+    assert(single.seen.take === 1, 'default revive LIMIT 1 even when the client asks for 200');
+    assert(single.result.limitApplied === 1 && single.result.bulk === false, 'response reports single mode');
+    assert(single.seen.reactivated.join(',') === 'a', 'only the oldest DEAD row is reactivated');
+    assert(
+      single.seen.wheres.some((w) => w.includes('d.status = :status')) && single.seen.wheres.some((w) => w.includes('d.action = :action')),
+      'revive stays scoped to DEAD CREATE rows (HOLD is never revived here)',
+    );
+
+    const bulk = await runRevive('true', 200);
+    assert(bulk.seen.take === 200 && bulk.result.bulk === true, 'rollback flag restores legacy batch size');
+    assert(bulk.seen.reactivated.length === 3, 'rollback flag reactivates the whole batch');
+  }
+
   console.log('delivery-claim.spec.ts: ok');
 }
 

@@ -1635,14 +1635,14 @@ export function AdminOmnichannel() {
       return;
     }
     if (!window.confirm(
-      `${faNumber(failingGate || status?.outbox?.dead || 0)} رویداد/ارسال متوقف‌شده به‌خاطر خاموشی کانکتور دوباره به صف برود؟`,
+      `قدیمی‌ترین ارسال متوقف‌شده به‌خاطر خاموشی کانکتور (۱ مورد از ${faNumber(failingGate || status?.outbox?.dead || 0)}) دوباره به صف برود؟`,
     )) return;
     void run(
       'revive-connector-disabled',
       async () => {
         const result = await apiClient.post<{ revivedEvents: number; revivedDeliveries: number }>(
           '/omnichannel/outbox/revive-connector-disabled',
-          { confirm: true, reason: reason || 'بازتلاش پس از روشن‌شدن کانکتور', limit: 200 },
+          { confirm: true, reason: reason || 'بازتلاش پس از روشن‌شدن کانکتور', limit: 1 },
         );
         setNotice(
           `${faNumber(result.revivedEvents)} رویداد و ${faNumber(result.revivedDeliveries)} ارسال دوباره به صف رفت`,
@@ -1670,10 +1670,10 @@ export function AdminOmnichannel() {
       id: 'connector-disabled-dead',
       title: `${faNumber(failingGate)} ارسال متوقف (خاموشی کانکتور)`,
       detail: connectorsOn
-        ? 'این‌ها وقتی ارسال از سرور خاموش بود متوقف شدند؛ الان کانکتور روشن است — بازتلاش کنید.'
+        ? 'این‌ها وقتی ارسال از سرور خاموش بود متوقف شدند؛ بازتلاش فقط یکی‌یکی (قدیمی‌ترین) انجام می‌شود.'
         : 'ارسال از سرور هنوز خاموش است؛ اول پرچم کانکتور را روشن کنید.',
       tone: connectorsOn ? 'warn' : 'danger',
-      actionLabel: connectorsOn ? 'بازتلاش همین‌ها' : 'مشاهده ارسال‌های ناموفق',
+      actionLabel: connectorsOn ? 'بازتلاش یک مورد' : 'مشاهده ارسال‌های ناموفق',
       onAction: connectorsOn ? reviveConnectorDisabled : goFailedDeliveries,
     });
   }

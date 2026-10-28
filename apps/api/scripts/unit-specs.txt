@@ -156,3 +156,4 @@ src/database/migrations/20261025-001-omnichannel-delivery-idempotency.spec.ts
 src/database/migrations/20261028-001-omnichannel-mutation-idempotency.spec.ts
 src/modules/omnichannel/services/delivery-reactivate-conflict.spec.ts
 src/modules/omnichannel/services/delivery-idempotency.integration.spec.ts
+src/modules/omnichannel/delivery-hold-policy.spec.ts
