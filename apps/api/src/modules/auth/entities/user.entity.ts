@@ -26,6 +26,13 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 32, nullable: true })
   blogRole: string | null;
 
+  /**
+   * Omnichannel panel ACL (PR-6). Null → resolved via OMNICHANNEL_RBAC_ENABLED + owner allowlist.
+   * VIEWER | PUBLISHER | OWNER — does not change staff users.role.
+   */
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  omnichannelRole: string | null;
+
   @Column({ nullable: true })
   customerId: string;
 

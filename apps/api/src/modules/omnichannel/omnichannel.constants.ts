@@ -71,6 +71,12 @@ export function isOmnichannelFreePostEnabled(): boolean {
   return process.env.OMNICHANNEL_FREE_POST_ENABLED === 'true';
 }
 
+/**
+ * Server-side Viewer/Publisher/Owner. Default false = any active ADMIN has full mutating access (rollback).
+ * Re-export from omnichannel-rbac for callers that already import constants.
+ */
+export { isOmnichannelRbacEnabled } from './omnichannel-rbac';
+
 export function isOmnichannelProvider(value: unknown): value is OmnichannelProvider {
   return typeof value === 'string' && (OMNICHANNEL_PROVIDERS as readonly string[]).includes(value);
 }

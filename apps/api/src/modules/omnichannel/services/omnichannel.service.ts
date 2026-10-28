@@ -202,8 +202,18 @@ import {
 } from '../omnichannel-token-vault';
 import { isNonRetryableProviderError, redactProviderError } from '../adapters/telegram-errors';
 import { isMissingRelationError } from '../media-registry';
+import {
+  assertGoRefPresent,
+  GO_REF_REQUIRED_MESSAGE,
+  isOmnichannelRbacEnabled,
+  normalizeGoRef,
+  redactAuditPayloadSummary,
+  roleMeetsMinimum,
+  type OmnichannelAuditSource,
+  type OmnichannelRole,
+} from '../omnichannel-rbac';
 
-type Actor = { id: string };
+type Actor = { id: string; omnichannelRole?: OmnichannelRole };
 
 const SECRET_WRITE_WINDOW_MS = 10 * 60 * 1000;
 const SECRET_WRITE_MAX = 8;
@@ -288,7 +298,21 @@ export class OmnichannelService {
     return this.adapters.for(provider);
   }
 
-  private async audit(actor: Actor, action: string, entityType: string, entityId: string, channel: string | null, reason?: string | null, payload: Record<string, unknown> = {}) {
+  private async audit(
+    actor: Actor,
+    action: string,
+    entityType: string,
+    entityId: string,
+    channel: string | null,
+    reason?: string | null,
+    payload: Record<string, unknown> = {},
+    meta?: { goRef?: string | null; source?: OmnichannelAuditSource },
+  ) {
+    const goRef = normalizeGoRef(meta?.goRef) || null;
+    const source = meta?.source || 'panel';
+    if (goRef) assertNoPlaintextSecrets({ goRef });
+    if (reason) assertNoPlaintextSecrets({ reason });
+    assertNoPlaintextSecrets(payload);
     await this.audits.save(
       this.audits.create({
         actorId: actor.id,
@@ -297,6 +321,8 @@ export class OmnichannelService {
         entityId,
         channel,
         reason: reason || null,
+        goRef,
+        source,
         payload,
       }),
     );
@@ -361,14 +387,14 @@ export class OmnichannelService {
       const status = await this.tokenVault.put(secretRef, token);
       saved = true;
       assertNoVaultLeak(status);
-      await this.audit(who, 'secret_put', 'SECRET', secretRef, null, null, {
+      await this.audit(who, 'secret_put', 'SECRET', secretRef, null, dto.reason || null, {
         provider,
         secretRef,
-        source: status.source,
+        vaultSource: status.source,
         fingerprint: status.fingerprint,
         rotated: Boolean(previous),
         liveCheck: 'getMe',
-      });
+      }, { goRef: dto.goRef });
       return status;
     } catch (err) {
       if (!saved) setVaultOverlayEntry(secretRef, previous, previousMeta);
@@ -377,7 +403,7 @@ export class OmnichannelService {
     }
   }
 
-  async clearSecret(secretRef: string, actor?: Actor) {
+  async clearSecret(secretRef: string, actor?: Actor, goRef?: string | null) {
     const who = this.requireActor(actor);
     const name = String(secretRef || '').trim();
     assertNoPlaintextSecrets({ secretRef: name });
@@ -390,11 +416,12 @@ export class OmnichannelService {
       secretRef: name,
       hadVault,
       stillConfigured: status.configured,
-    });
+    }, { goRef });
     return status;
   }
 
-  async createConnection(dto: CreateConnectionDto) {
+  async createConnection(dto: CreateConnectionDto, actor?: Actor) {
+    const who = this.requireActor(actor);
     assertNoPlaintextSecrets(dto);
     const exists = await this.connections.findOne({
       where: { provider: dto.provider, channel: dto.channel, name: dto.name },
@@ -402,28 +429,39 @@ export class OmnichannelService {
     if (exists) throw new ConflictException('اتصال تکراری است');
     const global = await this.loadStoredSettings();
     const channel = dto.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    const { goRef, ...rowInput } = dto;
     const saved = await this.connections.save(
       this.connections.create({
-        ...dto,
+        ...rowInput,
         status: 'DISABLED',
         publishSettings: seedConnectionPublishFromGlobal(global, channel) as Record<string, unknown>,
       }),
     );
+    await this.audit(who, 'connection_create', 'CONNECTION', saved.id, channel, null, {
+      provider: saved.provider,
+      name: saved.name,
+    }, { goRef });
     return this.toPublicConnectionWithPublish(saved, global);
   }
 
-  async patchConnection(id: string, dto: PatchConnectionDto) {
+  async patchConnection(id: string, dto: PatchConnectionDto, actor?: Actor) {
+    const who = this.requireActor(actor);
     assertNoPlaintextSecrets(dto);
     const row = await this.connections.findOne({ where: { id } });
     if (!row) throw new NotFoundException('اتصال یافت نشد');
+    const before = { name: row.name, secretRef: row.secretRef, status: row.status };
     if (dto.name !== undefined) row.name = dto.name;
     if (dto.secretRef !== undefined) row.secretRef = dto.secretRef;
     if (dto.status !== undefined) row.status = dto.status;
     const saved = await this.connections.save(row);
+    await this.audit(who, 'connection_patch', 'CONNECTION', id, row.channel, null, {
+      before,
+      after: { name: saved.name, secretRef: saved.secretRef, status: saved.status },
+    });
     return this.toPublicConnectionWithPublish(saved, await this.loadStoredSettings());
   }
 
-  async deleteConnection(id: string, actor?: Actor) {
+  async deleteConnection(id: string, actor?: Actor, goRef?: string | null) {
     const who = this.requireActor(actor);
     assertNoPlaintextSecrets({ id });
     const row = await this.connections.findOne({ where: { id } });
@@ -441,7 +479,7 @@ export class OmnichannelService {
       provider: row.provider,
       name: row.name,
       destinationsRemoved: destIds.length,
-    });
+    }, { goRef });
     return { ok: true };
   }
 
@@ -468,7 +506,8 @@ export class OmnichannelService {
     });
   }
 
-  async createDestination(dto: CreateDestinationDto) {
+  async createDestination(dto: CreateDestinationDto, actor?: Actor) {
+    const who = this.requireActor(actor);
     assertNoPlaintextSecrets(dto);
     const connection = await this.connections.findOne({ where: { id: dto.connectionId } });
     if (!connection) throw new NotFoundException('اتصال یافت نشد');
@@ -497,6 +536,11 @@ export class OmnichannelService {
         publishSettings,
       }),
     );
+    await this.audit(who, 'destination_create', 'DESTINATION', saved.id, channel, null, {
+      destinationKey: saved.destinationKey,
+      displayName: saved.displayName,
+      connectionId: saved.connectionId,
+    }, { goRef: dto.goRef });
     return {
       ...toPublicDestination(saved),
       publishSettings: publicDestinationPublishSettings(
@@ -505,12 +549,18 @@ export class OmnichannelService {
     };
   }
 
-  async patchDestination(id: string, dto: PatchDestinationDto) {
+  async patchDestination(id: string, dto: PatchDestinationDto, actor?: Actor) {
+    const who = this.requireActor(actor);
     assertNoPlaintextSecrets(dto);
     const row = await this.destinations.findOne({ where: { id } });
     if (!row) throw new NotFoundException('مقصد یافت نشد');
     const connection = await this.connections.findOne({ where: { id: row.connectionId } });
     if (!connection) throw new NotFoundException('اتصال یافت نشد');
+    const before = {
+      displayName: row.displayName,
+      enabled: row.enabled,
+      isCanary: row.settings?.isCanary === true,
+    };
     if (dto.displayName !== undefined) row.displayName = dto.displayName;
     if (dto.enabled !== undefined) row.enabled = dto.enabled;
     if (dto.isCanary !== undefined) {
@@ -519,10 +569,19 @@ export class OmnichannelService {
       }
       row.settings = mergeDestinationSettings(row.settings, dto.isCanary);
     }
-    return toPublicDestination(await this.destinations.save(row));
+    const saved = await this.destinations.save(row);
+    await this.audit(who, 'destination_patch', 'DESTINATION', id, connection.channel, null, {
+      before,
+      after: {
+        displayName: saved.displayName,
+        enabled: saved.enabled,
+        isCanary: saved.settings?.isCanary === true,
+      },
+    });
+    return toPublicDestination(saved);
   }
 
-  async deleteDestination(id: string, actor?: Actor) {
+  async deleteDestination(id: string, actor?: Actor, goRef?: string | null) {
     const who = this.requireActor(actor);
     assertNoPlaintextSecrets({ id });
     const row = await this.destinations.findOne({ where: { id } });
@@ -536,7 +595,7 @@ export class OmnichannelService {
       destinationKey: row.destinationKey,
       displayName: row.displayName,
       hadDeliveries: deliveryCount > 0,
-    });
+    }, { goRef });
     return { ok: true };
   }
 
@@ -675,6 +734,7 @@ export class OmnichannelService {
         withdrawAction: dto.withdrawAction,
         autoPublishCategoryIds: dto.autoPublishCategoryIds,
         reason: dto.reason,
+        goRef: dto.goRef,
       };
       if (dto.destinationId) {
         return this.patchDestinationPublishSettings(dto.destinationId, patchBody, actor);
@@ -698,7 +758,7 @@ export class OmnichannelService {
     await this.audit(who, 'settings_patch', 'SETTINGS', OMNICHANNEL_SETTINGS_KEY, null, dto.reason || null, {
       retrySlaChosen: next.retrySlaChosen === true,
       outboxRetentionChosen: next.outboxRetentionChosen === true,
-    });
+    }, { goRef: dto.goRef });
     return publicOmnichannelSettings(parseStoredOmnichannelSettings(saved.value), await this.canaryDestinationIds());
   }
 
@@ -798,7 +858,7 @@ export class OmnichannelService {
       oosChosen: resolved.oosChosen,
       autoPublishCategoryCount: resolved.categoryIds.length,
       eventsChosen: resolved.eventsChosen,
-    });
+    }, { goRef: dto.goRef });
     return {
       destinationId: saved.id,
       connectionId: conn.id,
@@ -852,7 +912,8 @@ export class OmnichannelService {
     return { ok: true, upgraded };
   }
 
-  async createTemplate(dto: CreateTemplateDto) {
+  async createTemplate(dto: CreateTemplateDto, actor?: Actor) {
+    const who = this.requireActor(actor);
     assertNoPlaintextSecrets(dto);
     const version = dto.version ?? 1;
     const productEvent = dto.eventType === 'product.published';
@@ -899,7 +960,7 @@ export class OmnichannelService {
     }
     const incoming = String(dto.body || '').trim();
     const body = productEvent ? productTemplateBodyOrThrow(dto.channel, incoming) : incoming;
-    return this.templates.save(
+    const saved = await this.templates.save(
       this.templates.create({
         provider: dto.provider,
         channel: dto.channel,
@@ -912,19 +973,32 @@ export class OmnichannelService {
         enabled: dto.enabled ?? true,
       }),
     );
+    await this.audit(who, 'template_create', 'TEMPLATE', saved.id, saved.channel, null, {
+      eventType: saved.eventType,
+      destinationId: saved.destinationId,
+      version: saved.version,
+    });
+    return saved;
   }
 
-  async patchTemplate(id: string, dto: PatchTemplateDto) {
+  async patchTemplate(id: string, dto: PatchTemplateDto, actor?: Actor) {
+    const who = this.requireActor(actor);
     assertNoPlaintextSecrets(dto);
     const row = await this.templates.findOne({ where: { id } });
     if (!row) throw new NotFoundException('قالب یافت نشد');
+    const before = { enabled: row.enabled, bodyLen: String(row.body || '').length };
     if (dto.body !== undefined) {
       row.body = row.eventType === 'product.published'
         ? productTemplateBodyOrThrow(row.channel, dto.body)
         : dto.body;
     }
     if (dto.enabled !== undefined) row.enabled = dto.enabled;
-    return this.templates.save(row);
+    const saved = await this.templates.save(row);
+    await this.audit(who, 'template_patch', 'TEMPLATE', id, saved.channel, null, {
+      before,
+      after: { enabled: saved.enabled, bodyLen: String(saved.body || '').length },
+    });
+    return saved;
   }
 
   async listPublications(destinationId?: string) {
@@ -1161,7 +1235,7 @@ export class OmnichannelService {
       cancelledPending: cancelledPendingIds.length,
       cancelledStale: cancelledStaleIds.length,
       cancelledDeliveries,
-    });
+    }, { goRef: dto.goRef });
     return {
       cancelledEvents: cancelledIds.length,
       cancelledPending: cancelledPendingIds.length,
@@ -1211,7 +1285,7 @@ export class OmnichannelService {
       superseded,
       limit,
       bulk,
-    });
+    }, { goRef: dto.goRef });
     return {
       revivedEvents: reactivated,
       revivedDeliveries: reactivated,
@@ -1261,6 +1335,18 @@ export class OmnichannelService {
         skipped: [] as Array<{ productId: string; reason: string }>,
         errors: [] as Array<{ productId: string; error: string }>,
       };
+    }
+    // Defense in depth (guard also enforces Owner + goRef when RBAC on).
+    if (isOmnichannelRbacEnabled()) {
+      if (!roleMeetsMinimum(who.omnichannelRole || 'PUBLISHER', 'OWNER')) {
+        throw new ForbiddenException('ارسال زندهٔ دسته فقط برای نقش Owner مجاز است');
+      }
+      try {
+        assertGoRefPresent(dto.goRef);
+      } catch {
+        throw new BadRequestException(GO_REF_REQUIRED_MESSAGE);
+      }
+      assertNoPlaintextSecrets({ goRef: dto.goRef });
     }
     if (!canEnqueueManualDelivery(areOmnichannelConnectorsEnabled())) {
       throw new BadRequestException(
@@ -1351,6 +1437,7 @@ export class OmnichannelService {
         hasMore,
         destinationId: normalized.destinationId || null,
       },
+      { goRef: dto.goRef },
     );
     return {
       dryRun: false,
@@ -1374,12 +1461,25 @@ export class OmnichannelService {
   }
 
   async listAudits(destinationId?: string) {
+    const mapRow = (row: OmnichannelAuditEntity) => ({
+      id: row.id,
+      actorId: row.actorId,
+      action: row.action,
+      entityType: row.entityType,
+      entityId: row.entityId,
+      channel: row.channel,
+      reason: row.reason,
+      goRef: row.goRef ?? null,
+      source: row.source || 'panel',
+      payload: redactAuditPayloadSummary(row.payload),
+      createdAt: row.createdAt,
+    });
     if (destinationId) {
-      return this.audits
+      const rows = await this.audits
         .createQueryBuilder('a')
         .select([
           'a.id', 'a.actorId', 'a.action', 'a.entityType', 'a.entityId',
-          'a.channel', 'a.reason', 'a.createdAt',
+          'a.channel', 'a.reason', 'a.goRef', 'a.source', 'a.payload', 'a.createdAt',
         ])
         .where(
           "(a.entityId = :destinationId OR a.payload->>'destinationId' = :destinationId OR jsonb_exists(COALESCE(a.payload->'destinationIds', '[]'::jsonb), :destinationId))",
@@ -1388,12 +1488,17 @@ export class OmnichannelService {
         .orderBy('a.createdAt', 'DESC')
         .take(100)
         .getMany();
+      return rows.map(mapRow);
     }
-    return this.audits.find({
+    const rows = await this.audits.find({
       order: { createdAt: 'DESC' },
       take: 100,
-      select: ['id', 'actorId', 'action', 'entityType', 'entityId', 'channel', 'reason', 'createdAt'],
+      select: [
+        'id', 'actorId', 'action', 'entityType', 'entityId', 'channel',
+        'reason', 'goRef', 'source', 'payload', 'createdAt',
+      ],
     });
+    return rows.map(mapRow);
   }
 
   async preview(dto: PreviewDto) {
@@ -1808,7 +1913,7 @@ export class OmnichannelService {
     await this.publications.save(row);
   }
 
-  async withdraw(id: string, actor?: Actor, reason?: string) {
+  async withdraw(id: string, actor?: Actor, reason?: string, goRef?: string | null) {
     const who = this.requireActor(actor);
     const row = await this.publications.findOne({ where: { id } });
     if (!row) throw new NotFoundException('انتشار یافت نشد');
@@ -1839,7 +1944,7 @@ export class OmnichannelService {
         });
       }
     }
-    await this.audit(who, 'withdraw', 'PUBLICATION', saved.id, row.channel, reason, { remoteDeletes });
+    await this.audit(who, 'withdraw', 'PUBLICATION', saved.id, row.channel, reason, { remoteDeletes }, { goRef });
     return saved;
   }
 
@@ -1851,6 +1956,7 @@ export class OmnichannelService {
     ids: unknown,
     actor?: Actor,
     reason?: string,
+    goRef?: string | null,
   ): Promise<{ action: 'withdraw'; results: Array<{ id: string; ok: boolean; error?: string }> }> {
     const who = this.requireActor(actor);
     const normalized = normalizeBulkPublicationIds(ids);
@@ -1861,7 +1967,7 @@ export class OmnichannelService {
     for (const id of normalized.ids) {
       try {
         // Per-id withdraw already writes omnichannel_audits.
-        await this.withdraw(id, who, reason);
+        await this.withdraw(id, who, reason, goRef);
         results.push({ id, ok: true });
       } catch (err: unknown) {
         results.push({
@@ -2251,7 +2357,7 @@ export class OmnichannelService {
       .execute();
   }
 
-  async reconcile(actor?: Actor, reason?: string) {
+  async reconcile(actor?: Actor, reason?: string, goRef?: string | null) {
     const who = this.requireActor(actor);
     const products = await this.products.find({
       select: ['id', 'status', 'showOnRetail', 'showOnWholesale', 'updatedAt'],
@@ -2317,7 +2423,7 @@ export class OmnichannelService {
     await this.audit(who, 'reconcile', 'PUBLICATION', 'batch', null, reason || 'reconcile', {
       intentCount: intents.length,
       replayEmpty: reconcilePublicationIntents(visible, next).length === 0,
-    });
+    }, { goRef });
     return { intents, deliveriesCreated: 0 };
   }
 
@@ -2817,11 +2923,18 @@ export class OmnichannelService {
     }
   }
 
-  async patchMediaAlt(id: string, altText: string) {
+  async patchMediaAlt(id: string, altText: string, actor?: Actor) {
+    const who = this.requireActor(actor);
     const row = await this.mediaAssets.findOne({ where: { id } });
     if (!row) throw new NotFoundException('فایل یافت نشد');
+    const before = row.altText;
     row.altText = String(altText || '').trim().slice(0, 200);
-    return this.mediaAssets.save(row);
+    const saved = await this.mediaAssets.save(row);
+    await this.audit(who, 'media_alt_patch', 'MEDIA', id, null, null, {
+      before: { altText: before },
+      after: { altText: saved.altText },
+    });
+    return saved;
   }
 
   private async publicationPayloadFor(

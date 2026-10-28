@@ -1,3 +1,21 @@
+## 2026-10-28 — Omnichannel PR-6 (audit + roles، open PR؛ merge/deploy با parent)
+
+- شاخه `feat/omnichannel-pr6-audit-roles`؛ migration `20261028-002-omnichannel-audit-rbac`؛ RBAC پشت `OMNICHANNEL_RBAC_ENABLED=false`؛ Owner+goRef incl. requeue live؛ گزارش `docs/reports/2026-10-28-omnichannel-pr6-audit-roles.md`.
+- GO package continue-119-to-end 2026-10-28 برای open PR؛ merge/deploy با parent.
+
+## 2026-10-28 — Omnichannel PR-6 (Audit + roles، بدون merge/deploy)
+
+- Audit: ستون‌های `goRef`/`source`، نقش `users.omnichannelRole`، تریگر append-only (`20261028-002-omnichannel-audit-rbac`).
+- RBAC سروری VIEWER/PUBLISHER/OWNER با `OMNICHANNEL_RBAC_ENABLED` پیش‌فرض خاموش؛ Owner-tier + `goRef`؛ بستن `requeue-by-category` زنده؛ audit برای CRUDهای خاموش قبلی.
+- شاخه `feat/omnichannel-pr6-audit-roles`. برنامه: `docs/design/omnichannel-redesign/pr6-audit-roles-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr6-audit-roles.md`. Merge/deploy فقط با GO حامد (parent).
+
+## 2026-10-28 — Omnichannel PR-6 (Audit + roles، بدون merge/deploy)
+
+- Audit: ستون‌های `goRef`/`source`، تریگر append-only، audit برای CRUDهای بی‌صدای connection/destination/template/media.
+- RBAC: VIEWER/PUBLISHER/OWNER پشت `OMNICHANNEL_RBAC_ENABLED` (پیش‌فرض خاموش)؛ Owner+goRef روی ماتریس از جمله **requeue-by-category زنده**.
+- Migration additive `20261028-002`؛ قبل از migrate روی ایران dump لیست‌شدنی؛ این agent دیپلوی نمی‌کند.
+- شاخه `feat/omnichannel-pr6-audit-roles`. برنامه: `docs/design/omnichannel-redesign/pr6-audit-roles-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr6-audit-roles.md`. Merge/deploy فقط با GO حامد.
+
 ## 2026-10-28 — Omnichannel PR-5 (ساعت سکوت هنگام claim، بدون merge/deploy)
 
 - سقف روزانه، min-gap و rate-limit از قبل در claim بود؛ **ساعت سکوت نبود**. حالا `planCreateSend` (بعد از stale/HOLD، قبل از cap) با `quietStartHour`+`quietEndHour` مقصد CREATE را با `deferredReason=quiet_hours` و `nextAttemptAt = nextQuietEnd` به تعویق می‌اندازد؛ بدون تماس adapter و بدون ردیف PROCESSING.

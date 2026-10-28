@@ -6,6 +6,12 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { OmnichannelAdminGuard } from '../guards/omnichannel-admin.guard';
+import { OmnichannelRoleGuard } from '../guards/omnichannel-role.guard';
+import {
+  OmnichannelMinRole,
+  OmnichannelOwnerWhenLive,
+  RequiresGoRef,
+} from '../decorators/omnichannel-role.decorator';
 import { OmnichannelService } from '../services/omnichannel.service';
 import { OmnichannelHealthService } from '../services/omnichannel-health';
 import {
@@ -17,6 +23,7 @@ import {
   CreateDestinationDto,
   CreatePublicationDto,
   CreateTemplateDto,
+  GoRefDto,
   PatchConnectionDto,
   PatchDestinationDto,
   PatchMediaAltDto,
@@ -35,13 +42,17 @@ import {
   isOmnichannelFreePostEnabled,
 } from '../omnichannel.constants';
 import { providerReadiness } from '../provider-capabilities';
+import type { OmnichannelRole } from '../omnichannel-rbac';
 
-type Authed = { omnichannelActor?: { id: string } };
+type Authed = {
+  omnichannelActor?: { id: string; role?: string; omnichannelRole?: OmnichannelRole };
+};
 
 @ApiTags('omnichannel')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('jwt'), RolesGuard, OmnichannelAdminGuard)
+@UseGuards(AuthGuard('jwt'), RolesGuard, OmnichannelAdminGuard, OmnichannelRoleGuard)
 @Roles('ADMIN')
+@OmnichannelMinRole('VIEWER')
 @Controller({ path: 'omnichannel', version: '1' })
 export class OmnichannelAdminController {
   constructor(
@@ -102,15 +113,23 @@ export class OmnichannelAdminController {
   }
 
   @Put('secrets')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   @ApiOperation({ summary: 'ذخیره توکن ربات (فقط‌نوشتنی؛ مقدار برنمی‌گردد)' })
   putSecret(@Body() body: PutSecretDto, @Req() req: Authed) {
     return this.svc.putSecret(body, req.omnichannelActor);
   }
 
   @Delete('secrets/:secretRef')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   @ApiOperation({ summary: 'حذف توکن ذخیره‌شده در پنل؛ توکن env سرور دست نمی‌خورد' })
-  clearSecret(@Param('secretRef') secretRef: string, @Req() req: Authed) {
-    return this.svc.clearSecret(secretRef, req.omnichannelActor);
+  clearSecret(
+    @Param('secretRef') secretRef: string,
+    @Body() body: GoRefDto = {},
+    @Req() req: Authed,
+  ) {
+    return this.svc.clearSecret(secretRef, req.omnichannelActor, body?.goRef);
   }
 
   @Get('settings')
@@ -120,6 +139,8 @@ export class OmnichannelAdminController {
   }
 
   @Patch('settings')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   @ApiOperation({ summary: 'ذخیره سیاست کالای ناموجود' })
   patchSettings(@Body() body: PatchOmnichannelSettingsDto, @Req() req: Authed) {
     return this.svc.patchSettings(body, req.omnichannelActor);
@@ -131,13 +152,16 @@ export class OmnichannelAdminController {
   }
 
   @Post('connections')
-  createConnection(@Body() body: CreateConnectionDto) {
-    return this.svc.createConnection(body);
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
+  createConnection(@Body() body: CreateConnectionDto, @Req() req: Authed) {
+    return this.svc.createConnection(body, req.omnichannelActor);
   }
 
   @Patch('connections/:id')
-  patchConnection(@Param('id') id: string, @Body() body: PatchConnectionDto) {
-    return this.svc.patchConnection(id, body);
+  @OmnichannelMinRole('PUBLISHER')
+  patchConnection(@Param('id') id: string, @Body() body: PatchConnectionDto, @Req() req: Authed) {
+    return this.svc.patchConnection(id, body, req.omnichannelActor);
   }
 
   @Get('connections/:id/publish-settings')
@@ -148,6 +172,8 @@ export class OmnichannelAdminController {
   }
 
   @Patch('connections/:id/publish-settings')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   @ApiOperation({
     summary: 'منسوخ — قواعد باید روی هر مقصد ذخیره شود',
     deprecated: true,
@@ -162,19 +188,27 @@ export class OmnichannelAdminController {
   }
 
   @Delete('connections/:id')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   @ApiOperation({ summary: 'حذف ربات از پنل؛ پست داخل پیام‌رسان سر جایش می‌ماند' })
-  deleteConnection(@Param('id') id: string, @Req() req: Authed) {
+  deleteConnection(
+    @Param('id') id: string,
+    @Body() body: GoRefDto = {},
+    @Req() req: Authed,
+  ) {
     assertNoPlaintextSecrets({ id });
-    return this.svc.deleteConnection(id, req.omnichannelActor);
+    return this.svc.deleteConnection(id, req.omnichannelActor, body?.goRef);
   }
 
   @Post('connections/:id/test')
+  @OmnichannelMinRole('PUBLISHER')
   testConnection(@Param('id') id: string, @Req() req: Authed) {
     assertNoPlaintextSecrets({ id });
     return this.svc.testConnection(id, req.omnichannelActor);
   }
 
   @Post('connections/:id/canary-ping')
+  @OmnichannelMinRole('PUBLISHER')
   @ApiOperation({ summary: 'ارسال پیام آزمایشی UTF-8 فقط به مقصد canary' })
   pingCanary(@Param('id') id: string, @Body() body: ActorReasonDto, @Req() req: Authed) {
     assertNoPlaintextSecrets({ id, reason: body?.reason });
@@ -182,6 +216,7 @@ export class OmnichannelAdminController {
   }
 
   @Post('connections/:id/discover-chats')
+  @OmnichannelMinRole('PUBLISHER')
   @ApiOperation({ summary: 'چت‌هایی که ربات اخیراً دیده (getUpdates بدون تأیید) برای پیدا کردن شناسه کانال' })
   discoverChats(@Param('id') id: string, @Req() req: Authed) {
     assertNoPlaintextSecrets({ id });
@@ -194,8 +229,10 @@ export class OmnichannelAdminController {
   }
 
   @Post('destinations')
-  createDestination(@Body() body: CreateDestinationDto) {
-    return this.svc.createDestination(body);
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
+  createDestination(@Body() body: CreateDestinationDto, @Req() req: Authed) {
+    return this.svc.createDestination(body, req.omnichannelActor);
   }
 
   @Get('destinations/:id/publish-settings')
@@ -206,6 +243,8 @@ export class OmnichannelAdminController {
   }
 
   @Patch('destinations/:id/publish-settings')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   @ApiOperation({ summary: 'ذخیره قواعد انتشار فقط برای این مقصد' })
   patchDestinationPublishSettings(
     @Param('id') id: string,
@@ -217,18 +256,26 @@ export class OmnichannelAdminController {
   }
 
   @Patch('destinations/:id')
-  patchDestination(@Param('id') id: string, @Body() body: PatchDestinationDto) {
-    return this.svc.patchDestination(id, body);
+  @OmnichannelMinRole('PUBLISHER')
+  patchDestination(@Param('id') id: string, @Body() body: PatchDestinationDto, @Req() req: Authed) {
+    return this.svc.patchDestination(id, body, req.omnichannelActor);
   }
 
   @Delete('destinations/:id')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   @ApiOperation({ summary: 'حذف کانال از پنل؛ پست داخل پیام‌رسان سر جایش می‌ماند' })
-  deleteDestination(@Param('id') id: string, @Req() req: Authed) {
+  deleteDestination(
+    @Param('id') id: string,
+    @Body() body: GoRefDto = {},
+    @Req() req: Authed,
+  ) {
     assertNoPlaintextSecrets({ id });
-    return this.svc.deleteDestination(id, req.omnichannelActor);
+    return this.svc.deleteDestination(id, req.omnichannelActor, body?.goRef);
   }
 
   @Post('destinations/:id/verify')
+  @OmnichannelMinRole('PUBLISHER')
   @ApiOperation({ summary: 'بررسی دسترسی ربات در مقصد (getChat/getChatMember) و ذخیره نتیجه' })
   verifyDestination(@Param('id') id: string, @Req() req: Authed) {
     assertNoPlaintextSecrets({ id });
@@ -236,6 +283,7 @@ export class OmnichannelAdminController {
   }
 
   @Post('destinations/:id/test-post')
+  @OmnichannelMinRole('PUBLISHER')
   @ApiOperation({ summary: 'یک پیام آزمایشی به این مقصد؛ موفقیت به‌عنوان اثبات اجازه ارسال ذخیره می‌شود (روبیکا)' })
   testPostDestination(@Param('id') id: string, @Body() body: ActorReasonDto, @Req() req: Authed) {
     assertNoPlaintextSecrets({ id, reason: body?.reason });
@@ -248,27 +296,32 @@ export class OmnichannelAdminController {
   }
 
   @Post('templates/ensure')
+  @OmnichannelMinRole('PUBLISHER')
   ensureTemplates() {
     return this.svc.ensureProductTemplates();
   }
 
   @Post('templates')
-  createTemplate(@Body() body: CreateTemplateDto) {
-    return this.svc.createTemplate(body);
+  @OmnichannelMinRole('PUBLISHER')
+  createTemplate(@Body() body: CreateTemplateDto, @Req() req: Authed) {
+    return this.svc.createTemplate(body, req.omnichannelActor);
   }
 
   @Patch('templates/:id')
-  patchTemplate(@Param('id') id: string, @Body() body: PatchTemplateDto) {
-    return this.svc.patchTemplate(id, body);
+  @OmnichannelMinRole('PUBLISHER')
+  patchTemplate(@Param('id') id: string, @Body() body: PatchTemplateDto, @Req() req: Authed) {
+    return this.svc.patchTemplate(id, body, req.omnichannelActor);
   }
 
   @Post('preview')
+  @OmnichannelMinRole('PUBLISHER')
   preview(@Body() body: PreviewDto) {
     assertNoPlaintextSecrets(body);
     return this.svc.preview(body);
   }
 
   @Post('publications')
+  @OmnichannelMinRole('PUBLISHER')
   createPublication(@Body() body: CreatePublicationDto, @Req() req: Authed) {
     assertNoPlaintextSecrets(body);
     return this.svc.createPublication(body, req.omnichannelActor);
@@ -290,6 +343,8 @@ export class OmnichannelAdminController {
   }
 
   @Post('outbox/clear-waiting')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   @ApiOperation({ summary: 'خالی کردن کل صف انتظار (لغو نرم؛ بدون حذف ردیف)' })
   clearWaitingOutbox(@Body() body: ClearWaitingOutboxDto, @Req() req: Authed) {
     assertNoPlaintextSecrets(body);
@@ -297,6 +352,8 @@ export class OmnichannelAdminController {
   }
 
   @Post('outbox/revive-connector-disabled')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   @ApiOperation({ summary: 'بازتلاش رویدادهای متوقف که فقط به‌خاطر خاموشی کانکتور مرده بودند' })
   reviveConnectorDisabled(@Body() body: ReviveConnectorDisabledDto, @Req() req: Authed) {
     assertNoPlaintextSecrets(body);
@@ -304,6 +361,8 @@ export class OmnichannelAdminController {
   }
 
   @Post('publications/requeue-by-category')
+  @OmnichannelMinRole('PUBLISHER')
+  @OmnichannelOwnerWhenLive()
   @ApiOperation({ summary: 'ارسال مجدد همه محصولات یک دسته به کانال‌های آماده' })
   requeueByCategory(@Body() body: RequeueByCategoryDto, @Req() req: Authed) {
     assertNoPlaintextSecrets(body);
@@ -316,38 +375,47 @@ export class OmnichannelAdminController {
   }
 
   @Post('deliveries/:id/retry')
+  @OmnichannelMinRole('PUBLISHER')
   retryDelivery(@Param('id') id: string, @Body() body: ActorReasonDto, @Req() req: Authed) {
     return this.svc.retryDelivery(id, req.omnichannelActor, body.reason);
   }
 
   @Post('deliveries/:id/reapprove')
+  @OmnichannelMinRole('OWNER')
   @ApiOperation({ summary: 'تأیید مجدد ارسال متوقف‌شده (HOLD)' })
   reapproveDelivery(@Param('id') id: string, @Body() body: ActorReasonDto, @Req() req: Authed) {
     return this.svc.reapproveDelivery(id, req.omnichannelActor, body.reason);
   }
 
   @Post('publications/bulk-withdraw')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   @ApiOperation({ summary: 'برداشتن گروهی انتشارها از کانال (ادمین)' })
   bulkWithdrawPublications(
     @Body() body: BulkWithdrawPublicationsDto,
     @Req() req: Authed,
   ) {
     assertNoPlaintextSecrets(body);
-    return this.svc.bulkWithdraw(body.ids, req.omnichannelActor, body.reason);
+    return this.svc.bulkWithdraw(body.ids, req.omnichannelActor, body.reason, body.goRef);
   }
 
   @Post('publications/:id/withdraw')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   withdraw(@Param('id') id: string, @Body() body: ActorReasonDto, @Req() req: Authed) {
     assertNoPlaintextSecrets(body);
-    return this.svc.withdraw(id, req.omnichannelActor, body.reason);
+    return this.svc.withdraw(id, req.omnichannelActor, body.reason, body.goRef);
   }
 
   @Post('reconcile')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
   reconcile(@Body() body: ActorReasonDto, @Req() req: Authed) {
-    return this.svc.reconcile(req.omnichannelActor, body.reason);
+    return this.svc.reconcile(req.omnichannelActor, body.reason, body.goRef);
   }
 
   @Post('media/assert-deletable')
+  @OmnichannelMinRole('PUBLISHER')
   assertMediaDeletable(@Body() body: { url: string }) {
     return this.svc.assertMediaDeletable(String(body?.url || ''));
   }
@@ -358,7 +426,8 @@ export class OmnichannelAdminController {
   }
 
   @Patch('media/:id')
-  patchMedia(@Param('id') id: string, @Body() body: PatchMediaAltDto) {
-    return this.svc.patchMediaAlt(id, body.altText);
+  @OmnichannelMinRole('PUBLISHER')
+  patchMedia(@Param('id') id: string, @Body() body: PatchMediaAltDto, @Req() req: Authed) {
+    return this.svc.patchMediaAlt(id, body.altText, req.omnichannelActor);
   }
 }

@@ -77,6 +77,9 @@ src/modules/omnichannel/adapters/rubika.adapter.spec.ts
 src/modules/omnichannel/provider-capabilities.spec.ts
 src/config/db-sync.spec.ts
 src/modules/omnichannel/guards/omnichannel-admin.guard.spec.ts
+src/modules/omnichannel/guards/omnichannel-role.guard.spec.ts
+src/modules/omnichannel/omnichannel-rbac.spec.ts
+src/database/migrations/20261028-002-omnichannel-audit-rbac.spec.ts
 src/modules/omnichannel/services/publication-deliver.spec.ts
 src/modules/omnichannel/publication-template.spec.ts
 src/modules/omnichannel/publication-automation.spec.ts
