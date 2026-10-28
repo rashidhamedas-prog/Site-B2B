@@ -1,22 +1,28 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { ensureOptOutFooter, normalizeTypedCount } from './sms-parts';
 import { PartsCounter, PhonePreview, SmsSection } from './sms-ui';
 import {
+  AudienceContinueButton,
   AudienceSourceSelector,
   ConfirmDialog,
+  ManualNumbersField,
   RecipientPreviewPanel,
   ScheduleField,
   SegmentBuilder,
+  WIZARD_STEPS,
   buildCitySegmentRules,
+  countManualPhones,
+  mergeSegmentRules,
   priceCaption,
+  visualWizardStep,
+  type SegmentFilterRule,
 } from './sms-send-ui';
+import type { PreviewPanelView } from './sms-send-preview';
 import './sms-wizard.css';
-
-const STEPS = ['مخاطب', 'پیام', 'زمان', 'بازبینی', 'تأیید'];
 
 export function AdminSmsWizard() {
   const router = useRouter();
@@ -34,12 +40,32 @@ export function AdminSmsWizard() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sources, setSources] = useState<string[]>(['WHOLESALE', 'RETAIL']);
-  const [city, setCity] = useState('');
+  const [cities, setCities] = useState<string[]>([]);
+  const [filterRules, setFilterRules] = useState<SegmentFilterRule[]>([]);
   const [schedule, setSchedule] = useState('');
   const [unitPrice, setUnitPrice] = useState<number | null>(null);
+  const [previewView, setPreviewView] = useState<PreviewPanelView>({
+    phase: 'idle',
+    funnel: null,
+    displayFunnel: null,
+    faded: false,
+    banner: null,
+    bannerTone: null,
+    zeroReason: null,
+  });
 
   const previewBody = useMemo(() => ensureOptOutFooter(body, messageClass), [body, messageClass]);
-  const cityRules = useMemo(() => buildCitySegmentRules(city), [city]);
+  const cityRules = useMemo(() => buildCitySegmentRules(cities), [cities]);
+  const allRules = useMemo(
+    () => mergeSegmentRules(cityRules, filterRules),
+    [cityRules, filterRules],
+  );
+  const visualStep = visualWizardStep(step);
+  const manualCount = countManualPhones(csv);
+
+  const onPreviewViewChange = useCallback((view: PreviewPanelView) => {
+    setPreviewView(view);
+  }, []);
 
   useEffect(() => {
     apiClient
@@ -54,7 +80,7 @@ export function AdminSmsWizard() {
     try {
       const list = await apiClient.post<any>('/admin/sms/lists', { name: `لیست ${name}` });
       await apiClient.post(`/admin/sms/lists/${list.id}/import`, { csv });
-      const rules = cityRules;
+      const rules = allRules;
       const camp = await apiClient.post<any>('/admin/sms/campaigns', {
         name,
         messageClass,
@@ -114,16 +140,25 @@ export function AdminSmsWizard() {
 
   return (
     <div className="sms-wizard space-y-4">
-      <ol className="flex flex-wrap gap-2" aria-label="مراحل ویزارد">
-        {STEPS.map((s, i) => (
+      {step === 0 ? (
+        <h1 className="sms-page-title">ارسال انبوه — مخاطبان</h1>
+      ) : (
+        <h1 className="sms-page-title">ارسال انبوه</h1>
+      )}
+
+      <ol className="sms-steps" aria-label="مراحل ارسال انبوه">
+        {WIZARD_STEPS.map((label, i) => (
           <li
-            key={s}
-            aria-current={i === step ? 'step' : undefined}
-            className={`rounded-full px-3 py-1 text-xs font-bold ${
-              i === step ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'
+            key={label}
+            aria-current={i === visualStep ? 'step' : undefined}
+            className={`sms-step${i === visualStep ? ' sms-step-current' : ''}${
+              i < visualStep ? ' sms-step-done' : ''
             }`}
           >
-            {s}
+            <span className="sms-step-num" aria-hidden="true">
+              {i + 1}
+            </span>
+            <span className="sms-step-label">{label}</span>
           </li>
         ))}
       </ol>
@@ -135,68 +170,65 @@ export function AdminSmsWizard() {
       )}
 
       {step === 0 && (
-        <SmsSection title="مخاطب">
-          <label className="mb-3 block text-sm">
-            نوع پیام
-            <select
-              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-              value={messageClass}
-              onChange={(e) => setMessageClass(e.target.value as 'PROMO' | 'TRANSACTIONAL')}
-              aria-label="نوع پیام"
-            >
-              <option value="PROMO">تبلیغاتی</option>
-              <option value="TRANSACTIONAL">خدماتی</option>
-            </select>
-          </label>
-          <AudienceSourceSelector value={sources} onChange={setSources} />
-          <div className="mt-3">
-            <SegmentBuilder city={city} onCity={setCity} />
+        <div className="sms-audience-grid">
+          <div className="sms-audience-form">
+            <SmsSection title="مخاطبان">
+              <label className="mb-3 block text-sm">
+                نوع پیام
+                <select
+                  className="sms-input mt-1"
+                  value={messageClass}
+                  onChange={(e) => setMessageClass(e.target.value as 'PROMO' | 'TRANSACTIONAL')}
+                  aria-label="نوع پیام"
+                >
+                  <option value="PROMO">تبلیغاتی</option>
+                  <option value="TRANSACTIONAL">خدماتی</option>
+                </select>
+              </label>
+              <AudienceSourceSelector value={sources} onChange={setSources} />
+              <div className="mt-3">
+                <SegmentBuilder
+                  cities={cities}
+                  onCities={setCities}
+                  sources={sources}
+                  onSources={setSources}
+                  filterRules={filterRules}
+                  onFilterRules={setFilterRules}
+                />
+              </div>
+              <div className="mt-3">
+                <ManualNumbersField value={csv} onChange={setCsv} />
+              </div>
+              <AudienceContinueButton
+                phase={previewView.phase}
+                final={previewView.funnel?.final ?? 0}
+                manualCount={manualCount}
+                onClick={() => setStep(1)}
+              />
+            </SmsSection>
           </div>
-          <div className="mt-3">
-            <RecipientPreviewPanel
-              sources={sources}
-              previewBody={previewBody}
-              messageClass={messageClass}
-              rules={cityRules}
-            />
-          </div>
-          <textarea
-            className="min-h-[140px] w-full rounded-lg border border-gray-200 p-3 text-sm ltr text-left"
-            placeholder="0912… یک شماره در هر خط"
-            value={csv}
-            onChange={(e) => setCsv(e.target.value)}
+          <RecipientPreviewPanel
+            sources={sources}
+            previewBody={previewBody}
+            messageClass={messageClass}
+            rules={allRules}
+            manualCsv={csv}
+            onViewChange={onPreviewViewChange}
           />
-          <input
-            className="mt-2 block w-full text-sm"
-            type="file"
-            accept=".csv,text/plain"
-            onChange={async (e) => {
-              const f = e.target.files?.[0];
-              if (!f) return;
-              setCsv(await f.text());
-            }}
-          />
-          <button
-            type="button"
-            className="mt-3 min-h-11 rounded-lg bg-primary px-4 text-sm font-bold text-white"
-            onClick={() => setStep(1)}
-          >
-            ادامه
-          </button>
-        </SmsSection>
+        </div>
       )}
 
       {step === 1 && (
         <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
-          <SmsSection title="پیام">
+          <SmsSection title="متن">
             <input
-              className="mb-2 w-full rounded-lg border px-3 py-2 text-sm"
+              className="sms-input mb-2"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="نام کمپین"
             />
             <select
-              className="mb-2 w-full rounded-lg border px-3 py-2 text-sm"
+              className="sms-input mb-2"
               value={messageClass}
               onChange={(e) => setMessageClass(e.target.value as any)}
             >
@@ -204,21 +236,21 @@ export function AdminSmsWizard() {
               <option value="TRANSACTIONAL">خدماتی</option>
             </select>
             <textarea
-              className="min-h-[120px] w-full rounded-lg border p-3 text-sm"
+              className="sms-input sms-textarea"
               value={body}
               onChange={(e) => setBody(e.target.value)}
             />
             <PartsCounter body={previewBody} />
             <div className="mt-3 flex gap-2">
-              <button type="button" className="min-h-11 rounded-lg border px-4 text-sm" onClick={() => setStep(0)}>
+              <button type="button" className="sms-btn" onClick={() => setStep(0)}>
                 بازگشت
               </button>
               <button
                 type="button"
-                className="min-h-11 rounded-lg bg-primary px-4 text-sm font-bold text-white"
+                className="sms-btn sms-btn-primary"
                 onClick={() => setStep(2)}
               >
-                ادامه
+                بعدی: زمان‌بندی
               </button>
             </div>
           </SmsSection>
@@ -227,27 +259,27 @@ export function AdminSmsWizard() {
       )}
 
       {step === 2 && (
-        <SmsSection title="زمان ارسال">
+        <SmsSection title="زمان‌بندی">
           <ScheduleField value={schedule} onChange={setSchedule} />
           <p className="mt-2 text-sm text-gray-600">{priceCaption(unitPrice) || 'ارسال داخل پنجره ۰۸ تا ۲۱'}</p>
           <div className="mt-3 flex gap-2">
-            <button type="button" className="min-h-11 rounded-lg border px-4 text-sm" onClick={() => setStep(1)}>
+            <button type="button" className="sms-btn" onClick={() => setStep(1)}>
               بازگشت
             </button>
             <button
               type="button"
               disabled={busy}
-              className="min-h-11 rounded-lg bg-primary px-4 text-sm font-bold text-white disabled:opacity-60"
+              className="sms-btn sms-btn-primary disabled:opacity-60"
               onClick={createListAndCampaign}
             >
-              {busy ? '…' : 'بازبینی'}
+              {busy ? '…' : 'بعدی: بازبینی و تأیید'}
             </button>
           </div>
         </SmsSection>
       )}
 
       {step === 3 && preview && (
-        <SmsSection title="بازبینی">
+        <SmsSection title="بازبینی و تأیید">
           <ul className="space-y-1 text-sm text-gray-700">
             <li>واجد: {(preview.eligible || 0).toLocaleString('fa-IR')}</li>
             <li>
@@ -262,13 +294,13 @@ export function AdminSmsWizard() {
             )}
           </ul>
           <div className="mt-3 flex gap-2">
-            <button type="button" className="min-h-11 rounded-lg border px-4 text-sm" onClick={() => setStep(2)}>
+            <button type="button" className="sms-btn" onClick={() => setStep(2)}>
               بازگشت
             </button>
             <button
               type="button"
               disabled={busy || preview.insufficient}
-              className="min-h-11 rounded-lg bg-primary px-4 text-sm font-bold text-white disabled:opacity-60"
+              className="sms-btn sms-btn-primary disabled:opacity-60"
               onClick={prepare}
             >
               آماده‌سازی برای تأیید
@@ -278,7 +310,7 @@ export function AdminSmsWizard() {
       )}
 
       {step === 4 && (
-        <SmsSection title="تأیید نهایی">
+        <SmsSection title="بازبینی و تأیید">
           <ConfirmDialog
             count={Number(preview?.eligible || 0)}
             typedCount={typedCount}

@@ -32,11 +32,42 @@ async function openWizard(page: Page, width: number, height: number) {
         ? { amount: 10 }
         : pathname.includes('/settings')
           ? { unitPricePerPart: null, creditWarnThreshold: 500, promoWindowStart: '08:00', promoWindowEnd: '21:00' }
-          : pathname.includes('/preview')
-            ? { final: 0, unitPricePerPart: null }
-            : pathname.includes('/templates')
-              ? []
-              : {};
+          : pathname.includes('/audience/sources')
+            ? {
+                sources: [
+                  { source: 'WHOLESALE', count: 1, available: true },
+                  { source: 'WHOLESALE_REFERRAL', count: 1, available: true },
+                  { source: 'SALES_PARTNER', count: 1, available: true },
+                  { source: 'RETAIL', count: 1, available: true },
+                ],
+                partialSources: [],
+              }
+            : pathname.includes('/audience/fields')
+              ? {
+                  fields: [{ field: 'city', ops: ['in'], values: [{ value: 'تهران', count: 2 }] }],
+                  combine: 'AND',
+                }
+              : pathname.includes('/segments/preview') || pathname.includes('/preview')
+                ? {
+                    total: 0,
+                    duplicates: 0,
+                    optedOut: 0,
+                    blacklisted: 0,
+                    noConsent: 0,
+                    invalid: 0,
+                    notApplicable: 0,
+                    final: 0,
+                    partsPerMsg: 1,
+                    totalParts: 0,
+                    estimatedCost: null,
+                    partialSources: [],
+                    unitPricePerPart: null,
+                  }
+                : pathname.includes('/segments')
+                  ? []
+                  : pathname.includes('/templates')
+                    ? []
+                    : {};
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -61,7 +92,9 @@ async function openWizard(page: Page, width: number, height: number) {
 }
 
 async function assertFits(page: Page, width: number) {
-  await expect(page.getByRole('group', { name: 'منابع مخاطب' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'ارسال انبوه — مخاطبان' })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'منبع مخاطبان' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'مراحل ارسال انبوه' })).toBeVisible();
   const metrics = await page.evaluate((viewport) => {
     const offenders = [...document.querySelectorAll('body *')].filter((el) => {
       const rect = el.getBoundingClientRect();

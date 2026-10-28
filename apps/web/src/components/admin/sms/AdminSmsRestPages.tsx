@@ -179,9 +179,9 @@ export function AdminSmsReports() {
         >
           <option value="">همه</option>
           <option value="WHOLESALE">عمده</option>
-          <option value="WHOLESALE_REFERRAL">معرف</option>
+          <option value="WHOLESALE_REFERRAL">معرف عمده</option>
           <option value="SALES_PARTNER">همکار فروش</option>
-          <option value="RETAIL">خرده</option>
+          <option value="RETAIL">خرده‌فروشی</option>
         </select>
       </label>
       <div className="tablewrap overflow-x-auto">

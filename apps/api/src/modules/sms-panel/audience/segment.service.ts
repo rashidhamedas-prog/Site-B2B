@@ -36,7 +36,9 @@ export class SegmentService {
   ) {}
 
   async fields() {
-    const cities = await this.audience.distinctCities().catch(() => [] as string[]);
+    const cities = await this.audience.distinctCities().catch(
+      () => [] as Array<{ city: string; count: number }>,
+    );
     return audienceFieldCatalog(cities);
   }
 
