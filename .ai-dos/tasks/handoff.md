@@ -1,4 +1,11 @@
-﻿## 2026-10-28T16:10:00Z — PR-6 Audit + roles implemented (push PR)
+﻿## 2026-10-28T13:30:00Z — PR-8 Coverage matrix (implement + PR open)
+
+- Branch `feat/omnichannel-pr8-coverage-matrix` worktree `D:/proje/Site-B2B-pr8` from `origin/master` @ 5ebb10c8 (includes PR-7).
+- Delivered: coverage-matrix pure+spec, coverage service+routes+RBAC, absence migration, UI tab behind `OMNICHANNEL_COVERAGE_UI`, audits `?source=`, WORKLOG+report.
+- Hard stops: no PR-12/14, no FORCE, no live canary delete, no SMS, no merge/deploy.
+- Next: unit specs + tsc → push PR to master; parent/owner merge GO + Iran migrate + optional UI flag.
+
+## 2026-10-28T16:10:00Z — PR-6 Audit + roles implemented (push PR)
 
 - Branch `feat/omnichannel-pr6-audit-roles` worktree `D:/proje/Site-B2B-pr6` @ 158f0fd6+.
 - Delivered: migration `20261028-002-omnichannel-audit-rbac` (goRef/source/append-only/users.omnichannelRole); RBAC flag default false; role guard + Owner goRef incl. live requeue; silent CRUD audits; unit specs + report.

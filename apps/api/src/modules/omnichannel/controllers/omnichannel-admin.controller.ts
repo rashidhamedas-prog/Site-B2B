@@ -16,6 +16,7 @@ import { OmnichannelService } from '../services/omnichannel.service';
 import { OmnichannelDeleteService } from '../services/omnichannel-delete.service';
 import { OmnichannelEditService } from '../services/omnichannel-edit.service';
 import { OmnichannelHealthService } from '../services/omnichannel-health';
+import { OmnichannelCoverageService } from '../services/omnichannel-coverage.service';
 import {
   ActorReasonDto,
   ClearWaitingOutboxDto,
@@ -42,10 +43,15 @@ import {
   EditDeliveryDto,
   RevertDeliveryDto,
 } from '../dto/omnichannel-delete-edit.dto';
+import {
+  CoverageAbsenceReasonDto,
+  OutOfPanelIngestDto,
+} from '../dto/omnichannel-coverage.dto';
 import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import {
   areOmnichannelConnectorsEnabled,
   isOmnichannelAutoPublishEnabled,
+  isOmnichannelCoverageUiEnabled,
   isOmnichannelFreePostEnabled,
 } from '../omnichannel.constants';
 import { providerReadiness } from '../provider-capabilities';
@@ -67,6 +73,7 @@ export class OmnichannelAdminController {
     private readonly deletes: OmnichannelDeleteService,
     private readonly edits: OmnichannelEditService,
     private readonly health: OmnichannelHealthService,
+    private readonly coverage: OmnichannelCoverageService,
   ) {}
 
   @Get('health')
@@ -90,6 +97,8 @@ export class OmnichannelAdminController {
       connectors: areOmnichannelConnectorsEnabled(),
       /** Free-caption mode. Default false. Does not open a second Telegram client. */
       freePost: isOmnichannelFreePostEnabled(),
+      /** PR-8 coverage matrix tab. Default false until staging validate. */
+      coverageUi: isOmnichannelCoverageUiEnabled(),
       phase: 8,
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
@@ -379,8 +388,62 @@ export class OmnichannelAdminController {
   }
 
   @Get('audits')
-  listAudits(@Query('destinationId') destinationId?: string) {
-    return this.svc.listAudits(destinationId);
+  listAudits(
+    @Query('destinationId') destinationId?: string,
+    @Query('source') source?: string,
+  ) {
+    return this.svc.listAudits(destinationId, source);
+  }
+
+  @Get('coverage')
+  @OmnichannelMinRole('VIEWER')
+  @ApiOperation({ summary: 'ماتریس پوشش محصول × کانال (خلاصه + صفحه)' })
+  listCoverage(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+    @Query('filter') filter?: string,
+    @Query('channel') channel?: string,
+  ) {
+    return this.coverage.listCoverage({ page, limit, q, filter, channel });
+  }
+
+  @Get('coverage/duplicates')
+  @OmnichannelMinRole('VIEWER')
+  @ApiOperation({ summary: 'فهرست تخت تکرارها (REQ-E4 / پذیرش ۹ بله)' })
+  listCoverageDuplicates(@Query('channel') channel?: string) {
+    return this.coverage.listDuplicates(channel);
+  }
+
+  @Post('coverage/out-of-panel/ingest')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
+  @ApiOperation({ summary: 'ورود دستی رخداد خارج از پنل (Owner+goRef؛ فقط audit)' })
+  ingestOutOfPanel(@Body() body: OutOfPanelIngestDto, @Req() req: Authed) {
+    assertNoPlaintextSecrets(body);
+    return this.coverage.ingestOutOfPanel(body, req.omnichannelActor || { id: '' });
+  }
+
+  @Get('coverage/:productId')
+  @OmnichannelMinRole('VIEWER')
+  @ApiOperation({ summary: 'جزئیات پوشش یک محصول' })
+  getCoverageDetail(
+    @Param('productId') productId: string,
+    @Query('channel') channel?: string,
+  ) {
+    return this.coverage.getCoverageDetail(productId, channel);
+  }
+
+  @Put('coverage/:productId/absence-reason')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'ثبت دلیل عدم‌پوشش' })
+  setAbsenceReason(
+    @Param('productId') productId: string,
+    @Body() body: CoverageAbsenceReasonDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets(body);
+    return this.coverage.setAbsenceReason(productId, body, req.omnichannelActor || { id: '' });
   }
 
   @Post('deliveries/:id/retry')

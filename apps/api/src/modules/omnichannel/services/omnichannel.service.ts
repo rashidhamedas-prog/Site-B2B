@@ -1542,7 +1542,7 @@ export class OmnichannelService {
     return row?.status === 'WITHDRAWN';
   }
 
-  async listAudits(destinationId?: string) {
+  async listAudits(destinationId?: string, source?: string) {
     const mapRow = (row: OmnichannelAuditEntity) => ({
       id: row.id,
       actorId: row.actorId,
@@ -1556,8 +1556,12 @@ export class OmnichannelService {
       payload: redactAuditPayloadSummary(row.payload),
       createdAt: row.createdAt,
     });
+    const sourceFilter = String(source || '').trim().toLowerCase();
+    const sourceOk = sourceFilter === 'panel' || sourceFilter === 'out_of_panel'
+      ? sourceFilter
+      : null;
     if (destinationId) {
-      const rows = await this.audits
+      const qb = this.audits
         .createQueryBuilder('a')
         .select([
           'a.id', 'a.actorId', 'a.action', 'a.entityType', 'a.entityId',
@@ -1568,8 +1572,21 @@ export class OmnichannelService {
           { destinationId },
         )
         .orderBy('a.createdAt', 'DESC')
-        .take(100)
-        .getMany();
+        .take(100);
+      if (sourceOk) qb.andWhere('a.source = :source', { source: sourceOk });
+      const rows = await qb.getMany();
+      return rows.map(mapRow);
+    }
+    if (sourceOk) {
+      const rows = await this.audits.find({
+        where: { source: sourceOk },
+        order: { createdAt: 'DESC' },
+        take: 100,
+        select: [
+          'id', 'actorId', 'action', 'entityType', 'entityId', 'channel',
+          'reason', 'goRef', 'source', 'payload', 'createdAt',
+        ],
+      });
       return rows.map(mapRow);
     }
     const rows = await this.audits.find({

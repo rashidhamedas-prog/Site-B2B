@@ -9,11 +9,13 @@ import { PublicationEntity } from './entities/publication.entity';
 import { PublicationDeliveryEntity } from './entities/publication-delivery.entity';
 import { OmnichannelPostBackupEntity } from './entities/omnichannel-post-backup.entity';
 import { OmnichannelDeliveryMessageEntity } from './entities/omnichannel-delivery-message.entity';
+import { OmnichannelCoverageAbsenceEntity } from './entities/omnichannel-coverage-absence.entity';
 import { OmnichannelAdminController } from './controllers/omnichannel-admin.controller';
 import { OmnichannelService } from './services/omnichannel.service';
 import { OmnichannelDeleteService } from './services/omnichannel-delete.service';
 import { OmnichannelEditService } from './services/omnichannel-edit.service';
 import { OmnichannelHealthService } from './services/omnichannel-health';
+import { OmnichannelCoverageService } from './services/omnichannel-coverage.service';
 import { OutboxService } from './services/outbox.service';
 import { ChannelProjectionService } from './services/channel-projection.service';
 import { TelegramAdapter } from './adapters/telegram.adapter';
@@ -48,6 +50,7 @@ import { StorageService } from '../upload/storage.service';
       PublicationDeliveryEntity,
       OmnichannelPostBackupEntity,
       OmnichannelDeliveryMessageEntity,
+      OmnichannelCoverageAbsenceEntity,
       OmnichannelAuditEntity,
       OmnichannelMediaAssetEntity,
       ProductEntity,
@@ -64,6 +67,7 @@ import { StorageService } from '../upload/storage.service';
     OmnichannelDeleteService,
     OmnichannelEditService,
     OmnichannelHealthService,
+    OmnichannelCoverageService,
     OutboxService,
     ChannelProjectionService,
     {
