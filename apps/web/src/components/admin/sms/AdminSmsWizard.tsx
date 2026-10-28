@@ -136,12 +136,28 @@ export function AdminSmsWizard() {
 
       {step === 0 && (
         <SmsSection title="مخاطب">
+          <label className="mb-3 block text-sm">
+            نوع پیام
+            <select
+              className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+              value={messageClass}
+              onChange={(e) => setMessageClass(e.target.value as 'PROMO' | 'TRANSACTIONAL')}
+              aria-label="نوع پیام"
+            >
+              <option value="PROMO">تبلیغاتی</option>
+              <option value="TRANSACTIONAL">خدماتی</option>
+            </select>
+          </label>
           <AudienceSourceSelector value={sources} onChange={setSources} />
           <div className="mt-3">
             <SegmentBuilder city={city} onCity={setCity} />
           </div>
           <div className="mt-3">
-            <RecipientPreviewPanel sources={sources} text={body} messageClass={messageClass} />
+            <RecipientPreviewPanel
+              sources={sources}
+              previewBody={previewBody}
+              messageClass={messageClass}
+            />
           </div>
           <textarea
             className="min-h-[140px] w-full rounded-lg border border-gray-200 p-3 text-sm ltr text-left"
