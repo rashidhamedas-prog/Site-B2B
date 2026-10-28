@@ -4,19 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
+import { getRole } from '@/lib/auth';
+import { smsNavForRole } from './sms-nav';
 import { CreditCard } from './sms-ui';
-
-const LINKS = [
-  { href: '/admin/sms', label: 'داشبورد', exact: true },
-  { href: '/admin/sms/send', label: 'ارسال تکی' },
-  { href: '/admin/sms/campaigns/new', label: 'ارسال انبوه' },
-  { href: '/admin/sms/templates', label: 'قالب‌ها' },
-  { href: '/admin/sms/contacts', label: 'مخاطبان' },
-  { href: '/admin/sms/reports', label: 'گزارش‌ها' },
-  { href: '/admin/sms/optout', label: 'لغو و سیاه' },
-  { href: '/admin/sms/audit', label: 'فعالیت‌ها' },
-  { href: '/admin/sms/settings', label: 'تنظیمات' },
-];
 
 export function AdminSmsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -67,7 +57,7 @@ export function AdminSmsShell({ children }: { children: React.ReactNode }) {
         className="flex min-w-0 flex-wrap gap-1 rounded-xl border border-gray-100 bg-white p-1"
         aria-label="منوی پنل پیامک"
       >
-        {LINKS.map((l) => {
+        {smsNavForRole(getRole()).map((l) => {
           const active = l.exact
             ? pathname === l.href
             : pathname === l.href || pathname.startsWith(`${l.href}/`);

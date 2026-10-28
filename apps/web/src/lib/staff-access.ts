@@ -60,8 +60,8 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   WAREHOUSE_MANAGER: 'مدیر انبار',
   CUSTOMER_SERVICE: 'پشتیبانی',
   SMS_MANAGER: 'مدیر پیامک',
-  SMS_OPERATOR: 'اپراتور پیامک',
-  SMS_MARKETER: 'بازاریاب پیامک',
+  SMS_OPERATOR: 'اپراتور',
+  SMS_MARKETER: 'بازاریاب',
 };
 
 export function isStaffRole(role: string | null | undefined): role is StaffRole {
