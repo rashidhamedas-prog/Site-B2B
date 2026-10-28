@@ -5,6 +5,12 @@
 - محدودیت حامد: بدون FORCE، بدون mass retry، PR-3 تا سبز، بدون merge SMS #115، canary Bale فقط بعد از deploy.
 - شاخه `fix/omnichannel-hotfix-pre-pr3`. گزارش: `docs/reports/2026-10-28-omnichannel-hotfix-pre-pr3.md`.
 
+## 2026-10-28 — پنل پیامک مرحله ۵: گزارش تحویل
+
+- پولر DLR ردیف‌های SENT و PENDING_UNKNOWN را تا ۷۲ ساعت با backoff چک می‌کند؛ خطای provider وضعیت را FAILED نمی‌کند و بعد از ۷۲ ساعت deliveryState برابر EXPIRED می‌شود.
+- گزارش روز تهران تحویل را از ارسال جدا می‌کند و بر اساس منبع می‌شکند. CSV برای اپراتور و بازاریاب ماسک است.
+- شاخه `feat/sms-delivery-reports`.
+
 ## 2026-10-28 — پنل پیامک مرحله ۴: ارسال از مخاطب و تأیید دوم
 
 - ارسال تکی خارج از منابع فقط برای مدیر کل و مدیر پیامک، با همان لغو/سیاه/ساعت/سقف. بقیه `SMS_OFFLIST_FORBIDDEN`.

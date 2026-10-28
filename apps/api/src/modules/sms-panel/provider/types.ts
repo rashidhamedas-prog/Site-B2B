@@ -69,6 +69,7 @@ export interface SmsProvider {
     params: Record<string, string>;
   }): Promise<SendResult>;
   getDeliveryStatus(ids: string[]): Promise<DeliveryReport[]>;
+  getPackDelivery?(packId: string): Promise<DeliveryReport[]>;
   getCredit(): Promise<{ amount: number; unit: 'CREDIT' | 'IRR' | 'SMS' }>;
   fetchInbound(since: Date): Promise<InboundMessage[]>;
   readonly capabilities: {

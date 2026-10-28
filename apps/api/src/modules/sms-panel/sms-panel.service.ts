@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes, randomInt } from 'crypto';
-import { In, IsNull, LessThanOrEqual, Repository } from 'typeorm';
+import { In, IsNull, LessThan, LessThanOrEqual, Repository } from 'typeorm';
 import { UserEntity } from '../auth/entities/user.entity';
 import { SettingsService } from '../settings/settings.service';
 import { MarketingConsentEntity } from '../customer-marketing/entities/marketing-consent.entity';
@@ -47,6 +47,13 @@ import {
   deferIfOutsideWindow,
   scheduleOutsideWindow,
 } from './audience/send-audience';
+import {
+  classifyDlr,
+  isPastDlrWindow,
+  primaryAudienceSource,
+  selectDlrCandidates,
+  summarizeSmsReports,
+} from './audience/dlr';
 import {
   SmsAuditLogEntity,
   SmsBlacklistEntity,
@@ -429,6 +436,7 @@ export class SmsPanelService {
     }
 
     let offlist = false;
+    let audienceSource: string | null = null;
     if (!consentExempt) {
       let gateContact: {
         promoConsent: boolean;
@@ -445,6 +453,7 @@ export class SmsPanelService {
           sources: found.contact.sources,
         };
         if (!input.customerId && found.contact.customerId) input.customerId = found.contact.customerId;
+        audienceSource = primaryAudienceSource(found.contact.sources);
       } catch (err) {
         if (!(err instanceof NotFoundException)) throw err;
       }
@@ -564,6 +573,7 @@ export class SmsPanelService {
         messageClass,
         phoneNormalized: phone,
         customerId: input.customerId || null,
+        source: audienceSource,
         body,
         parts,
         status: 'QUEUED',
@@ -1463,6 +1473,7 @@ export class SmsPanelService {
     });
     if (!recipients.length) return;
     const memberVars = new Map<string, Record<string, string>>();
+    const sourceByPhone = new Map<string, string | null>();
     if (campaign.listId) {
       const members = await this.members.find({
         where: { listId: campaign.listId },
@@ -1474,8 +1485,11 @@ export class SmsPanelService {
       const allowed = new Set(recipients.map((row) => row.phoneNormalized));
       const contacts = await this.audienceContactsForCampaign(campaign);
       for (const contact of contacts) {
-        if (!allowed.has(contact.phone) || memberVars.has(contact.phone)) continue;
-        memberVars.set(contact.phone, { name: contact.name, city: contact.city || '' });
+        if (!allowed.has(contact.phone)) continue;
+        if (!memberVars.has(contact.phone)) {
+          memberVars.set(contact.phone, { name: contact.name, city: contact.city || '' });
+        }
+        sourceByPhone.set(contact.phone, primaryAudienceSource(contact.sources));
       }
     }
     const rendered = recipients.flatMap((recipient) => {
@@ -1500,6 +1514,8 @@ export class SmsPanelService {
           messageClass: campaign.messageClass,
           phoneNormalized: row.phone,
           customerId: row.recipient.customerId,
+          source: sourceByPhone.get(row.phone) || null,
+          segmentId: campaign.segmentId,
           body: row.body,
           parts: row.parts,
           status: 'QUEUED',
@@ -1750,7 +1766,10 @@ export class SmsPanelService {
     campaignId?: string;
     status?: string;
     phone?: string;
+    source?: string;
+    segmentId?: string;
     take?: number;
+    mask?: boolean;
   }) {
     const where: any = {};
     if (q.campaignId) where.campaignId = q.campaignId;
@@ -1759,34 +1778,37 @@ export class SmsPanelService {
       const p = normalizeIranMobileStrict(q.phone);
       if (p) where.phoneNormalized = p;
     }
+    if (q.source) where.source = q.source;
+    if (q.segmentId) where.segmentId = q.segmentId;
     const rows = await this.messages.find({
       where,
       order: { createdAt: 'DESC' },
       take: Math.min(q.take || 100, 500),
     });
+    const mask = q.mask !== false;
     return rows.map((r) => ({
       ...r,
-      phoneNormalized: maskMobile(r.phoneNormalized),
+      phoneNormalized: mask ? maskMobile(r.phoneNormalized) : r.phoneNormalized,
     }));
   }
 
-  async reportsSummary() {
-    const since = new Date(Date.now() - 7 * 24 * 60 * 60_000);
+  async reportsSummary(filter?: { source?: string; segmentId?: string }) {
     const rows = await this.messages.find({
       where: {},
       take: 5000,
       order: { createdAt: 'DESC' },
     });
-    const todayStart = tehranDayStart();
-    const sentToday = rows.filter((r) => r.createdAt >= todayStart && ['SENT', 'DELIVERED'].includes(r.status)).length;
-    const week = rows.filter((r) => r.createdAt >= since);
-    const delivered = week.filter((r) => r.status === 'DELIVERED' || r.status === 'SENT').length;
-    const failed = week.filter((r) => r.status === 'FAILED' || r.status === 'UNDELIVERED').length;
-    const queued = rows.filter((r) => r.status === 'QUEUED' || r.status === 'SENDING').length;
+    const filtered = rows.filter((row) => {
+      if (filter?.source && row.source !== filter.source) return false;
+      if (filter?.segmentId && row.segmentId !== filter.segmentId) return false;
+      return true;
+    });
+    const summary = summarizeSmsReports(filtered);
+    const failed = filtered.filter((r) => r.status === 'FAILED' || r.status === 'UNDELIVERED').length;
+    const queued = filtered.filter((r) => r.status === 'QUEUED' || r.status === 'SENDING').length;
     const unsubNew = await this.unsubscribes.count();
     return {
-      sentToday,
-      deliveryRate7d: week.length ? delivered / week.length : 0,
+      ...summary,
       queued,
       failed,
       unsubscribes: unsubNew,
@@ -1827,29 +1849,64 @@ export class SmsPanelService {
   }
 
   async pollDelivery() {
-    const rows = await this.messages.find({
-      where: { status: In(['SENT', 'PENDING_UNKNOWN']) },
-      take: 100,
-      order: { createdAt: 'DESC' },
-    });
+    const now = new Date();
+    const horizon = new Date(now.getTime() - 72 * 60 * 60 * 1000);
+    const open = await this.messages
+      .createQueryBuilder('m')
+      .where('m.status IN (:...st)', { st: ['SENT', 'PENDING_UNKNOWN'] })
+      .andWhere('m.createdAt > :horizon', { horizon })
+      .orderBy('m.dlrCheckedAt', 'ASC', 'NULLS FIRST')
+      .take(300)
+      .getMany();
+    const due = selectDlrCandidates(open, now, 100);
     let n = 0;
-    for (const row of rows) {
-      if (!row.providerMessageId) continue;
-      if (row.createdAt.getTime() < Date.now() - 72 * 60 * 60_000) continue;
-      const reports = await this.providerSvc.get().getDeliveryStatus([row.providerMessageId]);
-      const st = reports[0]?.state;
-      if (st === 'DELIVERED') {
+    for (const row of due) {
+      if (!row.providerMessageId && !row.packId) continue;
+      const claimed = await this.messages
+        .createQueryBuilder()
+        .update()
+        .set({ dlrCheckedAt: now, dlrAttempts: () => '"dlrAttempts" + 1' })
+        .where('id = :id', { id: row.id })
+        .andWhere(row.dlrCheckedAt ? '"dlrCheckedAt" = :prev' : '"dlrCheckedAt" IS NULL', {
+          prev: row.dlrCheckedAt,
+        })
+        .execute();
+      if (!claimed.affected) continue;
+      let outcome: ReturnType<typeof classifyDlr> = 'unchanged';
+      try {
+        const provider = this.providerSvc.get();
+        const reports =
+          row.packId && provider.getPackDelivery
+            ? await provider.getPackDelivery(row.packId)
+            : await provider.getDeliveryStatus([row.providerMessageId || '']);
+        const match = reports.find((item) => item.id === row.providerMessageId) || reports[0];
+        outcome = classifyDlr({ createdAt: row.createdAt, now, providerState: match?.state });
+      } catch {
+        outcome = classifyDlr({ createdAt: row.createdAt, now, providerError: true });
+      }
+      if (outcome === 'delivered') {
         row.status = 'DELIVERED';
         row.deliveryState = 'DELIVERED';
         row.deliveredAt = new Date();
-        await this.messages.save(row);
         n += 1;
-      } else if (st === 'UNDELIVERED' || st === 'FAILED') {
+      } else if (outcome === 'undelivered') {
         row.status = 'UNDELIVERED';
-        row.deliveryState = st;
-        await this.messages.save(row);
+        row.deliveryState = 'UNDELIVERED';
         n += 1;
       }
+      row.dlrCheckedAt = now;
+      row.dlrAttempts = (row.dlrAttempts || 0) + 1;
+      await this.messages.save(row);
+    }
+    const stale = await this.messages.find({
+      where: { status: In(['SENT', 'PENDING_UNKNOWN']), createdAt: LessThan(horizon) },
+      take: 200,
+    });
+    for (const row of stale) {
+      if (row.deliveryState === 'EXPIRED' || !isPastDlrWindow(row.createdAt, now)) continue;
+      row.deliveryState = 'EXPIRED';
+      await this.messages.save(row);
+      n += 1;
     }
     return n;
   }

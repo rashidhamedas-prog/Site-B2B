@@ -56,6 +56,10 @@ function messageIdError(id: unknown): SendError | null {
   return null;
 }
 
+export function packDeliveryPath(packId: string): string {
+  return `/send/pack/${encodeURIComponent(packId)}`;
+}
+
 export class SmsIrProvider implements SmsProvider {
   readonly id = 'smsir' as const;
   readonly capabilities = {
@@ -219,6 +223,30 @@ export class SmsIrProvider implements SmsProvider {
       out.push({ id, state, raw: body });
     }
     return out;
+  }
+
+  async getPackDelivery(packId: string): Promise<DeliveryReport[]> {
+    const result = await smsIrRequest(
+      'GET',
+      packDeliveryPath(packId),
+      this.cfg.apiKey,
+      undefined,
+      this.cfg.transport || {},
+      this.cfg.fetchImpl || fetch,
+    );
+    if (!result.ok) {
+      throw new Error('DLR_PACK_UNAVAILABLE');
+    }
+    const body = result.body as any;
+    const rows: any[] = Array.isArray(body?.data) ? body.data : body?.data ? [body.data] : [];
+    return rows.map((row) => {
+      const stateRaw = String(row?.deliveryState || row?.state || '').toLowerCase();
+      let state: DeliveryReport['state'] = 'PENDING';
+      if (stateRaw.includes('deliver') && !stateRaw.includes('undeliver')) state = 'DELIVERED';
+      else if (stateRaw.includes('undeliver') || stateRaw.includes('fail')) state = 'UNDELIVERED';
+      else state = 'UNKNOWN';
+      return { id: String(row?.messageId || row?.id || packId), state, raw: row };
+    });
   }
 
   async getCredit(): Promise<{ amount: number; unit: 'CREDIT' | 'IRR' | 'SMS' }> {

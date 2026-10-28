@@ -141,9 +141,11 @@ export function AdminSmsContacts() {
 
 export function AdminSmsReports() {
   const [rows, setRows] = useState<any[]>([]);
+  const [source, setSource] = useState('');
   useEffect(() => {
-    apiClient.get<any[]>('/admin/sms/messages').then(setRows).catch(() => []);
-  }, []);
+    const q = source ? `?source=${encodeURIComponent(source)}` : '';
+    apiClient.get<any[]>(`/admin/sms/messages${q}`).then(setRows).catch(() => []);
+  }, [source]);
   return (
     <SmsSection
       title="گزارش‌ها"
@@ -166,6 +168,20 @@ export function AdminSmsReports() {
         </button>
       }
     >
+      <label className="mb-3 block text-sm">
+        منبع
+        <select
+          className="mt-1 w-full min-w-0 rounded-lg border px-3 py-2"
+          value={source}
+          onChange={(event) => setSource(event.target.value)}
+        >
+          <option value="">همه</option>
+          <option value="WHOLESALE">عمده</option>
+          <option value="WHOLESALE_REFERRAL">معرف</option>
+          <option value="SALES_PARTNER">همکار فروش</option>
+          <option value="RETAIL">خرده</option>
+        </select>
+      </label>
       <div className="tablewrap overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
