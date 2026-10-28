@@ -1959,10 +1959,10 @@ export class OmnichannelService {
     const slot = await this.nextCreateAvailableAt(row.destinationId);
     const reactivated = await this.deliveries.query(
       `UPDATE "omnichannel_publication_deliveries"
-       SET status = 'PENDING', attempts = 0, "lastError" = NULL, "deferredReason" = $2,
-           "nextAttemptAt" = $3, "supersededAt" = NULL,
-           "reapprovedAt" = COALESCE($4, "reapprovedAt"), "updatedAt" = NOW()
-       WHERE id = $1
+       SET status = 'PENDING', attempts = 0, "lastError" = NULL, "deferredReason" = $2::text,
+           "nextAttemptAt" = $3::timestamptz, "supersededAt" = NULL,
+           "reapprovedAt" = COALESCE($4::timestamptz, "reapprovedAt"), "updatedAt" = NOW()
+       WHERE id = $1::uuid
          AND status IN ('DEAD', 'FAILED', 'HOLD', 'RETRY', 'PENDING')
        RETURNING id`,
       [row.id, slot.reason, slot.availableAt, row.reapprovedAt || null],
