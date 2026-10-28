@@ -342,7 +342,11 @@ export class OmnichannelService {
     reason?: string | null,
     payload: Record<string, unknown> = {},
   ) {
-    await this.audit(this.requireActor(actor), action, entityType, entityId, channel, reason, payload);
+    const who = this.requireActor({
+      id: actor.id,
+      omnichannelRole: (actor.omnichannelRole || undefined) as Actor['omnichannelRole'],
+    });
+    await this.audit(who, action, entityType, entityId, channel, reason, payload);
   }
 
   /** Live messenger posts for a source×channel (PR-7 withdraw/delete). */
