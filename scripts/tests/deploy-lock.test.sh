@@ -169,7 +169,7 @@ _fresh() {
   (
     exec 9>"$TARANOM_DEPLOY_LOCK_FILE"
     flock -x 9
-    write_owner $BASHPID "$(date +%s)"
+    write_owner "$BASHPID" "$(date +%s)"
     sleep 30
   ) &
   local holder=$!

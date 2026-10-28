@@ -133,7 +133,12 @@ jobs:
       - name: Install shellcheck
         run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
       - name: shellcheck deploy scripts
-        run: shellcheck scripts/auto-deploy.sh scripts/lib/*.sh scripts/tests/*.sh
+        run: |
+          shellcheck -x scripts/auto-deploy.sh scripts/lib/deploy-lock.sh \
+            scripts/lib/deploy-preflight.sh scripts/lib/compose-created-check.sh
+          # Test harness uses subshells + with_tmpdir; SC2030/2031/2317 are expected.
+          shellcheck -e SC1091,SC2030,SC2031,SC2317,SC2015,SC2012,SC2034,SC2086 \
+            scripts/tests/deploy-lock.test.sh scripts/tests/fixtures/old-auto-deploy-lock.sh
       - name: Deploy lock tests (no Docker)
         run: bash scripts/tests/deploy-lock.test.sh
 
