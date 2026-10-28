@@ -1,4 +1,5 @@
-﻿src/database/run-migrations.spec.ts
+﻿scripts/sms-consent-import.spec.ts
+src/database/run-migrations.spec.ts
 src/modules/settings/shipping-channel.spec.ts
 src/modules/auth/auth.otp.logic.spec.ts
 src/modules/auth/retail-identity.spec.ts
