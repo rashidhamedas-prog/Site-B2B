@@ -15,6 +15,7 @@ src/modules/sms-panel/audience/segment.spec.ts
 src/modules/sms-panel/audience/template-vars.spec.ts
 src/modules/sms-panel/audience/send-audience.spec.ts
 src/modules/sms-panel/audience/dlr.spec.ts
+src/modules/sms-panel/sms-panel.rbac-matrix.spec.ts
 src/modules/blog/blog-seo.util.spec.ts
 src/modules/blog/blog-seo-analysis.spec.ts
 src/modules/product/product-sale.spec.ts

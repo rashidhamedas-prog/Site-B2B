@@ -28,6 +28,14 @@ export class SmsPanelRateLimit {
     return n;
   }
 
+  /** Persistent cap for contact search and audience preview. */
+  async hitAudienceLookup(actorId: string, limit = 30, windowSec = 60): Promise<number | null> {
+    if (!actorId) return windowSec;
+    const n = await this.incr(`sms:rl:audience:${actorId}`, windowSec);
+    if (n > limit) return windowSec;
+    return null;
+  }
+
   /** Returns retryAfter seconds if limited, else null. Call AFTER gates pass. */
   async hitActorSend(actorId: string, limit = 10, windowSec = 60): Promise<number | null> {
     const n = await this.incr(`sms:rl:actor:${actorId}`, windowSec);

@@ -43,6 +43,7 @@ import { previewAudience } from './audience/audience-preview';
 import { parseSegmentRules, SegmentRuleError } from './audience/segment-rules';
 import {
   bulkNeedsSecondApproval,
+  canEditUnitPrice,
   decideSingleSend,
   deferIfOutsideWindow,
   scheduleOutsideWindow,
@@ -90,6 +91,7 @@ import {
   blocksDispatchResend,
   checkFourEyesApproval,
   checkSendSingleAllowed,
+  settingsAuditSnapshot,
 } from './sms-panel.policy';
 import { confirmationTokenActive } from './sms-panel.token-logic';
 import {
@@ -189,7 +191,14 @@ export class SmsPanelService {
     actorId: string,
     patch: Partial<SmsPanelSettings>,
     ip?: string,
+    actorRole?: string,
   ): Promise<SmsPanelSettings> {
+    if ('unitPricePerPart' in patch && actorRole && !canEditUnitPrice(actorRole)) {
+      throw new ForbiddenException({
+        message: 'تغییر قیمت واحد فقط برای مدیر پیامک و مدیر کل مجاز است',
+        code: 'SMS_FORBIDDEN',
+      });
+    }
     const cur = await this.getPanelSettings();
     const next = resolveSmsPanelSettings({ ...cur, ...patch });
     await this.settings.set(SMS_PANEL_SETTINGS_KEY, next as unknown as Record<string, any>);
@@ -198,10 +207,24 @@ export class SmsPanelService {
       action: 'settings.update',
       targetType: 'settings',
       targetId: SMS_PANEL_SETTINGS_KEY,
-      meta: { before: cur, after: next },
+      meta: { before: settingsAuditSnapshot(cur), after: settingsAuditSnapshot(next) },
       ip,
     });
     return next;
+  }
+
+  async assertAudienceLookup(actorId: string) {
+    const retry = await this.rateLimit.hitAudienceLookup(actorId);
+    if (retry != null) {
+      throw new HttpException(
+        {
+          message: `جستجوی مخاطب زیاد است. ${retry} ثانیه دیگر تلاش کنید.`,
+          code: 'SMS_RATE_LIMITED',
+          retryAfter: retry,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
   }
 
   async settingsPublicView(s: SmsPanelSettings) {
@@ -222,14 +245,25 @@ export class SmsPanelService {
     return this.audience.sources();
   }
 
-  searchAudienceContacts(input: {
+  async searchAudienceContacts(input: {
     q?: string;
     source?: string;
     page?: number;
     pageSize?: number;
     role?: string;
+    actorId?: string;
+    ip?: string;
   }) {
-    return this.audience.search(input);
+    const found = await this.audience.search(input);
+    await this.auditLog({
+      actorId: input.actorId,
+      action: 'audience.export',
+      targetType: 'audience',
+      targetId: input.source || 'all',
+      meta: { page: input.page || 1, pageSize: input.pageSize || null, source: input.source || null },
+      ip: input.ip,
+    });
+    return found;
   }
 
   getAudienceContact(phone: string, role?: string) {
@@ -1055,6 +1089,18 @@ export class SmsPanelService {
       targetType: 'campaign',
       targetId: row.id,
     });
+    if (dto.segmentId || dto.audienceSpec?.sources?.length) {
+      await this.auditLog({
+        actorId,
+        action: 'campaign.sources.update',
+        targetType: 'campaign',
+        targetId: row.id,
+        meta: {
+          segmentId: dto.segmentId || null,
+          sources: dto.audienceSpec?.sources || [],
+        },
+      });
+    }
     return row;
   }
 
@@ -1665,12 +1711,15 @@ export class SmsPanelService {
     }));
   }
 
-  async getMessage(id: string) {
+  async getMessage(id: string, role?: string) {
     const row = await this.messages.findOne({ where: { id } });
     if (!row) {
       throw new NotFoundException({ message: 'پیام پیدا نشد', code: 'SMS_MESSAGE_NOT_FOUND' });
     }
-    return { ...row, phoneNormalized: maskMobile(row.phoneNormalized) };
+    const phone = role === 'SMS_OPERATOR' || role === 'SMS_MARKETER'
+      ? maskMobile(row.phoneNormalized)
+      : row.phoneNormalized;
+    return { ...row, phoneNormalized: phone };
   }
 
   async addBlacklist(actorId: string, phoneRaw: string, reason: string, scope = 'ALL') {

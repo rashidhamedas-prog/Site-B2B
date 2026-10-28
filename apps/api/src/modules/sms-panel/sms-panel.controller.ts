@@ -68,19 +68,23 @@ export class SmsPanelController {
 
   @Get('audience/contacts')
   @SmsRoles(...SMS_ALL)
-  audienceContacts(
+  async audienceContacts(
     @Req() req: Request,
     @Query('q') q?: string,
     @Query('source') source?: string,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
   ) {
+    const a = this.actor(req);
+    await this.sms.assertAudienceLookup(a.id);
     return this.sms.searchAudienceContacts({
       q,
       source,
       page: page ? Number(page) : undefined,
       pageSize: pageSize ? Number(pageSize) : undefined,
-      role: this.actor(req).role,
+      role: a.role,
+      actorId: a.id,
+      ip: a.ip,
     });
   }
 
@@ -183,11 +187,13 @@ export class SmsPanelController {
 
   @Post('segments/preview')
   @SmsRoles(...SMS_MARKETERS)
-  segmentPreview(
+  async segmentPreview(
     @Req() req: Request,
     @Body() body: { sources?: string[]; rules?: unknown; text?: string; templateId?: string; messageClass?: string },
   ) {
-    return this.segments.preview(body, this.actor(req).role);
+    const a = this.actor(req);
+    await this.sms.assertAudienceLookup(a.id);
+    return this.segments.preview(body, a.role);
   }
 
   @Get('segments')
@@ -312,8 +318,8 @@ export class SmsPanelController {
 
   @Get('messages/:id')
   @SmsRoles(...SMS_ALL)
-  message(@Param('id') id: string) {
-    return this.sms.getMessage(id);
+  message(@Req() req: Request, @Param('id') id: string) {
+    return this.sms.getMessage(id, this.actor(req).role);
   }
 
   @Get('reports/summary')
@@ -411,7 +417,7 @@ export class SmsPanelController {
   @SmsRoles(...SMS_MANAGERS)
   async patchSettings(@Req() req: Request, @Body() body: Record<string, unknown>) {
     const a = this.actor(req);
-    const s = await this.sms.patchPanelSettings(a.id, body as any, a.ip);
+    const s = await this.sms.patchPanelSettings(a.id, body as any, a.ip, a.role);
     return this.sms.settingsPublicView(s);
   }
 
