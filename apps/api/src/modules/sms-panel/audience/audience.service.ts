@@ -86,14 +86,17 @@ export class AudienceService {
     return value;
   }
 
-  async distinctCities(): Promise<string[]> {
-    const rows = await this.db().query<{ city: string }>(
-      `SELECT DISTINCT c.city AS "city" FROM customers c
+  async distinctCities(): Promise<Array<{ city: string; count: number }>> {
+    const rows = await this.db().query<{ city: string; count: string | number }>(
+      `SELECT c.city AS "city", COUNT(*)::int AS "count" FROM customers c
        WHERE c."deletedAt" IS NULL AND c.city IS NOT NULL AND c.city <> ''
+       GROUP BY c.city
        ORDER BY c.city
        LIMIT 500`,
     );
-    return rows.map((row) => row.city).filter(Boolean);
+    return rows
+      .filter((row) => Boolean(row.city))
+      .map((row) => ({ city: row.city, count: Number(row.count) || 0 }));
   }
 
   collect(sources: AudienceSource[]) {

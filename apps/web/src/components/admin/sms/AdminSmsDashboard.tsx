@@ -79,8 +79,9 @@ export function AdminSmsDashboard() {
         {(
           [
             ['WHOLESALE', 'عمده'],
+            ['WHOLESALE_REFERRAL', 'معرف عمده'],
             ['SALES_PARTNER', 'همکار فروش'],
-            ['RETAIL', 'خرده'],
+            ['RETAIL', 'خرده‌فروشی'],
           ] as const
         ).map(([id, label]) => (
           <div key={id} className="rounded-2xl border border-gray-100 bg-white p-3 text-sm">

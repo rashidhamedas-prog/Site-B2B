@@ -123,7 +123,13 @@ export function parseSegmentRules(input: unknown): SegmentRule[] {
   return rules;
 }
 
-export function audienceFieldCatalog(cities: string[]) {
+export type AudienceCityOption = string | { value: string; count: number };
+
+export function audienceFieldCatalog(cities: Array<string | { city: string; count: number }>) {
+  const cityValues: AudienceCityOption[] = cities.map((item) => {
+    if (typeof item === 'string') return item;
+    return { value: item.city, count: Number(item.count) || 0 };
+  });
   return {
     fields: SEGMENT_FIELDS.map((field) => ({
       field,
@@ -138,7 +144,7 @@ export function audienceFieldCatalog(cities: string[]) {
               : field === 'referralStatus'
                 ? [...WHOLESALE_REFERRAL_PARTNER_STATUSES]
                 : field === 'city'
-                  ? cities
+                  ? cityValues
                   : undefined,
     })),
     combine: 'AND' as const,
