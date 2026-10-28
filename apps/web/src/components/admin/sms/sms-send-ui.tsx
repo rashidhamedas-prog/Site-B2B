@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { normalizeTypedCount } from './sms-parts';
 import {
+  PREVIEW_DEBOUNCE_MS,
   buildCitySegmentRules,
   buildSegmentPreviewPayload,
   consumeSegmentPreviewFunnel,
@@ -14,30 +15,17 @@ import {
 } from './sms-send-preview';
 
 export {
+  PREVIEW_DEBOUNCE_MS,
   buildCitySegmentRules,
   buildSegmentPreviewPayload,
+  canEditUnitPrice,
   consumeSegmentPreviewFunnel,
   formatRecipientPreviewStatus,
+  parseUnitPriceInput,
   priceCaption,
   type CitySegmentRule,
   type SegmentPreviewFunnel,
 } from './sms-send-preview';
-
-/** Debounce for live segment preview requests. */
-export const PREVIEW_DEBOUNCE_MS = 400;
-
-export function canEditUnitPrice(role: string | null | undefined): boolean {
-  return role === 'ADMIN' || role === 'SMS_MANAGER';
-}
-
-/** Empty input → null. Invalid / negative → null (server rejects negatives). */
-export function parseUnitPriceInput(raw: string): number | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const n = Number(trimmed);
-  if (!Number.isFinite(n) || n < 0) return null;
-  return Math.floor(n);
-}
 
 const SOURCES = [
   { id: 'WHOLESALE', label: 'عمده' },

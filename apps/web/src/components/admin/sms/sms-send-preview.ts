@@ -1,6 +1,22 @@
 /** Segment preview request/response helpers (no React). */
 
+/** Debounce for live segment preview requests. */
+export const PREVIEW_DEBOUNCE_MS = 400;
+
 export type CitySegmentRule = { field: 'city'; op: 'in'; value: string[] };
+
+export function canEditUnitPrice(role: string | null | undefined): boolean {
+  return role === 'ADMIN' || role === 'SMS_MANAGER';
+}
+
+/** Empty input → null. Invalid / negative → null (server rejects negatives). */
+export function parseUnitPriceInput(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.floor(n);
+}
 
 export type SegmentPreviewFunnel = {
   total: number;

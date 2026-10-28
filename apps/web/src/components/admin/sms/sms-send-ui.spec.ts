@@ -7,17 +7,15 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ensureOptOutFooter } from './sms-parts.ts';
 import {
+  PREVIEW_DEBOUNCE_MS,
   buildCitySegmentRules,
   buildSegmentPreviewPayload,
+  canEditUnitPrice,
   consumeSegmentPreviewFunnel,
   formatRecipientPreviewStatus,
+  parseUnitPriceInput,
   priceCaption,
 } from './sms-send-preview.ts';
-import {
-  PREVIEW_DEBOUNCE_MS,
-  canEditUnitPrice,
-  parseUnitPriceInput,
-} from './sms-send-ui.tsx';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
