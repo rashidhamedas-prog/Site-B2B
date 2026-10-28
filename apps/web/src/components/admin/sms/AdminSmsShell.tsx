@@ -64,7 +64,7 @@ export function AdminSmsShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav
-        className="flex gap-1 overflow-x-auto rounded-xl border border-gray-100 bg-white p-1"
+        className="flex min-w-0 flex-wrap gap-1 rounded-xl border border-gray-100 bg-white p-1"
         aria-label="منوی پنل پیامک"
       >
         {LINKS.map((l) => {
