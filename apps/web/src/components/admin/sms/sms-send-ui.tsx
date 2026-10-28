@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { normalizeTypedCount } from './sms-parts';
 
@@ -11,8 +11,33 @@ const SOURCES = [
   { id: 'RETAIL', label: 'خرده' },
 ] as const;
 
+/** Debounce for live segment preview requests. */
+export const PREVIEW_DEBOUNCE_MS = 400;
+
+export type CitySegmentRule = { field: 'city'; op: 'in'; value: string[] };
+
+/** Same city rule the wizard uses when creating a campaign. */
+export function buildCitySegmentRules(city: string): CitySegmentRule[] {
+  const trimmed = city.trim();
+  return trimmed ? [{ field: 'city', op: 'in', value: [trimmed] }] : [];
+}
+
+export function canEditUnitPrice(role: string | null | undefined): boolean {
+  return role === 'ADMIN' || role === 'SMS_MANAGER';
+}
+
 export function priceCaption(unitPricePerPart: number | null | undefined): string {
-  return unitPricePerPart == null ? 'قیمت تنظیم نشده' : '';
+  if (unitPricePerPart == null) return 'قیمت تنظیم نشده';
+  return `${Math.floor(unitPricePerPart).toLocaleString('fa-IR')} ریال`;
+}
+
+/** Empty input → null. Invalid / negative → keep previous or null (server rejects negatives). */
+export function parseUnitPriceInput(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.floor(n);
 }
 
 export function AudienceSourceSelector({
@@ -69,24 +94,28 @@ export function RecipientPreviewPanel({
   sources,
   text,
   messageClass,
+  rules = [],
 }: {
   sources: string[];
   text: string;
   messageClass: string;
+  rules?: CitySegmentRule[];
 }) {
   const [status, setStatus] = useState('مخاطبی انتخاب نشده');
+  const rulesKey = useMemo(() => JSON.stringify(rules), [rules]);
   useEffect(() => {
     if (!sources.length) {
       setStatus('مخاطبی انتخاب نشده');
       return;
     }
     const timer = window.setTimeout(() => {
+      const parsedRules = JSON.parse(rulesKey) as CitySegmentRule[];
       apiClient
         .post<{ final?: number; unitPricePerPart?: number | null }>('/admin/sms/segments/preview', {
           sources,
           text,
           messageClass,
-          rules: [],
+          rules: parsedRules,
         })
         .then((row) => {
           const price = priceCaption(row.unitPricePerPart ?? null);
@@ -95,9 +124,9 @@ export function RecipientPreviewPanel({
           );
         })
         .catch(() => setStatus('پیش‌نمایش در دسترس نیست'));
-    }, 400);
+    }, PREVIEW_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [sources, text, messageClass]);
+  }, [sources, text, messageClass, rulesKey]);
   return (
     <p role="status" aria-live="polite" className="text-sm text-gray-700">
       {status}

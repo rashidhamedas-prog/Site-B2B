@@ -6,6 +6,7 @@ import {
   bulkNeedsSecondApproval,
   canEditUnitPrice,
   decideSingleSend,
+  decideUnitPricePatch,
   deferIfOutsideWindow,
   priceCaption,
   readStoredUnitPrice,
@@ -171,5 +172,28 @@ assert.equal(readStoredUnitPrice(undefined), null);
 assert.equal(readStoredUnitPrice('250'), null);
 assert.equal(readStoredUnitPrice(250), 250);
 assert.equal(priceCaption(null), 'قیمت تنظیم نشده');
+assert.match(priceCaption(2500), /۲٬?۵۰۰|2[,.]?500/);
+assert.ok(priceCaption(2500).includes('ریال'));
+
+const denied = decideUnitPricePatch('SMS_MARKETER', 100);
+assert.equal(denied.ok, false);
+if (!denied.ok) {
+  assert.equal(denied.http, 403);
+  assert.equal(denied.code, 'SMS_FORBIDDEN');
+}
+const deniedOp = decideUnitPricePatch('SMS_OPERATOR', 100);
+assert.equal(deniedOp.ok, false);
+if (!deniedOp.ok) assert.equal(deniedOp.http, 403);
+
+const negative = decideUnitPricePatch('ADMIN', -1);
+assert.equal(negative.ok, false);
+if (!negative.ok) {
+  assert.equal(negative.http, 400);
+  assert.equal(negative.code, 'SMS_INVALID_UNIT_PRICE');
+}
+const cleared = decideUnitPricePatch('SMS_MANAGER', null);
+assert.deepEqual(cleared, { ok: true, value: null });
+const set = decideUnitPricePatch('ADMIN', 180);
+assert.deepEqual(set, { ok: true, value: 180 });
 
 console.log('send-audience.spec.ts: ok');
