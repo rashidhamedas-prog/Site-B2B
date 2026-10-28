@@ -1,5 +1,6 @@
 #!/bin/bash
 # TAP-like unit tests for scripts/lib/deploy-lock.sh (no Docker).
+# shellcheck disable=SC1091,SC2317,SC2015,SC2012,SC2034
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
