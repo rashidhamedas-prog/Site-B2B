@@ -26,7 +26,13 @@ const ctl = readFileSync(resolve(__dirname, '../controllers/omnichannel-admin.co
 assert(deleteSrc.includes('pre_delete'), 'backup kind pre_delete');
 assert(deleteSrc.includes('confirmSku') || deleteSrc.includes('assertConfirmSku'), 'SKU confirm');
 assert(deleteSrc.includes('delete_window_expired'), 'Bale window');
+assert(deleteSrc.includes('deleteWindowHours'), 'delete plan exposes deleteWindowHours');
 assert(deleteSrc.includes('connectors_disabled') || deleteSrc.includes('areOmnichannelConnectorsEnabled'), 'connector gate');
+{
+  const dbCfg = readFileSync(resolve(__dirname, '../../../config/database.config.ts'), 'utf8');
+  assert(dbCfg.includes('OmnichannelPostBackupEntity'), 'RUNTIME registers PostBackup');
+  assert(dbCfg.includes('OmnichannelDeliveryMessageEntity'), 'RUNTIME registers DeliveryMessage');
+}
 assert(deleteSrc.includes('withdrawPublication'), 'withdraw pipeline');
 assert(editSrc.includes('delivery_revert') || editSrc.includes('revert'), 'revert path');
 assert(ctl.includes('deliveries/:deliveryId/delete-plan'), 'delete-plan route');

@@ -102,6 +102,21 @@ type RulesDraft = {
 type CategoryOption = { id: string; name: string; status?: string };
 type BulkWithdrawResult = { action: string; results: Array<{ id: string; ok: boolean; error?: string }> };
 
+type DeletePlan = {
+  deliveryId: string;
+  publicationId: string;
+  destinationId: string;
+  provider: string | null;
+  deleteWindowHours: number | null;
+  messageIds: string[];
+  captionPreview: string | null;
+  mediaUrls: string[];
+  sentAt: string | null;
+  confirmHint: string;
+  warnings: string[];
+  connectorsEnabled: boolean;
+};
+
 const DEFAULT_EVENTS = ['product.created', 'product.content_changed', 'product.price_changed', 'product.visibility_changed', 'product.media_changed', 'product.withdrawn'];
 const GAP_OPTIONS = [0, 60, 90, 300, 600, 900, 1800, 3600];
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
@@ -298,6 +313,11 @@ export function AdminOmnichannel() {
   const [requeueOffset, setRequeueOffset] = useState(0);
   const [requeueTargetId, setRequeueTargetId] = useState('');
 
+  const [deletePlan, setDeletePlan] = useState<DeletePlan | null>(null);
+  const [deleteConfirmSku, setDeleteConfirmSku] = useState('');
+  const [deleteGoRef, setDeleteGoRef] = useState('');
+  const [deleteStep2, setDeleteStep2] = useState(false);
+
   const load = useCallback(async () => {
     setError('');
     try {
@@ -384,6 +404,59 @@ export function AdminOmnichannel() {
       setBusy('');
     }
   };
+
+  const openDeletePlan = useCallback(async (deliveryId: string) => {
+    setError('');
+    setNotice('');
+    setDeleteStep2(false);
+    setDeleteConfirmSku('');
+    setDeleteGoRef('');
+    setBusy(`delete-plan-${deliveryId}`);
+    try {
+      const plan = await apiClient.get<DeletePlan>(`/omnichannel/deliveries/${deliveryId}/delete-plan`);
+      setDeletePlan(plan);
+      setView('publish');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'پیش‌نمایش حذف ناموفق بود');
+      setDeletePlan(null);
+    } finally {
+      setBusy('');
+    }
+  }, []);
+
+  const confirmDeleteMessages = useCallback(async () => {
+    if (!deletePlan) return;
+    setBusy('delete-messages');
+    setError('');
+    try {
+      const body: { messageIds: string[]; reason: string; confirmSku: string; goRef?: string } = {
+        messageIds: deletePlan.messageIds,
+        reason: reason.trim() || 'حذف از پنل ادمین',
+        confirmSku: deleteConfirmSku.trim(),
+      };
+      if (deleteGoRef.trim()) body.goRef = deleteGoRef.trim();
+      const result = await apiClient.post<{
+        backupId: string;
+        remoteQueued: number;
+        results: Array<{ messageId: string; ok: boolean; error?: string }>;
+      }>(`/omnichannel/deliveries/${deletePlan.deliveryId}/messages/delete`, body);
+      const failed = (result.results || []).filter((row) => !row.ok);
+      setNotice(
+        failed.length
+          ? `حذف ناقص: ${faNumber(failed.length)} خطا · بکاپ ${result.backupId}`
+          : `حذف صف شد (${faNumber(result.remoteQueued)} پیام) · بکاپ ${result.backupId}`,
+      );
+      setDeletePlan(null);
+      setDeleteStep2(false);
+      setDeleteConfirmSku('');
+      setDeleteGoRef('');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'حذف ناموفق بود');
+    } finally {
+      setBusy('');
+    }
+  }, [deleteConfirmSku, deleteGoRef, deletePlan, load, reason]);
 
   /* ---------- derived readiness ---------- */
 
@@ -2070,6 +2143,16 @@ export function AdminOmnichannel() {
                               {row.status === 'HOLD' && (
                                 <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`reapprove-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/reapprove`, { reason }); }, 'خطا در تأیید مجدد', 'برای ارسال تأیید شد')}>تأیید مجدد</button>
                               )}
+                              {row.action === 'CREATE' && row.status === 'SUCCEEDED' && row.providerMessageId && (
+                                <button
+                                  type="button"
+                                  className="text-red-700 underline cursor-pointer disabled:opacity-50"
+                                  disabled={busy.startsWith('delete-plan') || busy === 'delete-messages'}
+                                  onClick={() => void openDeletePlan(row.id)}
+                                >
+                                  حذف از کانال
+                                </button>
+                              )}
                             </li>
                           );
                         })}
@@ -2378,25 +2461,87 @@ export function AdminOmnichannel() {
             setSourceType('PRODUCT');
             setNotice('انتشار کامل جادویی در PR-9؛ فعلاً شناسه محصول در فرم انتشار پر شد.');
           }}
-          onOpenDeletePlan={async (deliveryId) => {
-            try {
-              const plan = await apiClient.get<{
-                deliveryId: string;
-                messageIds: string[];
-                confirmHint: string;
-                warnings: string[];
-              }>(`/omnichannel/deliveries/${deliveryId}/delete-plan`);
-              setNotice(
-                `حذف نسخه‌های قدیمی (PR-7): delivery ${plan.deliveryId} · ${faNumber(plan.messageIds?.length || 0)} پیام · ${plan.confirmHint || 'تأیید SKU لازم است'}${plan.warnings?.length ? ` · هشدار: ${plan.warnings.join('، ')}` : ''}`,
-              );
-              setView('ops');
-            } catch (err) {
-              setError(err instanceof Error ? err.message : 'پیش‌نمایش حذف ناموفق بود');
-            }
-          }}
+          onOpenDeletePlan={(deliveryId) => void openDeletePlan(deliveryId)}
         />
       )}
       {view === 'ops' && opsView}
+
+      {deletePlan && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-3" role="dialog" aria-modal="true" aria-labelledby="omni-delete-title">
+          <div className="w-full max-w-lg rounded-xl bg-white shadow-xl p-4 space-y-3 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3">
+              <h3 id="omni-delete-title" className="text-base font-semibold text-gray-900">حذف پیام از کانال</h3>
+              <button type="button" className="text-sm text-gray-500 underline cursor-pointer" onClick={() => { setDeletePlan(null); setDeleteStep2(false); }}>بستن</button>
+            </div>
+            {deletePlan.provider === 'BALE' && (
+              <Callout tone={deletePlan.warnings.includes('delete_window_expired') ? 'danger' : 'warn'}>
+                {deletePlan.warnings.includes('delete_window_expired')
+                  ? `پنجرهٔ حذف بله (${faNumber(deletePlan.deleteWindowHours || 48)} ساعت) تمام شده؛ حذف از API رد می‌شود.`
+                  : `بله فقط تا ${faNumber(deletePlan.deleteWindowHours || 48)} ساعت بعد از ارسال اجازهٔ حذف می‌دهد.`}
+              </Callout>
+            )}
+            {deletePlan.captionPreview && (
+              <div className="rounded-lg bg-gray-50 p-3 text-sm whitespace-pre-wrap break-words max-h-40 overflow-y-auto">
+                <p className="text-xs text-gray-500 mb-1">بکاپ متن قبل از حذف</p>
+                {deletePlan.captionPreview}
+              </div>
+            )}
+            {deletePlan.mediaUrls?.length > 0 && (
+              <p className="text-xs text-gray-600">رسانه: {faNumber(deletePlan.mediaUrls.length)} فایل در بکاپ ذخیره می‌شود</p>
+            )}
+            <p className="text-xs text-gray-500" dir="ltr">{faNumber(deletePlan.messageIds.length)} message · {deletePlan.provider || '—'} · {deletePlan.deliveryId.slice(0, 8)}…</p>
+            {!deleteStep2 ? (
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setDeletePlan(null); setDeleteStep2(false); }}>انصراف</button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={deletePlan.warnings.includes('delete_window_expired')}
+                  onClick={() => setDeleteStep2(true)}
+                >
+                  ادامه — تأیید دوم
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 border-t pt-3">
+                <Callout tone="danger">تأیید دوم: برای حذف، عبارت زیر را دقیق تایپ کنید. بکاپ متن/رسانه قبل از صف‌شدن DELETE گرفته می‌شود.</Callout>
+                <label className="block text-sm">
+                  <span className="text-gray-700">تأیید ({deletePlan.confirmHint === 'FREE_POST' ? 'عبارت FREE_POST' : 'کد SKU محصول'})</span>
+                  <input
+                    className="mt-1 border rounded-lg px-3 py-2 text-sm w-full font-mono"
+                    dir="ltr"
+                    value={deleteConfirmSku}
+                    onChange={(e) => setDeleteConfirmSku(e.target.value)}
+                    placeholder={deletePlan.confirmHint}
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="text-gray-700">مرجع GO (اختیاری مگر RBAC Owner)</span>
+                  <input
+                    className="mt-1 border rounded-lg px-3 py-2 text-sm w-full"
+                    value={deleteGoRef}
+                    onChange={(e) => setDeleteGoRef(e.target.value)}
+                    placeholder="GO حامد …"
+                    autoComplete="off"
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2 justify-end">
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setDeleteStep2(false)}>برگشت</button>
+                  <button
+                    type="button"
+                    className="btn btn-sm bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                    disabled={busy === 'delete-messages' || deleteConfirmSku.trim() !== deletePlan.confirmHint}
+                    onClick={() => void confirmDeleteMessages()}
+                  >
+                    حذف قطعی
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

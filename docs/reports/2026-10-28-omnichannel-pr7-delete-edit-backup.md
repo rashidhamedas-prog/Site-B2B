@@ -17,9 +17,23 @@ Additive `omnichannel_post_backups` + `omnichannel_delivery_messages`, admin del
 
 PR-12 egress/vault, PR-8 UI, PR-14 bots, FORCE/SKIP_DRAIN, live canary delete in CI, SMS.
 
-## Owner smoke (later)
+## Owner smoke (Iran `5ebb10c8`, 2026-10-28)
 
-One delete only on Bale chat **4858359991**. Then optionally set `OMNICHANNEL_DELETE_EDIT_ENABLED=true`.
+Canary-only on Bale **4858359991** (no Telegram/Rubika/live wholesale deletes):
+
+| Step | Evidence |
+| --- | --- |
+| CREATE | delivery `91b42ea7-…`, `providerMessageId` **284** |
+| optional EDIT | HTTP 201 · backup `04a46eb8-…` · UPDATE SUCCEEDED |
+| delete-plan | HTTP 200 · `confirmHint=FREE_POST` · within 48h |
+| DELETE | delivery `1f3f00a1-…` SUCCEEDED · pre_delete backup `93d942e3-…` · CREATE WITHDRAWN |
+
+Backups before migrate/deploy: `pre-pr7-*`, `pre-pr7b-20261028T131822Z`. Flag `OMNICHANNEL_DELETE_EDIT_ENABLED=true` for smoke.
+
+## Follow-up (this branch)
+
+- Register `OmnichannelPostBackupEntity` + `OmnichannelDeliveryMessageEntity` in `RUNTIME_TYPEORM_ENTITIES` (was hot-patched on Iran only after smoke 500).
+- Admin delete drawer: backup preview + step-2 `confirmSku`/`goRef` + always-on Bale 48h copy; `delete-plan` returns `deleteWindowHours`.
 
 ## Rollback
 
