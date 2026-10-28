@@ -128,6 +128,7 @@ import {
   decideCreateEnqueue,
   decideDailyCap,
   decideMinGap,
+  decideQuietHours,
   decideRetryAgainstSibling,
   decideSendWinner,
   effectiveMinGapSeconds,
@@ -2024,14 +2025,16 @@ export class OmnichannelService {
     return { retried: true, superseded: false, delivery: saved };
   }
 
-  private async nextCreateAvailableAt(destinationId: string): Promise<{ availableAt: Date; reason: string | null }> {
+  private async nextCreateAvailableAt(
+    destinationId: string,
+    now: Date = new Date(),
+  ): Promise<{ availableAt: Date; reason: string | null }> {
     const dest = await this.destinations.findOne({ where: { id: destinationId } });
     const conn = dest ? await this.connections.findOne({ where: { id: dest.connectionId } }) : null;
     const global = await this.loadStoredSettings();
     const resolved = dest && conn
       ? resolveDestinationPublishSettings(dest.publishSettings, conn.publishSettings, global, conn.channel as 'RETAIL' | 'WHOLESALE')
       : null;
-    const now = new Date();
     const cap = dailyCapForProvider(conn?.provider || '', resolved?.automation.dailyCap ?? 0);
     const sentToday = await this.countCreatesTowardDailyCap(conn?.channel, undefined, destinationId);
     const gap = decideMinGap(now, await this.lastSentAt(destinationId), effectiveMinGapSeconds(resolved?.automation.minGapSeconds ?? 0));
@@ -2048,6 +2051,17 @@ export class OmnichannelService {
     if (!capped.allow && capped.availableAt) {
       availableAt = capped.availableAt;
       reason = 'daily_cap';
+    }
+    // Same shift as evaluateAutomationGate: a slot that lands in the quiet window moves to its end,
+    // so the operator hint matches what the claim gate will enforce.
+    const quiet = decideQuietHours(
+      availableAt,
+      resolved?.automation.quietStartHour ?? null,
+      resolved?.automation.quietEndHour ?? null,
+    );
+    if (!quiet.allow && quiet.availableAt) {
+      availableAt = quiet.availableAt;
+      reason = 'quiet_hours';
     }
     return { availableAt, reason };
   }
@@ -2072,10 +2086,12 @@ export class OmnichannelService {
     connectionId: string;
     provider: string;
     channel: string;
+    /** Test seam only; the worker never passes it. */
+    now?: Date;
   }): Promise<
     | { kind: 'send' }
     | { kind: 'stop' }
-    | { kind: 'defer'; availableAt: Date; reason: 'daily_cap' | 'min_gap' | 'rate_limit'; message: string }
+    | { kind: 'defer'; availableAt: Date; reason: 'daily_cap' | 'min_gap' | 'rate_limit' | 'quiet_hours'; message: string }
   > {
     const row = input.eventId
       ? await this.deliveries.findOne({ where: { eventId: input.eventId } })
@@ -2094,10 +2110,11 @@ export class OmnichannelService {
       ? resolveDestinationPublishSettings(dest.publishSettings, conn.publishSettings, global, (input.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL'))
       : null;
     const cap = dailyCapForProvider(input.provider, resolved?.automation.dailyCap ?? 0);
+    const quietStartHour = resolved?.automation.quietStartHour ?? null;
     const quietEndHour = resolved?.automation.quietEndHour ?? null;
     const minGapSeconds = effectiveMinGapSeconds(resolved?.automation.minGapSeconds ?? 0);
     return this.deliveries.manager.transaction(async (tx) => {
-      const now = new Date();
+      const now = input.now ?? new Date();
       const day = tehranDayStart(now);
       const key = row.idempotencyKey || row.id;
       await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [key]);
@@ -2152,6 +2169,7 @@ export class OmnichannelService {
         minGapSeconds,
         sendsLastMinute: Number(count.per_minute || 0),
         maxPerMinute: maxSendsPerMinute(),
+        quietStartHour,
         quietEndHour,
         jitterMs: capJitterMs(input.destinationId, day),
         winner: decideSendWinner(

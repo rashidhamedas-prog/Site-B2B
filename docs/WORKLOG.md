@@ -1,3 +1,9 @@
+## 2026-10-28 — Omnichannel PR-5 (ساعت سکوت هنگام claim، بدون merge/deploy)
+
+- سقف روزانه، min-gap و rate-limit از قبل در claim بود؛ **ساعت سکوت نبود**. حالا `planCreateSend` (بعد از stale/HOLD، قبل از cap) با `quietStartHour`+`quietEndHour` مقصد CREATE را با `deferredReason=quiet_hours` و `nextAttemptAt = nextQuietEnd` به تعویق می‌اندازد؛ بدون تماس adapter و بدون ردیف PROCESSING.
+- `nextCreateAvailableAt` (hint اسلات اپراتور / reactivate) هم مثل `evaluateAutomationGate` اسلات داخل پنجره را به پایان سکوت می‌برد.
+- `quiet_hours` به `DELIVERY_DEFERRED_REASONS` اضافه شد. بدون migration، بدون env جدید، بدون `attempt_started`/`lease_until`، بدون تغییر worker/web. castهای SQL (42P08) دست‌نخورده.
+- تست جدید: `delivery-quiet-claim.spec.ts` (در `unit-specs.txt`). شاخه `feat/omnichannel-pr5-cap-quiet`. برنامه: `docs/design/omnichannel-redesign/pr5-cap-quiet-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr5-cap-quiet.md`. Merge/deploy فقط با GO حامد.
 ## 2026-10-28 — Omnichannel PR-4 (بدون auto-revive / HOLD در ناشناخته، بدون merge/deploy)
 
 - revive گروهی ردیف‌های DEAD «connector is disabled» از ≤۵۰۰ به **یکی در هر فراخوانی**؛ پرچم بازگشت `OMNICHANNEL_BULK_REVIVE_ENABLED=true` (پیش‌فرض خاموش). UI `limit: 1`.
