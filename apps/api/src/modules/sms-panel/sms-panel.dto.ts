@@ -27,6 +27,14 @@ export class SmsSendDto {
   @IsOptional()
   @IsString()
   customerId?: string;
+
+  @IsOptional()
+  @IsString()
+  salesPartnerId?: string;
+
+  @IsOptional()
+  @IsString()
+  contactPhone?: string;
 }
 
 export class SmsCreateCampaignDto {
@@ -58,6 +66,14 @@ export class SmsCreateCampaignDto {
   @IsOptional()
   @IsObject()
   varFallbacks?: Record<string, string>;
+
+  @IsOptional()
+  @IsUUID()
+  segmentId?: string;
+
+  @IsOptional()
+  @IsObject()
+  audienceSpec?: { sources?: string[]; rules?: unknown[] };
 }
 
 export class SmsConfirmDto {

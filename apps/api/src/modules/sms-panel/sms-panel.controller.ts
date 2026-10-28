@@ -109,6 +109,8 @@ export class SmsPanelController {
       vars: body.vars || {},
       messageClass: body.messageClass,
       customerId: body.customerId,
+      salesPartnerId: body.salesPartnerId,
+      contactPhone: body.contactPhone,
       ip: a.ip,
     });
   }

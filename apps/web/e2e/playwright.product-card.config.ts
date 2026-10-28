@@ -9,7 +9,7 @@
  */
 export default {
   testDir: '.',
-  testMatch: /(product-card-navigation|sales-partner-safe-area)\.spec\.ts$/,
+  testMatch: /(product-card-navigation|sales-partner-safe-area|sms-campaign-wizard)\.spec\.ts$/,
   outputDir: `${process.env.TEMP || process.env.TMPDIR || '/tmp'}/taranom-e2e-product-card`,
   timeout: 90_000,
   expect: { timeout: 15_000 },

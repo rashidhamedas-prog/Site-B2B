@@ -8,6 +8,8 @@ export interface SmsPanelSettings {
   creditWarnThreshold: number;
   testNumbers: string[];
   otpCooldownSeconds: number;
+  /** Rial per part. Null until a manager sets it. Never default a number. */
+  unitPricePerPart: number | null;
 }
 
 export const DEFAULT_SMS_PANEL_SETTINGS: SmsPanelSettings = {
@@ -18,6 +20,7 @@ export const DEFAULT_SMS_PANEL_SETTINGS: SmsPanelSettings = {
   creditWarnThreshold: 500,
   testNumbers: [],
   otpCooldownSeconds: 60,
+  unitPricePerPart: null,
 };
 
 export const SMS_PANEL_SETTINGS_KEY = 'smsPanel';
@@ -43,6 +46,12 @@ export function resolveSmsPanelSettings(raw?: unknown): SmsPanelSettings {
       30,
       Number(src.otpCooldownSeconds) || DEFAULT_SMS_PANEL_SETTINGS.otpCooldownSeconds,
     ),
+    unitPricePerPart:
+      typeof src.unitPricePerPart === 'number' &&
+      Number.isFinite(src.unitPricePerPart) &&
+      src.unitPricePerPart >= 0
+        ? Math.floor(src.unitPricePerPart)
+        : null,
   };
 }
 

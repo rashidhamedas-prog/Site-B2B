@@ -5,6 +5,12 @@
 - محدودیت حامد: بدون FORCE، بدون mass retry، PR-3 تا سبز، بدون merge SMS #115، canary Bale فقط بعد از deploy.
 - شاخه `fix/omnichannel-hotfix-pre-pr3`. گزارش: `docs/reports/2026-10-28-omnichannel-hotfix-pre-pr3.md`.
 
+## 2026-10-28 — پنل پیامک مرحله ۴: ارسال از مخاطب و تأیید دوم
+
+- ارسال تکی خارج از منابع فقط برای مدیر کل و مدیر پیامک، با همان لغو/سیاه/ساعت/سقف. بقیه `SMS_OFFLIST_FORBIDDEN`.
+- کمپین انبوه همیشه منتظر تأیید نفر دوم می‌ماند؛ زمان‌بندی خارج از پنجره ۰۸–۲۱ تهران `422` است. قیمت واحد اگر تنظیم نشده null می‌ماند.
+- ویزارد منابع مخاطب در ۳۶۰ پیکسل بدون اسکرول افقی. شاخه `feat/sms-send-audience`.
+
 ## 2026-10-27 — پنل پیامک مرحله ۳: متغیر به‌ازای گیرنده
 
 - whitelist: name، city، businessName، partnerName، lastOrderNumber، link. مقدار خالی از fallback کمپین پر می‌شود و سقف طول دارد.

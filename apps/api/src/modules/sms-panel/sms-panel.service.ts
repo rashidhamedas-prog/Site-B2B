@@ -39,6 +39,14 @@ import {
   worstCaseBody,
 } from './audience/template-vars';
 import { isAudienceSource } from './audience/audience.types';
+import { previewAudience } from './audience/audience-preview';
+import { parseSegmentRules, SegmentRuleError } from './audience/segment-rules';
+import {
+  bulkNeedsSecondApproval,
+  decideSingleSend,
+  deferIfOutsideWindow,
+  scheduleOutsideWindow,
+} from './audience/send-audience';
 import {
   SmsAuditLogEntity,
   SmsBlacklistEntity,
@@ -50,6 +58,7 @@ import {
   SmsCreditSnapshotEntity,
   SmsInboundEntity,
   SmsMessageEntity,
+  SmsSegmentEntity,
   SmsTemplateEntity,
   SmsUnsubscribeEntity,
 } from './entities/sms-panel.entities';
@@ -124,6 +133,7 @@ export class SmsPanelService {
     private readonly confirmations: Repository<SmsConfirmationEntity>,
     @InjectRepository(UserEntity) private readonly users: Repository<UserEntity>,
     @InjectRepository(SmsMessageEntity) private readonly messages: Repository<SmsMessageEntity>,
+    @InjectRepository(SmsSegmentEntity) private readonly segments: Repository<SmsSegmentEntity>,
     @InjectRepository(SmsUnsubscribeEntity)
     private readonly unsubscribes: Repository<SmsUnsubscribeEntity>,
     @InjectRepository(SmsBlacklistEntity) private readonly blacklist: Repository<SmsBlacklistEntity>,
@@ -355,6 +365,8 @@ export class SmsPanelService {
     vars?: Record<string, string>;
     messageClass: SmsMessageClass;
     customerId?: string;
+    salesPartnerId?: string;
+    contactPhone?: string;
     ip?: string;
     /** Canary / configured test numbers — skip consent gates only. */
     consentExempt?: boolean;
@@ -414,9 +426,45 @@ export class SmsPanelService {
           422,
         );
       }
-      if (!consentExempt) {
-        await this.assertPromoConsent(phone, input.customerId);
+    }
+
+    let offlist = false;
+    if (!consentExempt) {
+      let gateContact: {
+        promoConsent: boolean;
+        optedOut: boolean;
+        blacklisted: boolean;
+        sources: string[];
+      } | null = null;
+      try {
+        const found = await this.audience.getByPhone(input.contactPhone || phone, 'ADMIN');
+        gateContact = {
+          promoConsent: found.contact.promoConsent,
+          optedOut: found.contact.optedOut,
+          blacklisted: found.contact.blacklisted,
+          sources: found.contact.sources,
+        };
+        if (!input.customerId && found.contact.customerId) input.customerId = found.contact.customerId;
+      } catch (err) {
+        if (!(err instanceof NotFoundException)) throw err;
       }
+      const decision = decideSingleSend({
+        role: input.actorRole,
+        messageClass,
+        contact: gateContact,
+        withinWindow: true,
+      });
+      if (decision.ok === false) {
+        const http = decision.http === 422 ? 422 : decision.http === 400 ? 400 : 403;
+        const exception =
+          http === 400
+            ? new BadRequestException({ message: 'ارسال به این شماره مجاز نیست', code: decision.code })
+            : http === 422
+              ? new HttpException({ message: 'خارج از ساعات مجاز', code: decision.code }, 422)
+              : new ForbiddenException({ message: 'ارسال به این شماره مجاز نیست', code: decision.code });
+        throw exception;
+      }
+      offlist = decision.offlist;
     }
 
     await this.assertNotBlacklisted(phone, messageClass);
@@ -529,10 +577,10 @@ export class SmsPanelService {
     const result = await this.dispatchMessage(row);
     await this.auditLog({
       actorId: input.actorId,
-      action: 'send.single',
+      action: offlist ? 'send.single.offlist' : 'send.single',
       targetType: 'message',
       targetId: row.id,
-      meta: { phone, messageClass: input.messageClass, status: result.status },
+      meta: { phone, messageClass: input.messageClass, status: result.status, offlist },
       ip: input.ip,
     });
     return {
@@ -607,8 +655,24 @@ export class SmsPanelService {
       if (fresh.campaignId) await this.maybeCompleteCampaign(fresh.campaignId);
       return fresh;
     }
-    if (messageClass === 'PROMO' && !testNumber) {
-      if (!(await this.hasPromoConsent(fresh.customerId))) {
+    if (fresh.campaignId && !isWithinPromoWindow(new Date(), promoWindowFromSettings(await this.getPanelSettings()))) {
+      const panel = await this.getPanelSettings();
+      fresh.status = 'QUEUED';
+      fresh.nextAttemptAt = deferIfOutsideWindow(new Date(), promoWindowFromSettings(panel));
+      await this.messages.save(fresh);
+      return fresh;
+    }
+    if (messageClass === 'PROMO' && !testNumber && (fresh.campaignId || fresh.customerId)) {
+      let allowed = false;
+      try {
+        const found = await this.audience.getByPhone(fresh.phoneNormalized, 'ADMIN');
+        allowed =
+          found.contact.promoConsent && !found.contact.optedOut && !found.contact.blacklisted;
+      } catch (err) {
+        if (!(err instanceof NotFoundException)) throw err;
+        allowed = await this.hasPromoConsent(fresh.customerId);
+      }
+      if (!allowed) {
         fresh.status = 'SKIPPED';
         fresh.skipReason = 'NO_CONSENT';
         await this.messages.save(fresh);
@@ -914,6 +978,8 @@ export class SmsPanelService {
       templateId?: string;
       scheduledAt?: string;
       varFallbacks?: Record<string, string>;
+      segmentId?: string;
+      audienceSpec?: { sources?: string[]; rules?: unknown[] };
     },
     actorRole?: string,
   ) {
@@ -938,6 +1004,22 @@ export class SmsPanelService {
     } catch (err) {
       this.templateVarError(err);
     }
+    let scheduledAt: Date | null = null;
+    if (dto.scheduledAt) {
+      scheduledAt = new Date(dto.scheduledAt);
+      const panel = await this.getPanelSettings();
+      const outside = scheduleOutsideWindow(scheduledAt, promoWindowFromSettings(panel));
+      if (outside) {
+        throw new HttpException(
+          {
+            message: `زمان ارسال باید بین ${panel.promoWindowStart} و ${panel.promoWindowEnd} به وقت تهران باشد.`,
+            code: 'SMS_QUIET_HOURS',
+            nextAllowedAt: outside.nextAllowedAt,
+          },
+          422,
+        );
+      }
+    }
     const body = ensureOptOutFooter(dto.body, dto.messageClass);
     const row = await this.campaigns.save(
       this.campaigns.create({
@@ -946,8 +1028,10 @@ export class SmsPanelService {
         bodySnapshot: body,
         varFallbacks: normalizeFallbacks(dto.varFallbacks),
         listId: dto.listId || null,
+        segmentId: dto.segmentId || null,
+        audienceSpec: dto.audienceSpec || null,
         templateId: dto.templateId || null,
-        scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+        scheduledAt,
         status: 'DRAFT',
         createdBy: actorId,
         recipientCount: 0,
@@ -972,8 +1056,95 @@ export class SmsPanelService {
     return this.campaigns.findOneByOrFail({ id });
   }
 
+  private async audienceContactsForCampaign(campaign: SmsCampaignEntity) {
+    let sources = (campaign.audienceSpec?.sources || []).filter(isAudienceSource);
+    if (campaign.segmentId) {
+      const segment = await this.segments.findOneBy({ id: campaign.segmentId });
+      if (segment) sources = (segment.sources || []).filter(isAudienceSource);
+    }
+    if (!sources.length) return [];
+    const collected = await this.audience.collect(sources);
+    return collected.contacts;
+  }
+
+  private async previewAudienceCampaign(campaign: SmsCampaignEntity) {
+    let sources = (campaign.audienceSpec?.sources || []).filter(isAudienceSource);
+    let rules: unknown = campaign.audienceSpec?.rules || [];
+    if (campaign.segmentId) {
+      const segment = await this.segments.findOneBy({ id: campaign.segmentId });
+      if (!segment) {
+        throw new NotFoundException({ message: 'سگمنت پیدا نشد', code: 'SMS_SEGMENT_NOT_FOUND' });
+      }
+      sources = (segment.sources || []).filter(isAudienceSource);
+      rules = segment.rules;
+    }
+    let parsed: ReturnType<typeof parseSegmentRules> = [];
+    try {
+      parsed = parseSegmentRules(rules);
+    } catch (err) {
+      if (err instanceof SegmentRuleError) {
+        throw new BadRequestException({ message: 'سگمنت نامعتبر است', code: err.code });
+      }
+      throw err;
+    }
+    const collected = await this.audience.collect(sources);
+    const price = (await this.getPanelSettings()).unitPricePerPart;
+    const funnel = previewAudience({
+      contacts: collected.contacts,
+      duplicateExtras: collected.duplicateExtras,
+      invalid: collected.invalid.length,
+      rules: parsed,
+      messageClass: campaign.messageClass as SmsMessageClass,
+      text: campaign.bodySnapshot,
+      availableCredit: await this.availableCredit(),
+      unitPricePerPart: price,
+    });
+    const eligibleRows = funnel.recipients.map((row) => ({
+      phone: row.phone,
+      customerId: row.customerId || null,
+    }));
+    const samples: string[] = [];
+    for (const row of funnel.recipients.slice(0, 5)) {
+      try {
+        samples.push(this.renderCampaignText(campaign, { name: row.name, city: row.city || '' }));
+      } catch {
+        break;
+      }
+    }
+    const partEach = this.worstCampaignParts(campaign);
+    const estimatedParts = eligibleRows.length * partEach;
+    campaign.recipientCount = eligibleRows.length;
+    campaign.estimatedParts = estimatedParts;
+    campaign.estimatedCost = price == null ? 0 : estimatedParts * price;
+    campaign.audienceSnapshotHash = hashToken(eligibleRows.map((row) => row.phone).sort().join(','));
+    await this.campaigns.save(campaign);
+    const available = await this.availableCredit();
+    return {
+      campaign,
+      eligible: eligibleRows.length,
+      rejected: {
+        invalid: funnel.invalid,
+        blacklist: funnel.blacklisted,
+        unsubscribe: funnel.optedOut,
+        suppression: 0,
+        noConsent: funnel.noConsent,
+        ok: funnel.final,
+      },
+      samples,
+      estimatedParts,
+      credit: available,
+      insufficient: estimatedParts > available,
+      eligibleRows,
+      unitPricePerPart: price,
+      priceCaption: price == null ? 'قیمت تنظیم نشده' : null,
+    };
+  }
+
   async previewCampaign(id: string) {
     const campaign = await this.getCampaign(id);
+    if (campaign.segmentId || campaign.audienceSpec?.sources?.length) {
+      return this.previewAudienceCampaign(campaign);
+    }
     const members = campaign.listId
       ? await this.members.find({ where: { listId: campaign.listId }, take: 50_000 })
       : [];
@@ -1206,11 +1377,13 @@ export class SmsPanelService {
     await this.confirmations.save(conf);
     campaign.confirmedBy = actorId;
     campaign.confirmedAt = new Date();
-    const needsFourEyes =
-      campaign.messageClass === 'PROMO' || campaign.recipientCount > 1000;
-    campaign.status = needsFourEyes ? 'AWAITING_APPROVAL' : 'SCHEDULED';
+    if (!bulkNeedsSecondApproval(campaign.recipientCount)) {
+      campaign.status = 'SCHEDULED';
+    } else {
+      campaign.status = 'AWAITING_APPROVAL';
+    }
     await this.campaigns.save(campaign);
-    if (!needsFourEyes) {
+    if (campaign.status === 'SCHEDULED') {
       await this.enqueueCampaign(campaign);
     }
     await this.auditLog({
@@ -1297,6 +1470,14 @@ export class SmsPanelService {
       });
       for (const member of members) memberVars.set(member.phoneNormalized, member.vars || {});
     }
+    if (campaign.segmentId || campaign.audienceSpec?.sources?.length) {
+      const allowed = new Set(recipients.map((row) => row.phoneNormalized));
+      const contacts = await this.audienceContactsForCampaign(campaign);
+      for (const contact of contacts) {
+        if (!allowed.has(contact.phone) || memberVars.has(contact.phone)) continue;
+        memberVars.set(contact.phone, { name: contact.name, city: contact.city || '' });
+      }
+    }
     const rendered = recipients.flatMap((recipient) => {
       const phone = normalizeIranMobileStrict(recipient.phoneNormalized);
       if (!phone) return [];
@@ -1304,13 +1485,7 @@ export class SmsPanelService {
       return [{ recipient, phone, body, parts: countSmsParts(body) }];
     });
     const panel = await this.getPanelSettings();
-    let when = campaign.scheduledAt || new Date();
-    if (
-      campaign.messageClass === 'PROMO' &&
-      !isWithinPromoWindow(when, promoWindowFromSettings(panel))
-    ) {
-      when = nextPromoWindowOpen(when, promoWindowFromSettings(panel)) || when;
-    }
+    let when = deferIfOutsideWindow(campaign.scheduledAt || new Date(), promoWindowFromSettings(panel));
     for (const row of rendered) {
       if (row.recipient.parts !== row.parts) {
         row.recipient.parts = row.parts;

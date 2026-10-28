@@ -26,6 +26,7 @@ export type AudiencePreview = {
   unitPricePerPart: number | null;
   estimatedCost: number | null;
   sample: AudienceContact[];
+  recipients: AudienceContact[];
 };
 
 export function readUnitPrice(raw: unknown): number | null {
@@ -100,5 +101,6 @@ export function previewAudience(input: {
     unitPricePerPart: price,
     estimatedCost: price == null ? null : final * partsPerMsg * price,
     sample: finalRows.slice(0, 20),
+    recipients: finalRows,
   };
 }
