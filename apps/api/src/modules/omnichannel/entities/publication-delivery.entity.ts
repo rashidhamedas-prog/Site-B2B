@@ -13,6 +13,10 @@ import { OutboxEventEntity } from './outbox-event.entity';
   unique: true,
   where: `"status" IN ('PENDING','PROCESSING','RETRY','SUCCEEDED','HOLD') AND "action" = 'CREATE' AND "supersededAt" IS NULL`,
 })
+@Index('UQ_omnichannel_deliveries_active_mutation', ['idempotencyKey'], {
+  unique: true,
+  where: `"action" IN ('UPDATE','DELETE') AND "status" IN ('PENDING','PROCESSING','RETRY','HOLD') AND "supersededAt" IS NULL`,
+})
 export class PublicationDeliveryEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

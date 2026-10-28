@@ -40,7 +40,11 @@ export function buildIdempotencyKey(input: {
   if (input.action === 'CREATE') {
     return `CREATE:${input.sourceType}:${input.sourceId}:${input.destinationId}`;
   }
-  return `${input.action}:${input.destinationId}:${input.providerMessageId || ''}:${input.contentHash || ''}`;
+  if (input.action === 'DELETE') {
+    // A delete has no content. Retries of the same delete must collapse (PR-3 D-1).
+    return `DELETE:${input.destinationId}:${input.providerMessageId || ''}:`;
+  }
+  return `UPDATE:${input.destinationId}:${input.providerMessageId || ''}:${input.contentHash || ''}`;
 }
 
 export type ExistingCreateRow = {

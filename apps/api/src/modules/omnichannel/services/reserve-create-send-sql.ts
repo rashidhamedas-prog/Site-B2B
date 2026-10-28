@@ -53,3 +53,12 @@ export const REACTIVATE_CREATE_SQL = `UPDATE "omnichannel_publication_deliveries
        WHERE id = $1::uuid
          AND status IN ('DEAD', 'FAILED', 'HOLD', 'RETRY', 'PENDING')
        RETURNING id`;
+
+/**
+ * Re-read inside the reserve transaction so a concurrent worker, supersede or HOLD that
+ * committed after the unlocked pre-read cannot be overwritten with stale status.
+ */
+export const RESERVE_CREATE_LOCK_ROW_SQL = `SELECT id, status, action, "supersededAt", "createdAt", "reapprovedAt"
+       FROM "omnichannel_publication_deliveries"
+       WHERE id = $1::uuid
+       FOR UPDATE`;
