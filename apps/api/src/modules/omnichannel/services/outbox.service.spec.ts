@@ -12,6 +12,7 @@ import {
   leaseRowsFromQueryResult,
   outboxInsertedId,
   sanitizeOutboxPayload,
+  OutboxService,
   type OutboxEnqueueInput,
 } from './outbox.service';
 import { OUTBOX_EVENT_TYPES } from '../omnichannel.constants';
@@ -104,6 +105,27 @@ async function main() {
   assert(outboxInsertedId([{ id: 'evt-1' }]) === 'evt-1', 'inserted id returned');
   assert(outboxInsertedId([]) === null, 'conflict yields null id');
   assert(outboxInsertedId([[], 0]) === null, 'tuple form conflict yields null id');
+
+  {
+    // PR-4: outbox-level revive helper is one-at-a-time unless OMNICHANNEL_BULK_REVIVE_ENABLED=true.
+    const prev = process.env.OMNICHANNEL_BULK_REVIVE_ENABLED;
+    delete process.env.OMNICHANNEL_BULK_REVIVE_ENABLED;
+    try {
+      const limits: unknown[] = [];
+      const svc = Object.create(OutboxService.prototype) as { dataSource: { query: (sql: string, p?: unknown[]) => Promise<unknown[]> } };
+      svc.dataSource = {
+        query: async (sql: string, params?: unknown[]) => {
+          if (sql.includes('LIMIT $1')) limits.push(params?.[0]);
+          return [];
+        },
+      };
+      await (svc as unknown as OutboxService).requeueConnectorDisabledDead(500);
+      assert(limits.length === 1 && limits[0] === 1, 'requeueConnectorDisabledDead selects LIMIT 1 by default');
+    } finally {
+      if (prev === undefined) delete process.env.OMNICHANNEL_BULK_REVIVE_ENABLED;
+      else process.env.OMNICHANNEL_BULK_REVIVE_ENABLED = prev;
+    }
+  }
 
   console.log('outbox.service.spec.ts: ok');
 }

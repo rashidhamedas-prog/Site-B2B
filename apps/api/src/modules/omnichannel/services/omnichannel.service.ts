@@ -137,6 +137,7 @@ import {
   staleDeliveryHours,
   type ExistingCreateRow,
 } from '../delivery-idempotency';
+import { effectiveReviveLimit, isBulkReviveEnabled } from '../delivery-hold-policy';
 import { ACTIVE_CREATE_INDEX_PREDICATE, ACTIVE_MUTATION_INDEX_PREDICATE } from '../delivery-dedupe-sql';
 import {
   publicConnectionPublishSettings,
@@ -1172,6 +1173,7 @@ export class OmnichannelService {
   /**
    * Soft-revive DEAD messenger delivers that only failed while connectors/provider kill-switch
    * was off. Requires OMNICHANNEL_CONNECTORS_ENABLED=true. Never DELETE.
+   * PR-4: one row per call (oldest first) unless OMNICHANNEL_BULK_REVIVE_ENABLED=true (rollback).
    */
   async reviveConnectorDisabledDead(dto: ReviveConnectorDisabledDto, actor?: Actor) {
     const who = this.requireActor(actor);
@@ -1184,7 +1186,8 @@ export class OmnichannelService {
         'اول OMNICHANNEL_CONNECTORS_ENABLED را روی سرور روشن کنید؛ بدون آن بازتلاش بی‌فایده است',
       );
     }
-    const limit = Math.max(1, Math.min(500, Math.floor(Number(dto.limit) || 200)));
+    const bulk = isBulkReviveEnabled();
+    const limit = effectiveReviveLimit(dto.limit);
     const rows = await this.deliveries
       .createQueryBuilder('d')
       .where('d.status = :status', { status: 'DEAD' })
@@ -1206,11 +1209,14 @@ export class OmnichannelService {
       revivedDeliveries: reactivated,
       superseded,
       limit,
+      bulk,
     });
     return {
       revivedEvents: reactivated,
       revivedDeliveries: reactivated,
       superseded,
+      limitApplied: limit,
+      bulk,
       outbox: await this.outboxMetrics(),
     };
   }

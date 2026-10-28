@@ -15,7 +15,10 @@ assert.match(ui, /connector is disabled/i);
 assert.match(ui, /if \(isConnectorDisabledError\(error\)\) return 'warn'/);
 assert.match(admin, /revive-connector-disabled/);
 assert.match(admin, /isConnectorDisabledError/);
-assert.match(admin, /بازتلاش همین‌ها/);
+assert.match(admin, /بازتلاش یک مورد/);
+// PR-4: UI never asks for a batch revive.
+assert.match(admin, /reason: reason \|\| 'بازتلاش پس از روشن‌شدن کانکتور', limit: 1 \}/);
+assert.doesNotMatch(admin, /revive-connector-disabled[\s\S]{0,400}limit: 200/);
 assert.match(api, /سرور در حال به‌روزرسانی است/);
 
 console.log('admin-omnichannel-connector-disabled.spec.ts OK');

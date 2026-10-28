@@ -6,6 +6,7 @@ import {
   isOmnichannelOutboxProducerEnabled,
   OUTBOX_FORBIDDEN_PAYLOAD_KEYS,
 } from '../omnichannel.constants';
+import { effectiveReviveLimit } from '../delivery-hold-policy';
 import { buildLeaseSql, nextAvailableAt, shouldDeadLetter } from './outbox-lease';
 
 export type OutboxEnqueueInput = {
@@ -294,12 +295,13 @@ export class OutboxService {
 
   /**
    * Soft-revive DEAD publication.deliver outbox rows that only failed because connectors were off.
+   * PR-4: limited to one row unless OMNICHANNEL_BULK_REVIVE_ENABLED=true (see delivery-hold-policy).
    * Never DELETE. Skips keys that already have a live SUCCEEDED CREATE (marks those deliveries
    * superseded instead). Staggers availableAt so a blast cannot empty the daily cap in one tick.
    * Prefer OmnichannelService.reviveConnectorDisabledDead for full delivery+cap gating.
    */
   async requeueConnectorDisabledDead(limit = 200): Promise<string[]> {
-    const capped = Math.max(1, Math.min(500, Math.floor(Number(limit) || 200)));
+    const capped = effectiveReviveLimit(limit);
     const candidates: Array<{ id?: string; delivery_id?: string; idempotency_key?: string | null }> =
       await this.dataSource.query(
         `SELECT e.id, d.id AS delivery_id, d."idempotencyKey" AS idempotency_key

@@ -35,4 +35,16 @@ assert(isUnconfirmedSendError(new Error('outbox publication.deliver.requested x 
 assert(isUnconfirmedSendError(new Error('outbox publication.deliver.requested x timed out after 50000ms')) === true, 'CREATE media timeout');
 assert(isUnconfirmedSendError(new Error('Bad Request: chat not found')) === false, 'hard provider errors stay retryable');
 
+// PR-4: dropped connection after upload may already have posted → HOLD, never RETRY.
+assert(isUnconfirmedSendError(new Error('socket hang up')) === true, 'socket hang up is unconfirmed');
+assert(isUnconfirmedSendError(new Error('read ECONNRESET')) === true, 'ECONNRESET message is unconfirmed');
+assert(isUnconfirmedSendError(Object.assign(new Error('fetch failed'), { cause: { code: 'UND_ERR_SOCKET' } })) === true, 'undici socket cause');
+assert(isUnconfirmedSendError(Object.assign(new Error('x'), { code: 'ETIMEDOUT' })) === true, 'ETIMEDOUT code');
+assert(isUnconfirmedSendError(new Error('Bad Gateway')) === true, 'upstream 502 is unconfirmed');
+assert(isUnconfirmedSendError(new Error('Gateway Time-out')) === true, 'upstream 504 is unconfirmed');
+// Nothing was sent when the TCP connection was never made.
+assert(isUnconfirmedSendError(Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), { code: 'ECONNREFUSED' })) === false, 'ECONNREFUSED stays a hard (retryable) error');
+assert(isUnconfirmedSendError(Object.assign(new Error('getaddrinfo ENOTFOUND api.telegram.org'), { code: 'ENOTFOUND' })) === false, 'DNS failure stays a hard error');
+assert(isUnconfirmedSendError(new Error('unsupported_media')) === false, 'unsupported_media is not unconfirmed');
+
 console.log('publication-deliver.spec.ts: ok');

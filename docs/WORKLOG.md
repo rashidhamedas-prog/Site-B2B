@@ -1,3 +1,9 @@
+## 2026-10-28 — Omnichannel PR-4 (بدون auto-revive / HOLD در ناشناخته، بدون merge/deploy)
+
+- revive گروهی ردیف‌های DEAD «connector is disabled» از ≤۵۰۰ به **یکی در هر فراخوانی**؛ پرچم بازگشت `OMNICHANNEL_BULK_REVIVE_ENABLED=true` (پیش‌فرض خاموش). UI `limit: 1`.
+- HOLD `uncertain_after_timeout` برای reset/socket hang up/EPIPE/Bad Gateway/Gateway Time-out هم (قبلاً RETRY → خطر پست تکراری). ECONNREFUSED/DNS دست‌نخورده.
+- بدون migration. مسیر timeout/PROCESSING-reclaim از قبل HOLD بود؛ تست‌ها سخت‌تر شد.
+- شاخه `feat/omnichannel-pr4-hold`. برنامه: `docs/design/omnichannel-redesign/pr4-hold-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr4-hold.md`. Merge/deploy فقط با GO حامد.
 ## 2026-10-28 — Omnichannel PR-3 Idempotency (delta، بدون merge/deploy)
 
 - فقط شکاف‌ها: کلید DELETE بدون hash؛ unique جزئی UPDATE/DELETE فعال (migration `20261028-001`، additive، بازنده‌ها DEAD نه حذف، undo + down)؛ `reserveCreateSend` با re-read `FOR UPDATE`؛ `reactivateDelivery` خطای 23505 را superseded+audit می‌کند.
