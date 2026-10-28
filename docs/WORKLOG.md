@@ -1,3 +1,10 @@
+## 2026-10-28 — Omnichannel `/ipc` entrypoint chown (بدون merge/deploy)
+
+- شکاف: chown فقط در `auto-deploy.sh` بعد از `compose up` بود؛ image/entrypoint نداشت.
+- Dockerfile API: `su-exec` + entrypoint که اگر `/ipc` rw باشد chown/chmod می‌کند و با `su-exec taranom` اجرا می‌شود؛ ENTRYPOINT برای api و worker.
+- `auto-deploy.sh`: همان chown به‌عنوان defense-in-depth، قبل از worker up، با fail بلند.
+- گزارش: `docs/reports/2026-10-28-omnichannel-ipc-entrypoint.md`. شاخه `fix/omnichannel-ipc-entrypoint`.
+
 ## 2026-10-28 — Omnichannel PR-5 (ساعت سکوت هنگام claim، بدون merge/deploy)
 
 - سقف روزانه، min-gap و rate-limit از قبل در claim بود؛ **ساعت سکوت نبود**. حالا `planCreateSend` (بعد از stale/HOLD، قبل از cap) با `quietStartHour`+`quietEndHour` مقصد CREATE را با `deferredReason=quiet_hours` و `nextAttemptAt = nextQuietEnd` به تعویق می‌اندازد؛ بدون تماس adapter و بدون ردیف PROCESSING.

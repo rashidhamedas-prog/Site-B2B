@@ -43,7 +43,9 @@ RUN printf '%s\n' '{"extends":"./tsconfig.json","exclude":["node_modules","dist"
 FROM base AS runner
 ENV NODE_ENV=production
 WORKDIR /app
-RUN addgroup -S taranom && adduser -S taranom -G taranom
+# su-exec: entrypoint starts as root to chown /ipc, then drops to taranom.
+RUN addgroup -S taranom && adduser -S taranom -G taranom \
+ && apk add --no-cache su-exec
 
 COPY --from=builder --chown=taranom:taranom /app/apps/api/dist ./dist
 COPY --from=deps --chown=taranom:taranom /app/node_modules ./node_modules
@@ -54,10 +56,12 @@ COPY --from=deps --chown=taranom:taranom /app/apps/api/node_modules/ ./node_modu
 COPY --from=deps --chown=taranom:taranom /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder --chown=taranom:taranom /app/packages/shared-types ./packages/shared-types
 COPY --chown=taranom:taranom apps/api/package.json ./
+COPY apps/api/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 # COPY merge can leave sharp as a dangling workspace symlink. Copy the
 # workspace-local native tree and fail the image if require('sharp') cannot load.
 ENV NODE_PATH=/app/apps/api/node_modules
-RUN mkdir -p /app/node_modules /app/node_modules/@img \
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
+ && mkdir -p /app/node_modules /app/node_modules/@img \
  && if [ -e /app/apps/api/node_modules/sharp ]; then \
       rm -rf /app/node_modules/sharp; \
       cp -a /app/apps/api/node_modules/sharp /app/node_modules/sharp; \
@@ -67,7 +71,8 @@ RUN mkdir -p /app/node_modules /app/node_modules/@img \
     fi \
  && node -e "const s=require('sharp'); if(!s.versions.sharp || !s.versions.vips) process.exit(1); console.log('sharp-ok', require.resolve('sharp'), s.versions);"
 
-USER taranom
+# Stay root so ENTRYPOINT can chown rw /ipc; docker-entrypoint.sh execs su-exec taranom.
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 EXPOSE 4000
 HEALTHCHECK --interval=20s --timeout=5s --retries=5 CMD node -e "fetch('http://127.0.0.1:4000/v1/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "dist/main"]
