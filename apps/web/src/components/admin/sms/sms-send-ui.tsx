@@ -3,35 +3,34 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { normalizeTypedCount } from './sms-parts';
+import {
+  buildCitySegmentRules,
+  buildSegmentPreviewPayload,
+  consumeSegmentPreviewFunnel,
+  formatRecipientPreviewStatus,
+  priceCaption,
+  type CitySegmentRule,
+  type SegmentPreviewFunnel,
+} from './sms-send-preview';
 
-const SOURCES = [
-  { id: 'WHOLESALE', label: 'عمده' },
-  { id: 'WHOLESALE_REFERRAL', label: 'معرف' },
-  { id: 'SALES_PARTNER', label: 'همکار فروش' },
-  { id: 'RETAIL', label: 'خرده' },
-] as const;
+export {
+  buildCitySegmentRules,
+  buildSegmentPreviewPayload,
+  consumeSegmentPreviewFunnel,
+  formatRecipientPreviewStatus,
+  priceCaption,
+  type CitySegmentRule,
+  type SegmentPreviewFunnel,
+} from './sms-send-preview';
 
 /** Debounce for live segment preview requests. */
 export const PREVIEW_DEBOUNCE_MS = 400;
-
-export type CitySegmentRule = { field: 'city'; op: 'in'; value: string[] };
-
-/** Same city rule the wizard uses when creating a campaign. */
-export function buildCitySegmentRules(city: string): CitySegmentRule[] {
-  const trimmed = city.trim();
-  return trimmed ? [{ field: 'city', op: 'in', value: [trimmed] }] : [];
-}
 
 export function canEditUnitPrice(role: string | null | undefined): boolean {
   return role === 'ADMIN' || role === 'SMS_MANAGER';
 }
 
-export function priceCaption(unitPricePerPart: number | null | undefined): string {
-  if (unitPricePerPart == null) return 'قیمت تنظیم نشده';
-  return `${Math.floor(unitPricePerPart).toLocaleString('fa-IR')} ریال`;
-}
-
-/** Empty input → null. Invalid / negative → keep previous or null (server rejects negatives). */
+/** Empty input → null. Invalid / negative → null (server rejects negatives). */
 export function parseUnitPriceInput(raw: string): number | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
@@ -39,6 +38,13 @@ export function parseUnitPriceInput(raw: string): number | null {
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.floor(n);
 }
+
+const SOURCES = [
+  { id: 'WHOLESALE', label: 'عمده' },
+  { id: 'WHOLESALE_REFERRAL', label: 'معرف' },
+  { id: 'SALES_PARTNER', label: 'همکار فروش' },
+  { id: 'RETAIL', label: 'خرده' },
+] as const;
 
 export function AudienceSourceSelector({
   value,
@@ -92,43 +98,76 @@ export function SegmentBuilder({
 
 export function RecipientPreviewPanel({
   sources,
-  text,
+  previewBody,
   messageClass,
   rules = [],
 }: {
   sources: string[];
-  text: string;
+  previewBody: string;
   messageClass: string;
   rules?: CitySegmentRule[];
 }) {
   const [status, setStatus] = useState('مخاطبی انتخاب نشده');
+  const [tone, setTone] = useState<'ok' | 'warn' | 'error'>('ok');
+  const [funnel, setFunnel] = useState<SegmentPreviewFunnel | null>(null);
   const rulesKey = useMemo(() => JSON.stringify(rules), [rules]);
+
   useEffect(() => {
     if (!sources.length) {
       setStatus('مخاطبی انتخاب نشده');
+      setTone('ok');
+      setFunnel(null);
       return;
     }
     const timer = window.setTimeout(() => {
       const parsedRules = JSON.parse(rulesKey) as CitySegmentRule[];
       apiClient
-        .post<{ final?: number; unitPricePerPart?: number | null }>('/admin/sms/segments/preview', {
-          sources,
-          text,
-          messageClass,
-          rules: parsedRules,
-        })
+        .post<Partial<SegmentPreviewFunnel>>(
+          '/admin/sms/segments/preview',
+          buildSegmentPreviewPayload(sources, previewBody, messageClass, parsedRules),
+        )
         .then((row) => {
-          const price = priceCaption(row.unitPricePerPart ?? null);
-          setStatus(
-            `${(row.final || 0).toLocaleString('fa-IR')} گیرنده نهایی${price ? ` · ${price}` : ''}`,
-          );
+          const next = consumeSegmentPreviewFunnel(row);
+          setFunnel(next);
+          const formatted = formatRecipientPreviewStatus(next);
+          setStatus(formatted.text);
+          setTone(formatted.tone);
         })
-        .catch(() => setStatus('پیش‌نمایش در دسترس نیست'));
+        .catch(() => {
+          setFunnel(null);
+          setStatus('پیش‌نمایش در دسترس نیست');
+          setTone('error');
+        });
     }, PREVIEW_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [sources, text, messageClass, rulesKey]);
+  }, [sources, previewBody, messageClass, rulesKey]);
+
+  const className =
+    tone === 'error'
+      ? 'text-sm text-red-700'
+      : tone === 'warn'
+        ? 'text-sm text-amber-800'
+        : 'text-sm text-gray-700';
+
+  // Funnel fields are wired for phase 04 visual rows; keep them on the node for now.
   return (
-    <p role="status" aria-live="polite" className="text-sm text-gray-700">
+    <p
+      role={tone === 'error' ? 'alert' : 'status'}
+      aria-live="polite"
+      className={className}
+      data-funnel-total={funnel?.total ?? undefined}
+      data-funnel-duplicates={funnel?.duplicates ?? undefined}
+      data-funnel-opted-out={funnel?.optedOut ?? undefined}
+      data-funnel-blacklisted={funnel?.blacklisted ?? undefined}
+      data-funnel-no-consent={funnel?.noConsent ?? undefined}
+      data-funnel-invalid={funnel?.invalid ?? undefined}
+      data-funnel-not-applicable={funnel?.notApplicable ?? undefined}
+      data-funnel-final={funnel?.final ?? undefined}
+      data-funnel-parts-per-msg={funnel?.partsPerMsg ?? undefined}
+      data-funnel-total-parts={funnel?.totalParts ?? undefined}
+      data-funnel-estimated-cost={funnel?.estimatedCost ?? undefined}
+      data-funnel-partial-sources={funnel?.partialSources?.join(',') || undefined}
+    >
       {status}
     </p>
   );
