@@ -1,3 +1,10 @@
+## 2026-10-28 — Omnichannel hotfix pre-PR3 (بدون merge/deploy تا سبز)
+
+- ریشه: (a) PG **42P08** روی `$2` در `reserveCreateSend`/HOLD — dual-bind بدون `::cast` (SQL رزرو create-send حدود `cf32e8dd3`؛ بعد از دیپلویهای اخیر omnichannel روی لایو)؛ (b) heartbeat کهنه در ادمین چون api و worker هر کدام `/tmp` خصوصی داشتند.
+- Fix: cast صریح SQL + `reserve-create-send-sql.ts`؛ volume مشترک `omnichannel_ipc` در `/ipc`؛ `auto-deploy.sh` مسیر drain را از env کانتینر در حال اجرا می‌خواند (سازگار با `/tmp`).
+- محدودیت حامد: بدون FORCE، بدون mass retry، PR-3 تا سبز، بدون merge SMS #115، canary Bale فقط بعد از deploy.
+- شاخه `fix/omnichannel-hotfix-pre-pr3`. گزارش: `docs/reports/2026-10-28-omnichannel-hotfix-pre-pr3.md`.
+
 ## 2026-10-27 — پنل پیامک مرحله ۳: متغیر به‌ازای گیرنده
 
 - whitelist: name، city، businessName، partnerName، lastOrderNumber، link. مقدار خالی از fallback کمپین پر می‌شود و سقف طول دارد.

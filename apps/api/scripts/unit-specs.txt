@@ -54,6 +54,7 @@ src/modules/omnichannel/services/outbox.service.spec.ts
 src/modules/omnichannel/services/outbox-lease.spec.ts
 src/modules/omnichannel/services/outbox-worker.drain.spec.ts
 src/modules/omnichannel/services/omnichannel-health.spec.ts
+src/modules/omnichannel/services/reserve-create-send-sql.spec.ts
 src/modules/omnichannel/services/outbox-metrics.spec.ts
 src/modules/product/product-outbox.spec.ts
 src/modules/product/channel-projection.spec.ts

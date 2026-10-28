@@ -36,6 +36,13 @@ import { OmnichannelMediaAssetEntity } from '../entities/omnichannel-media-asset
 import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { ConnectorDisabledError } from '../adapters/channel-adapter';
 import {
+  DEFER_CREATE_SQL,
+  MARK_CREATE_HOLD_SQL,
+  MARK_CREATE_SUCCEEDED_SQL,
+  MARK_CREATE_UNCONFIRMED_SQL,
+  RESERVE_CREATE_COUNTS_SQL,
+} from './reserve-create-send-sql';
+import {
   areOmnichannelConnectorsEnabled,
   DELIVERY_DEFERRED_REASONS,
   isOmnichannelAutoPublishEnabled,
@@ -2071,26 +2078,13 @@ export class OmnichannelService {
       const others = await tx.query(
         `SELECT id, status, "createdAt"
          FROM "omnichannel_publication_deliveries"
-         WHERE "idempotencyKey" = $1 AND action = 'CREATE' AND "supersededAt" IS NULL AND id <> $2`,
+         WHERE "idempotencyKey" = $1::text AND action = 'CREATE' AND "supersededAt" IS NULL AND id <> $2::uuid`,
         [key, row.id],
       ) as Array<{ id: string; status: string; createdAt: Date | string }>;
+      // Explicit casts: PG 42P08 "inconsistent types deduced for parameter $2"
+      // when the same $N is bound across uuid/timestamptz/text contexts (or dual columns).
       const counts = await tx.query(
-        `SELECT
-           (SELECT COUNT(*)::int FROM "omnichannel_publication_deliveries"
-             WHERE "destinationId" = $1 AND action = 'CREATE'
-               AND status = 'SUCCEEDED' AND "sentAt" >= $2 AND id <> $3) AS sent,
-           (SELECT COUNT(*)::int FROM "omnichannel_publication_deliveries"
-             WHERE "destinationId" = $1 AND action = 'CREATE' AND "supersededAt" IS NULL
-               AND (
-                 (status = 'PROCESSING' AND "updatedAt" >= $4)
-                 OR status IN ('HOLD', 'PENDING', 'RETRY')
-               )
-               AND id <> $3) AS inflight,
-           (SELECT MAX("sentAt") FROM "omnichannel_publication_deliveries"
-             WHERE "destinationId" = $1 AND action = 'CREATE' AND status = 'SUCCEEDED') AS last_sent,
-           (SELECT COUNT(*)::int FROM "omnichannel_publication_deliveries" d
-             INNER JOIN "omnichannel_channel_destinations" dest ON dest.id = d."destinationId"
-             WHERE dest."connectionId" = $5 AND d.status = 'SUCCEEDED' AND d."sentAt" >= $6) AS per_minute`,
+        RESERVE_CREATE_COUNTS_SQL,
         [
           input.destinationId,
           day,
@@ -2136,21 +2130,11 @@ export class OmnichannelService {
       }
       if (plan.kind === 'hold') {
         const holdReason: (typeof DELIVERY_DEFERRED_REASONS)[number] = 'stale_needs_reapproval';
-        await tx.query(
-          `UPDATE "omnichannel_publication_deliveries"
-           SET status = 'HOLD', "deferredReason" = $2, "lastError" = $2, "updatedAt" = NOW()
-           WHERE id = $1`,
-          [row.id, holdReason],
-        );
+        await tx.query(MARK_CREATE_HOLD_SQL, [row.id, holdReason]);
         return { kind: 'stop' as const };
       }
       if (plan.kind === 'defer') {
-        await tx.query(
-          `UPDATE "omnichannel_publication_deliveries"
-           SET "deferredReason" = $2, "nextAttemptAt" = $3, "updatedAt" = NOW()
-           WHERE id = $1 AND status <> 'SUCCEEDED'`,
-          [row.id, plan.reason, plan.availableAt],
-        );
+        await tx.query(DEFER_CREATE_SQL, [row.id, plan.reason, plan.availableAt]);
         return { kind: 'defer' as const, availableAt: plan.availableAt, reason: plan.reason, message: plan.reason };
       }
       const claimed = await tx.query(
@@ -2168,12 +2152,7 @@ export class OmnichannelService {
   async markCreateUnconfirmed(eventId: string): Promise<void> {
     if (!eventId) return;
     const reason: (typeof DELIVERY_DEFERRED_REASONS)[number] = 'uncertain_after_timeout';
-    await this.deliveries.query(
-      `UPDATE "omnichannel_publication_deliveries"
-       SET status = 'HOLD', "deferredReason" = $2, "lastError" = $2, "updatedAt" = NOW()
-       WHERE "eventId" = $1 AND action = 'CREATE' AND status <> 'SUCCEEDED' AND "supersededAt" IS NULL`,
-      [eventId, reason],
-    );
+    await this.deliveries.query(MARK_CREATE_UNCONFIRMED_SQL, [eventId, reason]);
   }
 
   /** Late success may finish after HOLD uncertain_after_timeout; never overwrite a different SUCCEEDED. */
@@ -2186,17 +2165,7 @@ export class OmnichannelService {
       ? `warnings:${warnings.join('|')}`.slice(0, 2000)
       : null;
     const raw = await this.deliveries.query(
-      `UPDATE "omnichannel_publication_deliveries"
-       SET status = 'SUCCEEDED',
-           "sentAt" = COALESCE("sentAt", NOW()),
-           "providerMessageId" = COALESCE($2, "providerMessageId"),
-           "lastError" = $3,
-           "deferredReason" = NULL,
-           "updatedAt" = NOW()
-       WHERE id = $1
-         AND "supersededAt" IS NULL
-         AND status IN ('PROCESSING', 'HOLD')
-       RETURNING id`,
+      MARK_CREATE_SUCCEEDED_SQL,
       [deliveryId, providerMessageId || null, warningNote],
     );
     return Boolean(insertedId(raw));

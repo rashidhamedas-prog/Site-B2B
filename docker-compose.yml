@@ -124,6 +124,12 @@ services:
       MINIO_ENDPOINT: minio
       MINIO_PUBLIC_URL: https://poshaktaranom.com/media
       MEILI_HOST: http://meilisearch:7700
+      # Shared with worker so GET /omnichannel/health sees live heartbeat (not empty api /tmp).
+      OMNICHANNEL_WORKER_HEARTBEAT: /ipc/omnichannel-worker.heartbeat
+      OMNICHANNEL_WORKER_DRAIN: /ipc/omnichannel-worker.drain
+      OMNICHANNEL_WORKER_DRAINED: /ipc/omnichannel-worker.drained
+    volumes:
+      - omnichannel_ipc:/ipc:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -160,12 +166,17 @@ services:
       REDIS_HOST: redis
       MINIO_ENDPOINT: minio
       MEILI_HOST: http://meilisearch:7700
+      OMNICHANNEL_WORKER_HEARTBEAT: /ipc/omnichannel-worker.heartbeat
+      OMNICHANNEL_WORKER_DRAIN: /ipc/omnichannel-worker.drain
+      OMNICHANNEL_WORKER_DRAINED: /ipc/omnichannel-worker.drained
+    volumes:
+      - omnichannel_ipc:/ipc
     command: ['node', 'dist/worker.main']
     healthcheck:
       test:
         [
           'CMD-SHELL',
-          'test -n "$(find /tmp/omnichannel-worker.heartbeat -mmin -2 2>/dev/null)"',
+          'test -n "$(find /ipc/omnichannel-worker.heartbeat -mmin -2 2>/dev/null)"',
         ]
       interval: 30s
       timeout: 5s
@@ -202,12 +213,17 @@ services:
       REDIS_HOST: redis
       MINIO_ENDPOINT: minio
       MEILI_HOST: http://meilisearch:7700
+      OMNICHANNEL_WORKER_HEARTBEAT: /ipc/omnichannel-worker.heartbeat
+      OMNICHANNEL_WORKER_DRAIN: /ipc/omnichannel-worker.drain
+      OMNICHANNEL_WORKER_DRAINED: /ipc/omnichannel-worker.drained
+    volumes:
+      - omnichannel_ipc:/ipc
     command: ['node', 'dist/worker.main']
     healthcheck:
       test:
         [
           'CMD-SHELL',
-          'test -n "$(find /tmp/omnichannel-worker.heartbeat -mmin -2 2>/dev/null)"',
+          'test -n "$(find /ipc/omnichannel-worker.heartbeat -mmin -2 2>/dev/null)"',
         ]
       interval: 30s
       timeout: 5s
@@ -279,3 +295,4 @@ volumes:
   minio_data:
   meili_data:
   certbot_www:
+  omnichannel_ipc:
