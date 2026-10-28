@@ -17,6 +17,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { SmsPanelService } from './sms-panel.service';
 import { SegmentService } from './audience/segment.service';
+import { masksAudiencePhone } from './audience/audience.types';
 import {
   SmsApproveDto,
   SmsConfirmDto,
@@ -291,11 +292,22 @@ export class SmsPanelController {
   @Get('messages')
   @SmsRoles(...SMS_ALL)
   messages(
+    @Req() req: Request,
     @Query('campaignId') campaignId?: string,
     @Query('status') status?: string,
     @Query('phone') phone?: string,
+    @Query('source') source?: string,
+    @Query('segmentId') segmentId?: string,
   ) {
-    return this.sms.listMessages({ campaignId, status, phone });
+    const a = this.actor(req);
+    return this.sms.listMessages({
+      campaignId,
+      status,
+      phone,
+      source,
+      segmentId,
+      mask: masksAudiencePhone(a.role),
+    });
   }
 
   @Get('messages/:id')
@@ -306,14 +318,19 @@ export class SmsPanelController {
 
   @Get('reports/summary')
   @SmsRoles(...SMS_ALL)
-  reports() {
-    return this.sms.reportsSummary();
+  reports(@Query('source') source?: string, @Query('segmentId') segmentId?: string) {
+    return this.sms.reportsSummary({ source, segmentId });
   }
 
   @Get('reports/export.csv')
   @SmsRoles(...SMS_ALL)
-  async exportCsv() {
-    const rows = await this.sms.listMessages({ take: 500 });
+  async exportCsv(@Req() req: Request, @Query('source') source?: string) {
+    const a = this.actor(req);
+    const rows = await this.sms.listMessages({
+      take: 500,
+      source,
+      mask: masksAudiencePhone(a.role),
+    });
     const header = 'id,status,messageClass,phone,parts,createdAt\n';
     const lines = rows
       .map(

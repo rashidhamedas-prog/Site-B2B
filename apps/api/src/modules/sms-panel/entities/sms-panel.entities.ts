@@ -221,6 +221,7 @@ export class SmsCampaignRecipientEntity {
 
 @Entity('sms_message')
 @Index(['status', 'nextAttemptAt'])
+@Index(['status', 'dlrCheckedAt'])
 @Index(['phoneNormalized', 'createdAt'])
 export class SmsMessageEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -276,6 +277,18 @@ export class SmsMessageEntity {
 
   @Column({ type: 'varchar', length: 32, nullable: true })
   deliveryState: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  dlrCheckedAt: Date | null;
+
+  @Column({ type: 'int', default: 0 })
+  dlrAttempts: number;
+
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  source: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  segmentId: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
   deliveredAt: Date | null;

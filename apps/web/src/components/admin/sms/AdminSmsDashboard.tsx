@@ -56,6 +56,7 @@ export function AdminSmsDashboard() {
 
   const kpis = [
     { label: 'ارسال امروز', value: summary.sentToday },
+    { label: 'تحویل امروز', value: summary.deliveredToday || 0 },
     { label: 'نرخ تحویل ۷ روز', value: `${Math.round((summary.deliveryRate7d || 0) * 100)}٪` },
     { label: 'در صف', value: summary.queued },
     { label: 'ناموفق', value: summary.failed },
@@ -71,6 +72,21 @@ export function AdminSmsDashboard() {
             <div className="mt-1 text-xl font-bold text-gray-900">
               {typeof k.value === 'number' ? k.value.toLocaleString('fa-IR') : k.value}
             </div>
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {(
+          [
+            ['WHOLESALE', 'عمده'],
+            ['SALES_PARTNER', 'همکار فروش'],
+            ['RETAIL', 'خرده'],
+          ] as const
+        ).map(([id, label]) => (
+          <div key={id} className="rounded-2xl border border-gray-100 bg-white p-3 text-sm">
+            <div className="text-gray-500">{label}</div>
+            <div>ارسال {(summary.bySource?.[id]?.sent || 0).toLocaleString('fa-IR')}</div>
+            <div>تحویل {(summary.bySource?.[id]?.delivered || 0).toLocaleString('fa-IR')}</div>
           </div>
         ))}
       </div>
