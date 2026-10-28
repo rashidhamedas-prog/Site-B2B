@@ -1,20 +1,16 @@
-## 2026-10-28 — Omnichannel PR-6 (audit + roles، open PR؛ merge/deploy با parent)
+## 2026-10-28 — Omnichannel PR-6 (Audit + roles)
 
-- شاخه `feat/omnichannel-pr6-audit-roles`؛ migration `20261028-002-omnichannel-audit-rbac`؛ RBAC پشت `OMNICHANNEL_RBAC_ENABLED=false`؛ Owner+goRef incl. requeue live؛ گزارش `docs/reports/2026-10-28-omnichannel-pr6-audit-roles.md`.
-- GO package continue-119-to-end 2026-10-28 برای open PR؛ merge/deploy با parent.
-
-## 2026-10-28 — Omnichannel PR-6 (Audit + roles، بدون merge/deploy)
-
-- Audit: ستون‌های `goRef`/`source`، نقش `users.omnichannelRole`، تریگر append-only (`20261028-002-omnichannel-audit-rbac`).
-- RBAC سروری VIEWER/PUBLISHER/OWNER با `OMNICHANNEL_RBAC_ENABLED` پیش‌فرض خاموش؛ Owner-tier + `goRef`؛ بستن `requeue-by-category` زنده؛ audit برای CRUDهای خاموش قبلی.
-- شاخه `feat/omnichannel-pr6-audit-roles`. برنامه: `docs/design/omnichannel-redesign/pr6-audit-roles-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr6-audit-roles.md`. Merge/deploy فقط با GO حامد (parent).
-
-## 2026-10-28 — Omnichannel PR-6 (Audit + roles، بدون merge/deploy)
-
-- Audit: ستون‌های `goRef`/`source`، تریگر append-only، audit برای CRUDهای بی‌صدای connection/destination/template/media.
+- Audit: ستون‌های `goRef`/`source`، نقش `users.omnichannelRole`، تریگر append-only (`20261028-002-omnichannel-audit-rbac`)؛ audit برای CRUDهای بی‌صدای connection/destination/template/media.
 - RBAC: VIEWER/PUBLISHER/OWNER پشت `OMNICHANNEL_RBAC_ENABLED` (پیش‌فرض خاموش)؛ Owner+goRef روی ماتریس از جمله **requeue-by-category زنده**.
-- Migration additive `20261028-002`؛ قبل از migrate روی ایران dump لیست‌شدنی؛ این agent دیپلوی نمی‌کند.
-- شاخه `feat/omnichannel-pr6-audit-roles`. برنامه: `docs/design/omnichannel-redesign/pr6-audit-roles-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr6-audit-roles.md`. Merge/deploy فقط با GO حامد.
+- شاخه `feat/omnichannel-pr6-audit-roles` / PR #129. برنامه: `docs/design/omnichannel-redesign/pr6-audit-roles-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr6-audit-roles.md`. قبل از migrate روی ایران dump؛ GO package continue-119-to-end 2026-10-28.
+
+## 2026-10-28 — Omnichannel `/ipc` entrypoint chown (#128)
+
+- شکاف: chown فقط در `auto-deploy.sh` بود؛ image/entrypoint نداشت — volume اگر خارج از auto-deploy ساخته شود worker (uid 100) نمی‌تواند heartbeat بنویسد.
+- Dockerfile API: `su-exec`؛ بدون `USER`؛ `ENTRYPOINT` + `CMD node dist/main` (worker command از همان entrypoint رد می‌شود).
+- entrypoint: فقط اگر root باشد و `/ipc` rw باشد → `chown`/`chmod 775` سپس `su-exec taranom`؛ اگر non-root → فقط `exec "$@"`.
+- `auto-deploy.sh`: همان chown به‌عنوان defense-in-depth، قبل از worker up، با fail بلند.
+- گزارش: `docs/reports/2026-10-28-omnichannel-ipc-entrypoint.md`. شاخه `fix/omnichannel-ipc-entrypoint`. PR #128.
 
 ## 2026-10-28 — Omnichannel PR-5 (ساعت سکوت هنگام claim، بدون merge/deploy)
 
