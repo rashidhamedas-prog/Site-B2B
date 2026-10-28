@@ -4,10 +4,13 @@
 set -eu
 
 if [ "$(id -u)" = "0" ]; then
-  # API mounts /ipc:ro — skip chown there (not writable). Worker mounts rw.
-  if [ -d /ipc ] && [ -w /ipc ]; then
-    chown -R taranom:taranom /ipc
-    chmod 775 /ipc
+  # API mounts /ipc:ro. Root still sees -w as true on many kernels ? probe with touch.
+  if [ -d /ipc ]; then
+    if touch /ipc/.ipc-write-probe 2>/dev/null; then
+      rm -f /ipc/.ipc-write-probe
+      chown -R taranom:taranom /ipc
+      chmod 775 /ipc
+    fi
   fi
   exec su-exec taranom "$@"
 fi
