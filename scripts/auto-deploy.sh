@@ -144,6 +144,14 @@ docker compose build api web worker
 echo "$(date -Is) starting containers..."
 docker compose up -d api web worker
 docker compose stop worker-b >/dev/null 2>&1 || true
+# Shared omnichannel_ipc is root-owned on first create; worker runs as taranom (uid 100)
+# and must write heartbeat/drain under /ipc (else health stays stale / Permission denied).
+echo "$(date -Is) ensuring /ipc volume writable by taranom..."
+docker run --rm --user 0 --entrypoint /bin/sh \
+  -v taranom_omnichannel_ipc:/ipc \
+  taranom-worker \
+  -c 'chown -R taranom:taranom /ipc 2>/dev/null || chown -R 100:101 /ipc; chmod 775 /ipc' \
+  >/dev/null 2>&1 || true
 # Force-recreate nginx: single-file bind of nginx.conf goes stale on inode replace
 # (git reset / rewrite); `up -d` alone can keep the old inode. Also remounts conf.d.
 docker compose up -d nginx --no-deps --force-recreate
