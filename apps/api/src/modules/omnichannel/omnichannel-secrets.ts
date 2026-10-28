@@ -9,6 +9,15 @@ export function isAllowedSecretRef(name: string): boolean {
   return ALLOWED_SECRET_REF.test(String(name || '').trim());
 }
 
+/** Normalize + allowlist vault/object keys so dynamic property access cannot inject `__proto__` etc. */
+export function requireAllowedSecretRef(name: string): string {
+  const ref = String(name || '').trim();
+  if (!ALLOWED_SECRET_REF.test(ref)) {
+    throw new BadRequestException('secretRef نامعتبر است');
+  }
+  return ref;
+}
+
 /**
  * Credential *shapes* only. A bare word like "token" is not a secret: the product
  * layout uses `token` as a placeholder slot (`name`, `price`, …). GitHub secret

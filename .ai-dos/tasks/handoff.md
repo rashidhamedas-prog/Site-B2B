@@ -1,4 +1,23 @@
-﻿# Handoff Log
+﻿## 2026-10-28T16:10:00Z — PR-6 Audit + roles implemented (push PR)
+
+- Branch `feat/omnichannel-pr6-audit-roles` worktree `D:/proje/Site-B2B-pr6` @ 158f0fd6+.
+- Delivered: migration `20261028-002-omnichannel-audit-rbac` (goRef/source/append-only/users.omnichannelRole); RBAC flag default false; role guard + Owner goRef incl. live requeue; silent CRUD audits; unit specs + report.
+- Next: push + open GitHub PR to master; parent merges/deploys. No FORCE, no connector enable.
+
+## 2026-10-28T15:45:00Z — PR-6 Audit + roles implemented (PR open, no merge/deploy)
+
+- Branch `feat/omnichannel-pr6-audit-roles` worktree `D:/proje/Site-B2B-pr6` from `origin/master` @ 158f0fd6.
+- Delivered: migration `20261028-002` (goRef/source/role/trigger), RBAC guards (flag default false), Owner+goRef matrix incl. live requeue, CRUD audits, plan+report+WORKLOG, unit specs.
+- Hard stops held: no egress/vault/SMS/bots/FORCE/live connectors/mass DEAD retry; no Iran migrate/deploy by agent.
+- Next: CI green → owner merge GO → backup listable → migrate Iran → leave RBAC off until allowlist.
+
+## 2026-10-28T15:28:58Z — PR-6 Audit + roles claimed (implementer)
+
+- Branch `feat/omnichannel-pr6-audit-roles` worktree `D:/proje/Site-B2B-pr6` from `origin/master` @ 158f0fd6 (PR-5 #126).
+- Scope: audit goRef/source + append-only trigger; VIEWER/PUBLISHER/OWNER via guard; `OMNICHANNEL_RBAC_ENABLED` default false; Owner goRef; requeueByCategory live Owner gate; audit missing CRUD; tests + WORKLOG/report.
+- Hard stops: no egress/vault/SMS/bots/FORCE/live connectors/mass DEAD retry.
+- Next: implement → unit specs + tsc → push PR (no merge/deploy; parent merges). GO package continue-119-to-end 2026-10-28 for implement/PR open.
+# Handoff Log
 
 Append newest entries at the top. Never erase another agent's record.
 
@@ -4785,3 +4804,4 @@ The originally reported bug (blog-link save error on retail/wholesale) is fully 
 - Files: migration+spec, destination-publish-settings(+spec), entities, dto, controller, omnichannel.service, phase-acceptance, AdminOmnichannel, admin-omnichannel-ui, report, WORKLOG, active.yaml/handoff
 - Gates: destination/connection/phase/publication-automation specs ok; web tsc 0; api tsc only pre-existing order-money-guard.spec noise
 - Exact next: independent Reviewer + Security; parent commit/push/deploy. Do not Done TASK-20260826-001. Do not flip connector flags.
+

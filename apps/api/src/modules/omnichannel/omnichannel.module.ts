@@ -24,6 +24,7 @@ import { UserEntity } from '../auth/entities/user.entity';
 import { OmnichannelAuditEntity } from './entities/omnichannel-audit.entity';
 import { OmnichannelMediaAssetEntity } from './entities/omnichannel-media-asset.entity';
 import { OmnichannelAdminGuard } from './guards/omnichannel-admin.guard';
+import { OmnichannelRoleGuard } from './guards/omnichannel-role.guard';
 import { OmnichannelTokenVaultService } from './services/omnichannel-token-vault.service';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 import { UploadModule } from '../upload/upload.module';
@@ -78,6 +79,7 @@ import { StorageService } from '../upload/storage.service';
     RubikaAdapter,
     ChannelAdapterRegistry,
     OmnichannelAdminGuard,
+    OmnichannelRoleGuard,
     OmnichannelTokenVaultService,
   ],
   exports: [OmnichannelService, OutboxService, ChannelProjectionService, TelegramAdapter, ChannelAdapterRegistry, OmnichannelTokenVaultService],

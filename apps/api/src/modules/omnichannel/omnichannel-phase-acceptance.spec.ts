@@ -124,6 +124,35 @@ assert(
 );
 assert(omniAdmin.includes("outbox/clear-waiting") && omniAdmin.includes('publications/requeue-by-category'), 'admin clear-waiting and category requeue routes');
 assert(omniAdmin.includes('outbox/revive-connector-disabled') && omniSvc.includes('reviveConnectorDisabledDead'), 'admin revive connector-disabled DEAD');
+assert(
+  omniAdmin.includes('OmnichannelMinRole')
+    && omniAdmin.includes('RequiresGoRef')
+    && omniAdmin.includes('OmnichannelOwnerWhenLive')
+    && omniAdmin.includes('OmnichannelRoleGuard'),
+  'PR-6 role decorators + OmnichannelRoleGuard on admin controller',
+);
+assert(
+  omniAdmin.includes("requeue-by-category")
+    && omniAdmin.includes("OmnichannelOwnerWhenLive")
+    && omniAdmin.includes("Put('secrets')")
+    && omniAdmin.includes('@RequiresGoRef()')
+    && omniAdmin.includes("outbox/clear-waiting")
+    && omniAdmin.includes('reapproveDelivery'),
+  'PR-6 Owner+goRef on requeue-live / secrets / clear-waiting / reapprove',
+);
+assert(
+  omniSvc.includes('assertGoRefPresent')
+    && omniSvc.includes('goRef')
+    && omniSvc.includes('redactAuditPayloadSummary')
+    && omniSvc.includes('connection_create')
+    && omniSvc.includes('template_create'),
+  'PR-6 audit goRef/source and previously silent CRUD',
+);
+assert(
+  src('modules/omnichannel/omnichannel-rbac.ts').includes('OMNICHANNEL_RBAC_ENABLED')
+    && src('database/migrations/20261028-002-omnichannel-audit-rbac.ts').includes('append_only'),
+  'PR-6 RBAC flag + append-only migration',
+);
 assert(workerSrc.includes('isConnectorDisabledError') && workerSrc.includes('DeliveryDeferredError'), 'worker defers connector-disabled instead of DEAD');
 assert(omniSvc.includes('clearWaitingOutbox') && omniSvc.includes('requeueByCategory'), 'service clear-waiting and category requeue');
 assert(

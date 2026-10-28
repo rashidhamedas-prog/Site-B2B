@@ -1,7 +1,13 @@
 /**
  * npx ts-node --transpile-only src/modules/omnichannel/omnichannel-secrets.spec.ts
  */
-import { assertNoPlaintextSecrets, isAllowedSecretRef, toPublicConnection, toPublicDestination } from './omnichannel-secrets';
+import {
+  assertNoPlaintextSecrets,
+  isAllowedSecretRef,
+  requireAllowedSecretRef,
+  toPublicConnection,
+  toPublicDestination,
+} from './omnichannel-secrets';
 import { defaultRetailLayout, defaultWholesaleLayout } from './publication-template';
 import { resolveTelegramToken, TelegramAdapter } from './adapters/telegram.adapter';
 import { BaleAdapter } from './adapters/bale.adapter';
@@ -18,6 +24,22 @@ function assert(cond: boolean, msg: string) {
 assert(isAllowedSecretRef('TELEGRAM_BOT_TOKEN') === true, 'telegram ref allowed');
 assert(isAllowedSecretRef('DATABASE_URL') === false, 'database url not a secretRef');
 assert(isAllowedSecretRef('DB_PASS') === false, 'db pass not a secretRef');
+assert(requireAllowedSecretRef('TELEGRAM_BOT_TOKEN') === 'TELEGRAM_BOT_TOKEN', 'require allowlists telegram ref');
+assert(requireAllowedSecretRef('  BALE_BOT_TOKEN  ') === 'BALE_BOT_TOKEN', 'require trims secretRef');
+let requireThrew = false;
+try {
+  requireAllowedSecretRef('__proto__');
+} catch {
+  requireThrew = true;
+}
+assert(requireThrew, 'require rejects prototype pollution keys');
+requireThrew = false;
+try {
+  requireAllowedSecretRef('DATABASE_URL');
+} catch {
+  requireThrew = true;
+}
+assert(requireThrew, 'require rejects non-provider refs');
 
 const prevDb = process.env.DATABASE_URL;
 process.env.DATABASE_URL = 'postgresql://leak:me@localhost/taranom_db';

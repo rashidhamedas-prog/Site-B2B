@@ -41,7 +41,16 @@ import {
 /** Env name only — never a token. Only provider-prefixed refs may be resolved. */
 const SECRET_REF = /^(TELEGRAM|BALE|RUBIKA)_[A-Z0-9_]{1,80}$/;
 
-export class CreateConnectionDto {
+/** Written GO from Hamed — required on Owner-tier when OMNICHANNEL_RBAC_ENABLED=true. */
+export class GoRefDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(240)
+  goRef?: string;
+}
+
+export class CreateConnectionDto extends GoRefDto {
   @IsIn(OMNICHANNEL_PROVIDERS)
   provider: (typeof OMNICHANNEL_PROVIDERS)[number];
 
@@ -58,7 +67,7 @@ export class CreateConnectionDto {
 }
 
 /** Write-only. Never returned. Only accepted on PUT /omnichannel/secrets. */
-export class PutSecretDto {
+export class PutSecretDto extends GoRefDto {
   @IsString()
   @Matches(SECRET_REF, { message: 'secretRef باید نام env باشد نه مقدار secret' })
   secretRef: string;
@@ -91,7 +100,7 @@ export class PatchConnectionDto {
   status?: (typeof CONNECTION_STATUSES)[number];
 }
 
-export class PatchOmnichannelSettingsDto {
+export class PatchOmnichannelSettingsDto extends GoRefDto {
   /**
    * Primary scope for automation/OOS fields (required for those writes).
    */
@@ -193,7 +202,7 @@ export class PatchOmnichannelSettingsDto {
 }
 
 /** PATCH /omnichannel/destinations/:id/publish-settings — same fields as connection compat. */
-export class PatchDestinationPublishSettingsDto {
+export class PatchDestinationPublishSettingsDto extends GoRefDto {
   @IsOptional()
   @IsIn(OOS_POLICIES)
   oosPolicy?: (typeof OOS_POLICIES)[number];
@@ -254,7 +263,7 @@ export class PatchDestinationPublishSettingsDto {
 }
 
 /** PATCH /omnichannel/connections/:id/publish-settings */
-export class PatchConnectionPublishSettingsDto {
+export class PatchConnectionPublishSettingsDto extends GoRefDto {
   @IsOptional()
   @IsIn(OOS_POLICIES)
   oosPolicy?: (typeof OOS_POLICIES)[number];
@@ -329,7 +338,7 @@ export class PatchDestinationDto {
   isCanary?: boolean;
 }
 
-export class CreateDestinationDto {
+export class CreateDestinationDto extends GoRefDto {
   @IsUUID()
   connectionId: string;
 
@@ -459,14 +468,14 @@ export class CreatePublicationDto {
   reason?: string;
 }
 
-export class ActorReasonDto {
+export class ActorReasonDto extends GoRefDto {
   @IsString()
   @MaxLength(240)
   reason: string;
 }
 
 /** Admin bulk channel withdraw — same semantics as POST publications/:id/withdraw per id. */
-export class BulkWithdrawPublicationsDto {
+export class BulkWithdrawPublicationsDto extends GoRefDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(BULK_WITHDRAW_PUBLICATION_MAX)
@@ -481,7 +490,7 @@ export class BulkWithdrawPublicationsDto {
 }
 
 /** Soft-revive DEAD publication.deliver rows that failed only while connectors were off. */
-export class ReviveConnectorDisabledDto {
+export class ReviveConnectorDisabledDto extends GoRefDto {
   @IsBoolean()
   confirm: boolean;
 
@@ -498,7 +507,7 @@ export class ReviveConnectorDisabledDto {
 }
 
 /** Soft-cancel PENDING outbox rows (and stale PROCESSING). Never DELETE. */
-export class ClearWaitingOutboxDto {
+export class ClearWaitingOutboxDto extends GoRefDto {
   @IsBoolean()
   confirm: boolean;
 
@@ -522,7 +531,7 @@ export class ClearWaitingOutboxDto {
 }
 
 /** Enqueue CREATE/UPDATE for every visible product in a category (batched). */
-export class RequeueByCategoryDto {
+export class RequeueByCategoryDto extends GoRefDto {
   @IsIn(OMNICHANNEL_CHANNELS)
   channel: (typeof OMNICHANNEL_CHANNELS)[number];
 

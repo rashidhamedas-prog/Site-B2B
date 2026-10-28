@@ -1,4 +1,10 @@
-## 2026-10-28 — Omnichannel `/ipc` entrypoint chown (بدون merge/deploy)
+## 2026-10-28 — Omnichannel PR-6 (Audit + roles)
+
+- Audit: ستون‌های `goRef`/`source`، نقش `users.omnichannelRole`، تریگر append-only (`20261028-002-omnichannel-audit-rbac`)؛ audit برای CRUDهای بی‌صدای connection/destination/template/media.
+- RBAC: VIEWER/PUBLISHER/OWNER پشت `OMNICHANNEL_RBAC_ENABLED` (پیش‌فرض خاموش)؛ Owner+goRef روی ماتریس از جمله **requeue-by-category زنده**.
+- شاخه `feat/omnichannel-pr6-audit-roles` / PR #129. برنامه: `docs/design/omnichannel-redesign/pr6-audit-roles-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr6-audit-roles.md`. قبل از migrate روی ایران dump؛ GO package continue-119-to-end 2026-10-28.
+
+## 2026-10-28 — Omnichannel `/ipc` entrypoint chown (#128)
 
 - شکاف: chown فقط در `auto-deploy.sh` بود؛ image/entrypoint نداشت — volume اگر خارج از auto-deploy ساخته شود worker (uid 100) نمی‌تواند heartbeat بنویسد.
 - Dockerfile API: `su-exec`؛ بدون `USER`؛ `ENTRYPOINT` + `CMD node dist/main` (worker command از همان entrypoint رد می‌شود).
