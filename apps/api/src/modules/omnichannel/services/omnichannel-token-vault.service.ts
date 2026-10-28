@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AppSettingEntity } from '../../settings/entities/app-setting.entity';
 import { defaultSecretRefFor, OMNICHANNEL_PROVIDERS } from '../omnichannel.constants';
+import { requireAllowedSecretRef } from '../omnichannel-secrets';
 import {
   applyVaultOverlay,
   decryptToken,
@@ -70,26 +71,33 @@ export class OmnichannelTokenVaultService implements OnModuleInit {
   }
 
   async put(secretRef: string, token: string): Promise<SecretStatus> {
+    const name = requireAllowedSecretRef(secretRef);
     const key = deriveVaultKey();
     const updatedAt = new Date().toISOString();
     const entry: StoredVaultEntry = {
-      ...encryptToken(token, key, secretRef),
+      ...encryptToken(token, key, name),
       fingerprint: tokenFingerprint(token),
       updatedAt,
     };
     await this.mutate((stored) => {
-      stored.entries[secretRef] = entry;
+      stored.entries[name] = entry;
     });
-    setVaultOverlayEntry(secretRef, token, { fingerprint: entry.fingerprint, updatedAt });
-    return publicSecretStatus(secretRef);
+    setVaultOverlayEntry(name, token, { fingerprint: entry.fingerprint, updatedAt });
+    return publicSecretStatus(name);
   }
 
   async clear(secretRef: string): Promise<SecretStatus> {
+    const name = requireAllowedSecretRef(secretRef);
     await this.mutate((stored) => {
-      delete stored.entries[secretRef];
+      // Rebuild instead of `delete obj[userKey]` so property names stay allowlisted-only.
+      const next: Record<string, StoredVaultEntry> = {};
+      for (const key of Object.keys(stored.entries)) {
+        if (key !== name) next[key] = stored.entries[key];
+      }
+      stored.entries = next;
     });
-    setVaultOverlayEntry(secretRef, null);
-    return publicSecretStatus(secretRef);
+    setVaultOverlayEntry(name, null);
+    return publicSecretStatus(name);
   }
 
   async statuses(extraRefs: string[] = []): Promise<SecretStatus[]> {
