@@ -1,3 +1,9 @@
+## 2026-10-28 — PR-7 follow-up: TypeORM runtime + delete UI
+
+- `OmnichannelPostBackupEntity` / `OmnichannelDeliveryMessageEntity` به `RUNTIME_TYPEORM_ENTITIES` (رفع 500 بعد از #130؛ hotpatch ایران موقت بود).
+- پنل: drawer حذف با پیش‌نمایش بکاپ، تأیید دوم `confirmSku`/`goRef`، هشدار ۴۸س بله؛ `delete-plan` فیلد `deleteWindowHours` دارد.
+- شاخه `fix/omnichannel-pr7-typeorm-runtime`. Smoke canary حذف msg **284** روی `4858359991` موفق. Merge/deploy فقط با GO حامد.
+
 ## 2026-10-28 — Omnichannel PR-8 Coverage matrix (بدون merge/deploy)
 
 - ماتریس پوشش محصول×کانال: helpers خالص، API `coverage` / duplicates / absence-reason / out-of-panel ingest (audit-only)، migration `omnichannel_coverage_absence`، تب «پوشش و تکرار» پشت `OMNICHANNEL_COVERAGE_UI` (پیش‌فرض خاموش).

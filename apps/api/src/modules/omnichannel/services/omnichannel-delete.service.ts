@@ -34,6 +34,7 @@ import {
   parseProviderMessageIds,
 } from '../provider-message-ids';
 import { buildIdempotencyKey as buildDeliveryIdempotencyKey } from '../delivery-idempotency';
+import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
 import { OmnichannelService } from './omnichannel.service';
 
 export type DeletePlanMessage = {
@@ -47,6 +48,8 @@ export type DeletePlanResult = {
   publicationId: string;
   destinationId: string;
   provider: string | null;
+  /** Provider max remote-delete age in hours (Bale=48); null when unlimited/unknown. */
+  deleteWindowHours: number | null;
   messageIds: string[];
   captionPreview: string | null;
   mediaUrls: string[];
@@ -93,12 +96,22 @@ export class OmnichannelDeleteService {
     const messageIds = ctx.messageIds;
     await this.ensureDeliveryMessages(ctx.delivery.id, messageIds);
 
+    const deleteWindowHours =
+      ctx.provider && PROVIDER_CAPABILITIES[ctx.provider as keyof typeof PROVIDER_CAPABILITIES]
+        ? PROVIDER_CAPABILITIES[ctx.provider as keyof typeof PROVIDER_CAPABILITIES].deleteWindowHours
+        : null;
     const warnings: string[] = [];
+    if (ctx.provider === 'BALE' && deleteWindowHours) {
+      warnings.push(
+        baleDeleteWindowExpired(ctx.delivery.sentAt)
+          ? 'delete_window_expired'
+          : `bale_delete_window_${deleteWindowHours}h`,
+      );
+    }
     const messages: DeletePlanMessage[] = messageIds.map((messageId) => {
       let warning: string | null = null;
       if (ctx.provider === 'BALE' && baleDeleteWindowExpired(ctx.delivery.sentAt)) {
         warning = 'delete_window_expired';
-        if (!warnings.includes('delete_window_expired')) warnings.push('delete_window_expired');
       }
       return {
         messageId,
@@ -119,6 +132,7 @@ export class OmnichannelDeleteService {
       publicationId: ctx.delivery.publicationId,
       destinationId: ctx.delivery.destinationId,
       provider: ctx.provider,
+      deleteWindowHours,
       messageIds,
       captionPreview: snapshot.caption,
       mediaUrls: snapshot.mediaUrls,
