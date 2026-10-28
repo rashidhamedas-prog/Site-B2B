@@ -3,8 +3,8 @@
 # Taranom server-side auto-deploy (poll origin/master, rebuild on change).
 # Installed as a systemd oneshot service driven by taranom-autodeploy.timer.
 # Safe to run repeatedly: it only rebuilds when origin/master advances, holds
-# a deploy lock (owner metadata + stale detection) so runs never overlap, and
-# leaves the running containers untouched if the build fails.
+# a lock so runs never overlap, and leaves the running containers untouched if
+# the build fails.
 #
 # Deploy gate: requires $APP_DIR/deploy-approval.json with exact commit + goRef.
 # TARANOM_DEPLOY_FORCE=1 does NOT bypass the gate. Approval is consumed after
@@ -13,11 +13,12 @@
 #
 # After git reset, the script re-execs itself so newly pulled deploy steps
 # actually run — bash does not re-read a script mid-run.
-# GitHub Actions must call this same script (shared deploy-lock). No safety-net SQL.
+# GitHub Actions must call this same script (shared flock). No safety-net SQL.
 # ============================================================================
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/taranom}"
+LOCK_FILE="/tmp/taranom-autodeploy.lock"
 APPROVAL_FILE="${TARANOM_DEPLOY_APPROVAL_FILE:-$APP_DIR/deploy-approval.json}"
 DEPLOY_LOG="${TARANOM_DEPLOY_LOG:-$APP_DIR/logs/deploy.log}"
 DRAIN_TIMEOUT_SEC="${TARANOM_DEPLOY_DRAIN_TIMEOUT_SEC:-120}"
@@ -25,15 +26,12 @@ GATE_PY="$APP_DIR/scripts/lib/deploy-gate.py"
 
 cd "$APP_DIR"
 
-# Prevent overlapping deploys (with the GitHub Actions deploy or a previous run).
-# Owner file + stale takeover (dead PID / max-age without build child); see lib/deploy-lock.sh.
-# shellcheck source=lib/deploy-lock.sh
-source "$APP_DIR/scripts/lib/deploy-lock.sh"
-if ! deploy_lock_acquire "$(git rev-parse HEAD 2>/dev/null || echo unknown)"; then
+# Prevent overlapping deploys (with the GitHub Actions deploy or a previous run)
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
   echo "$(date -Is) another deploy is running — skipping"
   exit 0
 fi
-trap deploy_lock_release EXIT
 
 require_gate() {
   if ! command -v python3 >/dev/null 2>&1; then
