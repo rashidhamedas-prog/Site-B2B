@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { DEFAULT_AUTO_DAILY_CAP } from './omnichannel.constants';
-import { tehranDayStart } from '../../lib/tehran-time';
+import { inQuietHours, nextQuietEnd, tehranDayStart, tehranHour } from '../../lib/tehran-time';
 
 export const MIN_SEND_GAP_FLOOR_SECONDS = 60;
 export const DEFAULT_STALE_DELIVERY_HOURS = 24;
@@ -213,11 +213,26 @@ export function decideRateLimit(
   return { allow: false, availableAt: new Date(now.getTime() + 60_000) };
 }
 
+/**
+ * Quiet window (Tehran wall clock) at claim time. Both hours are required; a partial or
+ * empty (start === end) window is disabled — same rule as `evaluateAutomationGate`.
+ * When blocked, `availableAt` is the next quiet end.
+ */
+export function decideQuietHours(
+  now: Date,
+  quietStartHour: number | null | undefined,
+  quietEndHour: number | null | undefined,
+): { allow: boolean; availableAt?: Date } {
+  if (quietStartHour == null || quietEndHour == null) return { allow: true };
+  if (!inQuietHours(tehranHour(now), quietStartHour, quietEndHour)) return { allow: true };
+  return { allow: false, availableAt: nextQuietEnd(now, quietEndHour) };
+}
+
 export type SendPlan =
   | { kind: 'send' }
   | { kind: 'supersede' }
   | { kind: 'hold'; reason: 'stale_needs_reapproval' }
-  | { kind: 'defer'; reason: 'daily_cap' | 'min_gap' | 'rate_limit'; availableAt: Date };
+  | { kind: 'defer'; reason: 'daily_cap' | 'min_gap' | 'rate_limit' | 'quiet_hours'; availableAt: Date };
 
 export function planCreateSend(input: {
   now: Date;
@@ -231,6 +246,8 @@ export function planCreateSend(input: {
   minGapSeconds: number;
   sendsLastMinute: number;
   maxPerMinute: number;
+  /** Optional for back-compat; without both start and end the quiet window is off. */
+  quietStartHour?: number | null;
   quietEndHour: number | null;
   jitterMs: number;
   winner: 'send' | 'supersede';
@@ -239,6 +256,9 @@ export function planCreateSend(input: {
   if (isStaleDelivery(input.createdAt, input.reapprovedAt, input.now, input.staleHours)) {
     return { kind: 'hold', reason: 'stale_needs_reapproval' };
   }
+  // Quiet before cap/gap/rate: a stale queue row must never send inside the window.
+  const quiet = decideQuietHours(input.now, input.quietStartHour, input.quietEndHour);
+  if (!quiet.allow) return { kind: 'defer', reason: 'quiet_hours', availableAt: deferredUntil(quiet) };
   const cap = decideDailyCap({
     sentToday: input.sentToday,
     inFlight: input.inFlight,

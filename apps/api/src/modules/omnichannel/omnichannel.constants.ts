@@ -37,6 +37,7 @@ export const DELIVERY_DEFERRED_REASONS = [
   'daily_cap',
   'min_gap',
   'rate_limit',
+  'quiet_hours',
   'stale_needs_reapproval',
   'uncertain_after_timeout',
   'superseded_duplicate',

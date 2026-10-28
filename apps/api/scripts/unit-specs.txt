@@ -152,6 +152,7 @@ src/database/migrations/20261021-003-analytics-event-log-retry-lease.spec.ts
 src/modules/omnichannel/free-post.spec.ts
 src/modules/omnichannel/delivery-idempotency.spec.ts
 src/modules/omnichannel/services/delivery-claim.spec.ts
+src/modules/omnichannel/services/delivery-quiet-claim.spec.ts
 src/database/migrations/20261025-001-omnichannel-delivery-idempotency.spec.ts
 src/database/migrations/20261028-001-omnichannel-mutation-idempotency.spec.ts
 src/modules/omnichannel/services/delivery-reactivate-conflict.spec.ts
