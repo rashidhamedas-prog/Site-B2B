@@ -48,15 +48,19 @@ require_gate() {
 drain_worker_or_abort() {
   local timeout="${1:-$DRAIN_TIMEOUT_SEC}"
   local worker_ctr="${TARANOM_WORKER_CONTAINER:-taranom_worker}"
-  local drain_flag="${OMNICHANNEL_WORKER_DRAIN:-/tmp/omnichannel-worker.drain}"
-  local drained_flag="${OMNICHANNEL_WORKER_DRAINED:-/tmp/omnichannel-worker.drained}"
-
   if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$worker_ctr"; then
     echo "$(date -Is) worker container not running — skip drain"
     return 0
   fi
 
-  echo "$(date -Is) requesting worker soft-drain (timeout=${timeout}s)..."
+  # Prefer paths from the *running* container (old image may still use /tmp; compose uses /ipc).
+  local drain_flag drained_flag
+  drain_flag="$(docker exec "$worker_ctr" printenv OMNICHANNEL_WORKER_DRAIN 2>/dev/null || true)"
+  drained_flag="$(docker exec "$worker_ctr" printenv OMNICHANNEL_WORKER_DRAINED 2>/dev/null || true)"
+  drain_flag="${drain_flag:-${OMNICHANNEL_WORKER_DRAIN:-/tmp/omnichannel-worker.drain}}"
+  drained_flag="${drained_flag:-${OMNICHANNEL_WORKER_DRAINED:-/tmp/omnichannel-worker.drained}}"
+
+  echo "$(date -Is) requesting worker soft-drain (timeout=${timeout}s path=${drain_flag})..."
   docker exec "$worker_ctr" rm -f "$drained_flag" >/dev/null 2>&1 || true
   if ! docker exec "$worker_ctr" touch "$drain_flag" >/dev/null 2>&1; then
     echo "$(date -Is) WARNING: could not signal drain; aborting without killing worker"
