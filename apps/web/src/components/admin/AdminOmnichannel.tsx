@@ -7,6 +7,7 @@ import {
   AdminOmnichannelHealth,
   type OmnichannelHealthPayload,
 } from './admin-omnichannel-health';
+import { AdminOmnichannelCoverage } from './admin-omnichannel-coverage';
 import {
   AttentionStrip,
   Badge,
@@ -74,7 +75,7 @@ import {
   type WithdrawAction,
 } from './admin-omnichannel-ui';
 
-type View = 'status' | 'publish' | 'settings' | 'ops';
+type View = 'status' | 'publish' | 'settings' | 'ops' | 'coverage';
 type Step = 'bot' | 'channels' | 'template' | 'rules' | 'activate';
 type SourceType = 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE' | 'FREE_POST';
 type OutboxScope = 'channel' | 'all';
@@ -2306,6 +2307,7 @@ export function AdminOmnichannel() {
         {([
           ['status', 'وضعیت و اقدام'],
           ['publish', 'انتشار'],
+          ...(status?.coverageUi ? [['coverage', 'پوشش و تکرار'] as [View, string]] : []),
           ['settings', 'تنظیمات'],
           ['ops', 'صف و حسابرسی'],
         ] as Array<[View, string]>).map(([id, label]) => (
@@ -2366,6 +2368,34 @@ export function AdminOmnichannel() {
         </>
       )}
       {view === 'publish' && publishView}
+      {view === 'coverage' && status?.coverageUi && (
+        <AdminOmnichannelCoverage
+          apiClient={apiClient}
+          enabled={Boolean(status?.coverageUi)}
+          onPublishProduct={(productId) => {
+            setView('publish');
+            setSourceId(productId);
+            setSourceType('PRODUCT');
+            setNotice('انتشار کامل جادویی در PR-9؛ فعلاً شناسه محصول در فرم انتشار پر شد.');
+          }}
+          onOpenDeletePlan={async (deliveryId) => {
+            try {
+              const plan = await apiClient.get<{
+                deliveryId: string;
+                messageIds: string[];
+                confirmHint: string;
+                warnings: string[];
+              }>(`/omnichannel/deliveries/${deliveryId}/delete-plan`);
+              setNotice(
+                `حذف نسخه‌های قدیمی (PR-7): delivery ${plan.deliveryId} · ${faNumber(plan.messageIds?.length || 0)} پیام · ${plan.confirmHint || 'تأیید SKU لازم است'}${plan.warnings?.length ? ` · هشدار: ${plan.warnings.join('، ')}` : ''}`,
+              );
+              setView('ops');
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'پیش‌نمایش حذف ناموفق بود');
+            }
+          }}
+        />
+      )}
       {view === 'ops' && opsView}
     </div>
   );

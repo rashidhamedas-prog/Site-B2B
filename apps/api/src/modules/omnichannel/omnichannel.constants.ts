@@ -76,6 +76,11 @@ export function isOmnichannelFreePostEnabled(): boolean {
   return process.env.OMNICHANNEL_FREE_POST_ENABLED === 'true';
 }
 
+/** PR-8 coverage matrix admin tab. Default off until API validated on staging. */
+export function isOmnichannelCoverageUiEnabled(): boolean {
+  return process.env.OMNICHANNEL_COVERAGE_UI === 'true';
+}
+
 /**
  * Server-side Viewer/Publisher/Owner. Default false = any active ADMIN has full mutating access (rollback).
  * Re-export from omnichannel-rbac for callers that already import constants.

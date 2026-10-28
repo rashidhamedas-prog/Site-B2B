@@ -54,9 +54,12 @@ src/modules/omnichannel/omnichannel-token-vault.spec.ts
 src/modules/omnichannel/oos-policy.spec.ts
 src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts
 src/modules/omnichannel/provider-message-ids.spec.ts
+src/modules/omnichannel/coverage-matrix.spec.ts
+src/modules/omnichannel/services/omnichannel-coverage.service.spec.ts
 src/modules/omnichannel/services/omnichannel-delete.service.spec.ts
 src/modules/omnichannel/services/omnichannel-edit.service.spec.ts
 src/database/migrations/20261028-003-omnichannel-post-backup.spec.ts
+src/database/migrations/20261028-004-omnichannel-coverage-absence.spec.ts
 src/modules/omnichannel/services/outbox.service.spec.ts
 src/modules/omnichannel/services/outbox-lease.spec.ts
 src/modules/omnichannel/services/outbox-worker.drain.spec.ts

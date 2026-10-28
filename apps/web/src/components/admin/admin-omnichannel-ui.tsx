@@ -122,6 +122,8 @@ export type Status = {
   connectors: boolean;
   /** OMNICHANNEL_FREE_POST_ENABLED. Hidden when absent or false. */
   freePost?: boolean;
+  /** OMNICHANNEL_COVERAGE_UI. Coverage matrix tab when true. */
+  coverageUi?: boolean;
   phase: number;
   retailCanaryLimit: number;
   wholesaleCanaryLimit: number;

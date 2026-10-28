@@ -50,7 +50,10 @@ assert(roleMeetsMinimum('VIEWER', 'PUBLISHER') === false, 'VIEWER < PUBLISHER');
 assert(roleMeetsMinimum('PUBLISHER', 'VIEWER') === true, 'PUBLISHER ≥ VIEWER');
 
 assert(actionRequiresGoRef('publications_requeue_by_category_live') === true, 'live requeue needs GO');
+assert(actionRequiresGoRef('coverage_out_of_panel_ingest') === true, 'coverage ingest needs GO');
 assert(actionRequiresGoRef('deliveries_retry') === false, 'retry no GO');
+assert(roleMeetsMinimum('PUBLISHER', 'PUBLISHER') === true, 'coverage GET role PUBLISHER ok');
+assert(roleMeetsMinimum('VIEWER', 'PUBLISHER') === false, 'viewer cannot coverage mutate');
 
 try {
   assertGoRefPresent('  ');

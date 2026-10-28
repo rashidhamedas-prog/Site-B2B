@@ -76,6 +76,7 @@ export const GO_REF_REQUIRED_ACTIONS = [
   'reconcile',
   'connection_create',
   'destination_create',
+  'coverage_out_of_panel_ingest',
 ] as const;
 
 export type GoRefRequiredAction = (typeof GO_REF_REQUIRED_ACTIONS)[number];
@@ -145,6 +146,11 @@ export function redactAuditPayloadSummary(
     'remoteDeletes',
     'before',
     'after',
+    'ingestHash',
+    'providerMessageId',
+    'action',
+    'occurredAt',
+    'productId',
   ];
   for (const key of allow) {
     if (key in payload) out[key] = payload[key];
