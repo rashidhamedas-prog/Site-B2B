@@ -31,16 +31,27 @@
 4. **Post-deploy ایران (با GO):** `/v1/health`؛ refresh `/admin/omnichannel` — heartbeat سبز؛ یک create-send تست **غیر-canary** یا dry-run مجاز؛ سپس canary Bale طبق runbook.
 5. **Outbox:** نمونه‌گیری وضعیت PENDING/HOLD/DEAD قبل و بعد — بدون job mass-retry.
 
+## Live diagnosis (Iran, 2026-10-28 ~08:33 UTC, SHA `8035f6d2`)
+
+- Worker **healthy** ~14h; heartbeat fresh on worker `/tmp` (~30s); **no** drain flags; **FORCE/SKIP_DRAIN absent**.
+- API **cannot** see heartbeat (`Mounts: []`, no `/ipc`) — panel stale until this hotfix deploys.
+- **42P08:** 3 delivery DEAD + 3 outbox DEAD (`TELEGRAM×2`, `BALE×1`); first `2026-10-25T14:26Z`, last cluster `2026-10-27T15:11Z`. Not in retained docker logs.
+- Deliveries: 167 SUCCEEDED / 66 DEAD / 3 PENDING. Outbox: 4266 DONE / 10 DEAD / 3 PENDING. **Stalled PROCESSING = 0**.
+- Top DEAD: `superseded_duplicate` 41 (expected idempotency), `cancelled_by_admin` 18, `$2` 3.
+- 3 deferred PENDING until **09:45 UTC** (RUBIKA/TELEGRAM/BALE) — leave for Hamed; no mass retry.
+
 ## Queue left for Hamed
 
 | مورد | مقدار |
 | --- | --- |
-| Outbox PENDING (قبل deploy) | **UNKNOWN** |
-| Outbox HOLD/DEAD مرتبط 42P08 | **UNKNOWN** |
-| Outbox PENDING (بعد deploy + N دقیقه) | **UNKNOWN** |
+| Outbox PENDING (قبل deploy) | **3** (availableAt ≈ 09:45 UTC) |
+| Outbox DEAD مرتبط 42P08 | **3** |
+| Delivery DEAD `$2` | **3** (TG×2, Bale×1) |
+| Stalled PROCESSING | **0** |
+| DEAD `superseded_duplicate` | **41** delivery / **3** outbox — رفتار درست idempotency |
 | تصمیم mass-retry | **ممنوع** (explicit) |
-| GO deploy + `deploy-approval.json` commit | **UNKNOWN** |
-| زمان canary Bale | **بعد deploy** |
+| GO deploy + `deploy-approval.json` commit | بعد از CI سبز روی PR #119 |
+| زمان canary Bale | **بعد deploy** · dest `4858359991` |
 
 ## Rollback
 
