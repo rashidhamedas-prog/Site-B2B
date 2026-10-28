@@ -2,6 +2,8 @@
  * npx ts-node --transpile-only src/modules/omnichannel/delivery-idempotency.spec.ts
  * Decision tests only. No Bale/Rubika HTTP.
  */
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { tehranDayStart } from '../../lib/tehran-time';
 import {
   buildIdempotencyKey,
@@ -251,6 +253,36 @@ function row(partial: Partial<ExistingCreateRow> & Pick<ExistingCreateRow, 'id' 
     { id: 'new-pub', updatedAt: new Date('2026-10-24T00:00:00.000Z'), createdAt: new Date('2026-10-24T00:00:00.000Z') },
   ]);
   assert(kept?.id === 'new-pub', 'sync reuses the newest publication');
+}
+
+{
+  // PR-3: DELETE collapses retries (no content hash); UPDATE still varies with content.
+  const base = { sourceType: 'PRODUCT', sourceId, destinationId: dest, providerMessageId: 'm9' } as const;
+  const del1 = buildIdempotencyKey({ ...base, action: 'DELETE', contentHash: 'aaa' });
+  const del2 = buildIdempotencyKey({ ...base, action: 'DELETE', contentHash: 'bbb' });
+  const del3 = buildIdempotencyKey({ ...base, action: 'DELETE' });
+  assert(del1 === del2 && del2 === del3, 'DELETE key ignores content hash');
+  assert(del1 === `DELETE:${dest}:m9:`, 'DELETE key shape is DELETE:dest:msg:');
+  const up1 = buildIdempotencyKey({ ...base, action: 'UPDATE', contentHash: 'aaa' });
+  const up2 = buildIdempotencyKey({ ...base, action: 'UPDATE', contentHash: 'bbb' });
+  assert(up1 !== up2, 'UPDATE key changes with content hash');
+  const c1 = buildIdempotencyKey({ ...base, action: 'CREATE' });
+  const c2 = buildIdempotencyKey({ ...base, action: 'CREATE' });
+  assert(c1 === c2, 'CREATE key is stable across calls');
+}
+
+{
+  // PR-3: no time or randomness may leak into idempotency / dedupe key builders.
+  const idemSrc = readFileSync(join(__dirname, 'delivery-idempotency.ts'), 'utf8');
+  const start = idemSrc.indexOf('export function buildIdempotencyKey');
+  const end = idemSrc.indexOf('export type ExistingCreateRow');
+  const keyBuilder = idemSrc.slice(start, end);
+  assert(!/Date\.now|new Date|Math\.random|randomUUID|randomBytes/.test(keyBuilder), 'buildIdempotencyKey has no time/random');
+  const outboxSrc = readFileSync(join(__dirname, 'services', 'outbox.service.ts'), 'utf8');
+  const dStart = outboxSrc.indexOf('export function buildDedupeKey');
+  assert(dStart >= 0, 'buildDedupeKey exists');
+  const dedupeBody = outboxSrc.slice(dStart, outboxSrc.indexOf('\n}', dStart));
+  assert(!/Date\.now|new Date|Math\.random|randomUUID|randomBytes/.test(dedupeBody), 'buildDedupeKey has no time/random');
 }
 
 console.log('delivery-idempotency.spec.ts: ok');

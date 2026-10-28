@@ -9,6 +9,7 @@ import {
   MARK_CREATE_UNCONFIRMED_SQL,
   REACTIVATE_CREATE_SQL,
   RESERVE_CREATE_COUNTS_SQL,
+  RESERVE_CREATE_LOCK_ROW_SQL,
 } from './reserve-create-send-sql';
 
 function assert(cond: boolean, msg: string) {
@@ -56,6 +57,13 @@ for (const [name, sql] of [
   assert(REACTIVATE_CREATE_SQL.includes('$3::timestamptz'), 'reactivate $3::timestamptz');
   assert(REACTIVATE_CREATE_SQL.includes('$4::timestamptz'), 'reactivate $4::timestamptz');
   assert(!hasBareParam(REACTIVATE_CREATE_SQL, 2), 'reactivate must not leave bare $2');
+}
+
+{
+  assert(RESERVE_CREATE_LOCK_ROW_SQL.includes('FOR UPDATE'), 'reserve re-reads the delivery under FOR UPDATE');
+  assert(RESERVE_CREATE_LOCK_ROW_SQL.includes('$1::uuid'), 'lock row $1::uuid');
+  assert(!hasBareParam(RESERVE_CREATE_LOCK_ROW_SQL, 1), 'lock row has no bare $1');
+  assert(RESERVE_CREATE_LOCK_ROW_SQL.includes('"supersededAt"'), 'lock row selects supersededAt');
 }
 
 console.log('reserve-create-send-sql.spec.ts: ok');

@@ -1,3 +1,8 @@
+## 2026-10-28 — Omnichannel PR-3 Idempotency (delta، بدون merge/deploy)
+
+- فقط شکاف‌ها: کلید DELETE بدون hash؛ unique جزئی UPDATE/DELETE فعال (migration `20261028-001`، additive، بازنده‌ها DEAD نه حذف، undo + down)؛ `reserveCreateSend` با re-read `FOR UPDATE`؛ `reactivateDelivery` خطای 23505 را superseded+audit می‌کند.
+- تست unit + integration (Postgres-gated، skip بدون `DATABASE_URL`). D-2 عمداً دست‌نخورده.
+- شاخه `feat/omnichannel-pr3-idempotency`. گزارش: `docs/reports/2026-10-28-omnichannel-pr3-idempotency.md`. Merge/deploy نیازمند GO حامد + بکاپ.
 ## 2026-10-28 — Omnichannel hotfix pre-PR3 (بدون merge/deploy تا سبز)
 
 - ریشه: (a) PG **42P08** روی `$2` در `reserveCreateSend`/HOLD — dual-bind بدون `::cast` (SQL رزرو create-send حدود `cf32e8dd3`؛ بعد از دیپلویهای اخیر omnichannel روی لایو)؛ (b) heartbeat کهنه در ادمین چون api و worker هر کدام `/tmp` خصوصی داشتند.

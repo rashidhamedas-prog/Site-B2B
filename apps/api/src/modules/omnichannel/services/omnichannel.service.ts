@@ -42,6 +42,7 @@ import {
   MARK_CREATE_UNCONFIRMED_SQL,
   REACTIVATE_CREATE_SQL,
   RESERVE_CREATE_COUNTS_SQL,
+  RESERVE_CREATE_LOCK_ROW_SQL,
 } from './reserve-create-send-sql';
 import {
   areOmnichannelConnectorsEnabled,
@@ -63,6 +64,12 @@ import {
 } from '../free-post';
 import { capabilitiesFor } from '../provider-capabilities';
 import { buildDedupeKey, OutboxService, sanitizeOutboxPayload } from './outbox.service';
+
+/** Postgres unique_violation (23505), raw driver error or TypeORM QueryFailedError. */
+export function isUniqueViolation(error: unknown): boolean {
+  const e = error as { code?: string; driverError?: { code?: string } } | null;
+  return e?.code === '23505' || e?.driverError?.code === '23505';
+}
 
 function insertedId(raw: unknown): string | null {
   const rows = Array.isArray(raw) && raw.length === 2 && Array.isArray(raw[0]) && typeof raw[1] === 'number'
@@ -130,7 +137,7 @@ import {
   staleDeliveryHours,
   type ExistingCreateRow,
 } from '../delivery-idempotency';
-import { ACTIVE_CREATE_INDEX_PREDICATE } from '../delivery-dedupe-sql';
+import { ACTIVE_CREATE_INDEX_PREDICATE, ACTIVE_MUTATION_INDEX_PREDICATE } from '../delivery-dedupe-sql';
 import {
   publicConnectionPublishSettings,
   resolveConnectionPublishSettings,
@@ -1958,10 +1965,29 @@ export class OmnichannelService {
       return { retried: false, superseded: true, delivery: saved };
     }
     const slot = await this.nextCreateAvailableAt(row.destinationId);
-    const reactivated = await this.deliveries.query(
-      REACTIVATE_CREATE_SQL,
-      [row.id, slot.reason, slot.availableAt, row.reapprovedAt || null],
-    );
+    let reactivated: unknown;
+    try {
+      reactivated = await this.deliveries.query(
+        REACTIVATE_CREATE_SQL,
+        [row.id, slot.reason, slot.availableAt, row.reapprovedAt || null],
+      );
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      // A live sibling already holds the active slot for this key (partial UNIQUE). Never surface 23505.
+      const stale = await this.deliveries.findOne({ where: { id: row.id } }) || row;
+      if (stale.supersededAt) {
+        return { retried: false, superseded: true, delivery: stale };
+      }
+      stale.status = 'DEAD';
+      stale.lastError = 'superseded_duplicate';
+      stale.supersededAt = new Date();
+      const saved = await this.deliveries.save(stale);
+      await this.audit(who, auditAction, 'DELIVERY', saved.id, null, reason, {
+        superseded: true,
+        conflict: 'active_slot_taken',
+      });
+      return { retried: false, superseded: true, delivery: saved };
+    }
     if (!insertedId(reactivated)) {
       return { retried: false, superseded: false, delivery: row };
     }
@@ -2070,6 +2096,23 @@ export class OmnichannelService {
       const key = row.idempotencyKey || row.id;
       await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [key]);
       await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`cap:${input.destinationId}:${day.toISOString()}`]);
+      // The pre-read above is unlocked. Re-read under FOR UPDATE: if another worker, supersede or
+      // HOLD committed meanwhile, stop. A fresh PROCESSING here is a live sibling worker, not a crash.
+      const lockedRows = await tx.query(RESERVE_CREATE_LOCK_ROW_SQL, [row.id]) as Array<{
+        id: string;
+        status: string;
+        action: string;
+        supersededAt: Date | string | null;
+        createdAt: Date | string;
+        reapprovedAt: Date | string | null;
+      }>;
+      const fresh = lockedRows[0];
+      if (!fresh || fresh.supersededAt || !['PENDING', 'RETRY'].includes(fresh.status)) {
+        return { kind: 'stop' as const };
+      }
+      row.status = fresh.status;
+      row.createdAt = new Date(fresh.createdAt);
+      row.reapprovedAt = fresh.reapprovedAt ? new Date(fresh.reapprovedAt) : null;
       const others = await tx.query(
         `SELECT id, status, "createdAt"
          FROM "omnichannel_publication_deliveries"
@@ -3147,7 +3190,7 @@ export class OmnichannelService {
           0, $6, $7, $8, $9, $10,
           $11, NOW(), NOW()
         )
-        ON CONFLICT ("idempotencyKey") WHERE ${ACTIVE_CREATE_INDEX_PREDICATE}
+        ON CONFLICT ("idempotencyKey") WHERE ${input.action === 'CREATE' ? ACTIVE_CREATE_INDEX_PREDICATE : ACTIVE_MUTATION_INDEX_PREDICATE}
         DO NOTHING
         RETURNING id`,
         [
@@ -3168,10 +3211,10 @@ export class OmnichannelService {
       if (!deliveryId) {
         await tx.query(
           `UPDATE "omnichannel_outbox_events"
-           SET status = 'DONE', "completedAt" = NOW(), "lastError" = 'create_deduped',
+           SET status = 'DONE', "completedAt" = NOW(), "lastError" = $2::text,
                "lockedAt" = NULL, "lockedBy" = NULL, "updatedAt" = NOW()
-           WHERE id = $1 AND status = 'PENDING'`,
-          [queued.id],
+           WHERE id = $1::uuid AND status = 'PENDING'`,
+          [queued.id, input.action === 'CREATE' ? 'create_deduped' : 'mutation_deduped'],
         );
         return 0;
       }
