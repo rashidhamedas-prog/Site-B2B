@@ -447,6 +447,44 @@ export class PreviewDto {
   mediaUrl?: string;
 }
 
+export class ComposerPlanOptionsDto {
+  /** Per-destination price toggle; missing keys default false (stage2 D4). */
+  @IsOptional()
+  @IsObject()
+  includePrice?: Record<string, boolean>;
+
+  @IsOptional()
+  @IsObject()
+  captionOverrides?: Record<string, string>;
+
+  /** now = immediate (quiet → 400); next_slot = defer; scheduled = scheduledAt. */
+  @IsIn(['now', 'next_slot', 'scheduled'])
+  sendMode: 'now' | 'next_slot' | 'scheduled';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  scheduledAt?: string;
+}
+
+export class ComposerPlanDto {
+  @ValidateNested()
+  @Type(() => PreviewDto)
+  preview: PreviewDto;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  destinationIds: string[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ComposerPlanOptionsDto)
+  options?: ComposerPlanOptionsDto;
+}
+
 export class CreatePublicationDto {
   @ValidateNested()
   @Type(() => PreviewDto)
@@ -461,6 +499,32 @@ export class CreatePublicationDto {
   @IsOptional()
   @IsUUID()
   destinationId?: string;
+
+  /** PR-9 multi-destination; required non-empty on live when composer strict destinations. */
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  destinationIds?: string[];
+
+  @IsOptional()
+  @IsIn(['now', 'next_slot', 'scheduled'])
+  sendMode?: 'now' | 'next_slot' | 'scheduled';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  scheduledAt?: string;
+
+  @IsOptional()
+  @IsObject()
+  captionOverrides?: Record<string, string>;
+
+  @IsOptional()
+  @IsObject()
+  includePrice?: Record<string, boolean>;
 
   @IsOptional()
   @IsString()

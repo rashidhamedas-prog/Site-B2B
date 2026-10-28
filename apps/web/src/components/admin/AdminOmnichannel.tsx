@@ -8,6 +8,7 @@ import {
   type OmnichannelHealthPayload,
 } from './admin-omnichannel-health';
 import { AdminOmnichannelCoverage } from './admin-omnichannel-coverage';
+import { AdminOmnichannelComposer } from './admin-omnichannel-composer';
 import {
   AttentionStrip,
   Badge,
@@ -75,7 +76,7 @@ import {
   type WithdrawAction,
 } from './admin-omnichannel-ui';
 
-type View = 'status' | 'publish' | 'settings' | 'ops' | 'coverage';
+type View = 'status' | 'publish' | 'composer' | 'settings' | 'ops' | 'coverage';
 type Step = 'bot' | 'channels' | 'template' | 'rules' | 'activate';
 type SourceType = 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE' | 'FREE_POST';
 type OutboxScope = 'channel' | 'all';
@@ -261,6 +262,8 @@ export function AdminOmnichannel() {
   const [step, setStep] = useState<Step | null>(null);
   const [settingsCollapsed, setSettingsCollapsed] = useState(false);
   const [defaultViewApplied, setDefaultViewApplied] = useState(false);
+  const [composerProductId, setComposerProductId] = useState<string | null>(null);
+  const [composerChannel, setComposerChannel] = useState<Channel>('RETAIL');
   const [highlightCanaryPicker, setHighlightCanaryPicker] = useState(false);
   const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>('all');
   const [outboxScope, setOutboxScope] = useState<OutboxScope>('channel');
@@ -841,15 +844,28 @@ export function AdminOmnichannel() {
 
   useEffect(() => {
     if (defaultViewApplied || loading) return;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const deepProduct = params.get('productId');
+      const deepChannel = params.get('channel');
+      if (deepProduct && status?.composerUi) {
+        setComposerProductId(deepProduct);
+        if (deepChannel === 'WHOLESALE' || deepChannel === 'RETAIL') setComposerChannel(deepChannel);
+        setView('composer');
+        setSettingsCollapsed(true);
+        setDefaultViewApplied(true);
+        return;
+      }
+    }
     if (setupComplete) {
-      setView('publish');
+      setView(status?.composerUi ? 'composer' : 'publish');
       setSettingsCollapsed(true);
     } else {
       setView('settings');
       setSettingsCollapsed(false);
     }
     setDefaultViewApplied(true);
-  }, [defaultViewApplied, loading, setupComplete]);
+  }, [defaultViewApplied, loading, setupComplete, status?.composerUi]);
 
   // Selecting a platform card pre-fills the conventional env name unless the admin typed a custom one.
   const pickProvider = (next: Provider) => {
@@ -2389,7 +2405,8 @@ export function AdminOmnichannel() {
       <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 p-1 w-fit" role="tablist" aria-label="بخش‌ها">
         {([
           ['status', 'وضعیت و اقدام'],
-          ['publish', 'انتشار'],
+          ...(status?.composerUi ? [['composer', 'انتشار جدید'] as [View, string]] : []),
+          ['publish', status?.composerUi ? 'انتشار (قدیمی)' : 'انتشار'],
           ...(status?.coverageUi ? [['coverage', 'پوشش و تکرار'] as [View, string]] : []),
           ['settings', 'تنظیمات'],
           ['ops', 'صف و حسابرسی'],
@@ -2450,12 +2467,31 @@ export function AdminOmnichannel() {
           )}
         </>
       )}
+      {view === 'composer' && status?.composerUi && (
+        <AdminOmnichannelComposer
+          apiClient={apiClient}
+          enabled={Boolean(status?.composerUi)}
+          destinations={destinations}
+          connections={connections}
+          freePostEnabled={Boolean(status?.freePost)}
+          initialProductId={composerProductId}
+          initialChannel={composerChannel}
+          onNotice={setNotice}
+          onError={setError}
+        />
+      )}
       {view === 'publish' && publishView}
       {view === 'coverage' && status?.coverageUi && (
         <AdminOmnichannelCoverage
           apiClient={apiClient}
           enabled={Boolean(status?.coverageUi)}
           onPublishProduct={(productId) => {
+            if (status?.composerUi) {
+              setComposerProductId(productId);
+              setView('composer');
+              setNotice('محصول در ویزارد انتشار جدید بارگذاری شد.');
+              return;
+            }
             setView('publish');
             setSourceId(productId);
             setSourceType('PRODUCT');

@@ -81,6 +81,21 @@ export function isOmnichannelCoverageUiEnabled(): boolean {
   return process.env.OMNICHANNEL_COVERAGE_UI === 'true';
 }
 
+/** PR-9 composer wizard tab. Default off until API + wizard validated. */
+export function isOmnichannelComposerUiEnabled(): boolean {
+  return process.env.OMNICHANNEL_COMPOSER_UI === 'true';
+}
+
+/**
+ * When true, live createPublication requires explicit destinationIds[] (no implicit all-targets).
+ * Default true while COMPOSER_UI is on; set OMNICHANNEL_COMPOSER_STRICT_DESTINATIONS=false to relax.
+ */
+export function isOmnichannelComposerStrictDestinations(): boolean {
+  if (process.env.OMNICHANNEL_COMPOSER_STRICT_DESTINATIONS === 'false') return false;
+  if (process.env.OMNICHANNEL_COMPOSER_STRICT_DESTINATIONS === 'true') return true;
+  return isOmnichannelComposerUiEnabled();
+}
+
 /**
  * Server-side Viewer/Publisher/Owner. Default false = any active ADMIN has full mutating access (rollback).
  * Re-export from omnichannel-rbac for callers that already import constants.
