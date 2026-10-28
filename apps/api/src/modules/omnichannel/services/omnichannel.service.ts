@@ -346,7 +346,11 @@ export class OmnichannelService {
       id: actor.id,
       omnichannelRole: (actor.omnichannelRole || undefined) as Actor['omnichannelRole'],
     });
-    await this.audit(who, action, entityType, entityId, channel, reason, payload);
+    const goRefFromPayload =
+      typeof payload.goRef === 'string' || payload.goRef === null ? (payload.goRef as string | null) : null;
+    await this.audit(who, action, entityType, entityId, channel, reason, payload, {
+      goRef: goRefFromPayload,
+    });
   }
 
   /** Live messenger posts for a source×channel (PR-7 withdraw/delete). */
