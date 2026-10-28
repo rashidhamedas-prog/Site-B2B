@@ -40,6 +40,7 @@ import {
   MARK_CREATE_HOLD_SQL,
   MARK_CREATE_SUCCEEDED_SQL,
   MARK_CREATE_UNCONFIRMED_SQL,
+  REACTIVATE_CREATE_SQL,
   RESERVE_CREATE_COUNTS_SQL,
 } from './reserve-create-send-sql';
 import {
@@ -1958,13 +1959,7 @@ export class OmnichannelService {
     }
     const slot = await this.nextCreateAvailableAt(row.destinationId);
     const reactivated = await this.deliveries.query(
-      `UPDATE "omnichannel_publication_deliveries"
-       SET status = 'PENDING', attempts = 0, "lastError" = NULL, "deferredReason" = $2::text,
-           "nextAttemptAt" = $3::timestamptz, "supersededAt" = NULL,
-           "reapprovedAt" = COALESCE($4::timestamptz, "reapprovedAt"), "updatedAt" = NOW()
-       WHERE id = $1::uuid
-         AND status IN ('DEAD', 'FAILED', 'HOLD', 'RETRY', 'PENDING')
-       RETURNING id`,
+      REACTIVATE_CREATE_SQL,
       [row.id, slot.reason, slot.availableAt, row.reapprovedAt || null],
     );
     if (!insertedId(reactivated)) {

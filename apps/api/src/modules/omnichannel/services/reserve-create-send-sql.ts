@@ -44,3 +44,12 @@ export const MARK_CREATE_SUCCEEDED_SQL = `UPDATE "omnichannel_publication_delive
 export const DEFER_CREATE_SQL = `UPDATE "omnichannel_publication_deliveries"
            SET "deferredReason" = $2::text, "nextAttemptAt" = $3::timestamptz, "updatedAt" = NOW()
            WHERE id = $1::uuid AND status <> 'SUCCEEDED'`;
+
+/** Manual retry / reactivate — cast every bind (uuid / text / timestamptz). */
+export const REACTIVATE_CREATE_SQL = `UPDATE "omnichannel_publication_deliveries"
+       SET status = 'PENDING', attempts = 0, "lastError" = NULL, "deferredReason" = $2::text,
+           "nextAttemptAt" = $3::timestamptz, "supersededAt" = NULL,
+           "reapprovedAt" = COALESCE($4::timestamptz, "reapprovedAt"), "updatedAt" = NOW()
+       WHERE id = $1::uuid
+         AND status IN ('DEAD', 'FAILED', 'HOLD', 'RETRY', 'PENDING')
+       RETURNING id`;

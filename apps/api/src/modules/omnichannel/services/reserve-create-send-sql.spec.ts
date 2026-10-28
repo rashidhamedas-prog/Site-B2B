@@ -7,6 +7,7 @@ import {
   MARK_CREATE_HOLD_SQL,
   MARK_CREATE_SUCCEEDED_SQL,
   MARK_CREATE_UNCONFIRMED_SQL,
+  REACTIVATE_CREATE_SQL,
   RESERVE_CREATE_COUNTS_SQL,
 } from './reserve-create-send-sql';
 
@@ -47,6 +48,14 @@ for (const [name, sql] of [
   assert(DEFER_CREATE_SQL.includes('$1::uuid'), 'defer $1::uuid');
   assert(DEFER_CREATE_SQL.includes('$2::text'), 'defer $2::text');
   assert(DEFER_CREATE_SQL.includes('$3::timestamptz'), 'defer $3::timestamptz');
+}
+
+{
+  assert(REACTIVATE_CREATE_SQL.includes('$1::uuid'), 'reactivate $1::uuid');
+  assert(REACTIVATE_CREATE_SQL.includes('$2::text'), 'reactivate $2::text');
+  assert(REACTIVATE_CREATE_SQL.includes('$3::timestamptz'), 'reactivate $3::timestamptz');
+  assert(REACTIVATE_CREATE_SQL.includes('$4::timestamptz'), 'reactivate $4::timestamptz');
+  assert(!hasBareParam(REACTIVATE_CREATE_SQL, 2), 'reactivate must not leave bare $2');
 }
 
 console.log('reserve-create-send-sql.spec.ts: ok');
