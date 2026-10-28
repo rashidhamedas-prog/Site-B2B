@@ -75,6 +75,39 @@ assert.ok(body.endsWith('لغو11'));
 assert.equal(preview.partsPerMsg, countSmsParts(body));
 assert.ok(preview.partsPerMsg >= 2);
 
+const noConsentOnly = [
+  contact({ phone: '09121110001', sources: ['RETAIL'], promoConsent: false }),
+  contact({ phone: '09121110002', sources: ['WHOLESALE'], promoConsent: false }),
+  contact({ phone: '09121110003', sources: ['RETAIL'], promoConsent: false }),
+];
+const promoBlocked = previewAudience({
+  contacts: noConsentOnly,
+  duplicateExtras: 0,
+  invalid: 0,
+  rules: [],
+  messageClass: 'PROMO',
+  text: 'تبلیغ',
+  availableCredit: 100,
+  unitPricePerPart: 10,
+});
+assert.equal(promoBlocked.final, 0);
+assert.equal(promoBlocked.noConsent, 3);
+assert.equal(promoBlocked.estimatedCost, 0);
+
+const transactionalOk = previewAudience({
+  contacts: noConsentOnly,
+  duplicateExtras: 0,
+  invalid: 0,
+  rules: [],
+  messageClass: 'TRANSACTIONAL',
+  text: 'خدماتی',
+  availableCredit: 100,
+  unitPricePerPart: 10,
+});
+assert.equal(transactionalOk.final, 3);
+assert.equal(transactionalOk.noConsent, 0);
+assert.equal(transactionalOk.totalParts, 3 * transactionalOk.partsPerMsg);
+
 assert.equal(readUnitPrice({}), null);
 assert.equal(readUnitPrice({ unitPricePerPart: 250 }), 250);
 assert.equal(canManageSegments('SMS_OPERATOR'), false);

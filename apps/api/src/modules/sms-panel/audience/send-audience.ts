@@ -102,5 +102,40 @@ export function readStoredUnitPrice(raw: unknown): number | null {
 }
 
 export function priceCaption(unitPricePerPart: number | null): string {
-  return unitPricePerPart == null ? 'قیمت تنظیم نشده' : '';
+  if (unitPricePerPart == null) return 'قیمت تنظیم نشده';
+  return `${Math.floor(unitPricePerPart).toLocaleString('fa-IR')} ریال`;
+}
+
+export type UnitPricePatchDecision =
+  | { ok: true; value: number | null }
+  | { ok: false; http: 403 | 400; code: string; message: string };
+
+/**
+ * PATCH unitPricePerPart: managers only; empty/null clears; negatives rejected.
+ * Call only when the key is present on the patch body.
+ */
+export function decideUnitPricePatch(
+  role: string | undefined,
+  raw: unknown,
+): UnitPricePatchDecision {
+  if (role != null && !canEditUnitPrice(role)) {
+    return {
+      ok: false,
+      http: 403,
+      code: 'SMS_FORBIDDEN',
+      message: 'تغییر قیمت واحد فقط برای مدیر پیامک و مدیر کل مجاز است',
+    };
+  }
+  if (raw === null || raw === undefined || raw === '') {
+    return { ok: true, value: null };
+  }
+  if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0) {
+    return {
+      ok: false,
+      http: 400,
+      code: 'SMS_INVALID_UNIT_PRICE',
+      message: 'قیمت هر پارت باید عدد نامنفی باشد',
+    };
+  }
+  return { ok: true, value: Math.floor(raw) };
 }

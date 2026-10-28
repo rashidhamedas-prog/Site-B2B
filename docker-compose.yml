@@ -171,6 +171,9 @@ services:
       OMNICHANNEL_WORKER_DRAINED: /ipc/omnichannel-worker.drained
     volumes:
       - omnichannel_ipc:/ipc
+    # Explicit entrypoint: some Compose setups treat `command: [node, …]` as full
+    # override (Entrypoint=[node,dist/worker.main]), skipping docker-entrypoint.sh.
+    entrypoint: ['/usr/local/bin/docker-entrypoint.sh']
     command: ['node', 'dist/worker.main']
     healthcheck:
       test:
@@ -218,6 +221,7 @@ services:
       OMNICHANNEL_WORKER_DRAINED: /ipc/omnichannel-worker.drained
     volumes:
       - omnichannel_ipc:/ipc
+    entrypoint: ['/usr/local/bin/docker-entrypoint.sh']
     command: ['node', 'dist/worker.main']
     healthcheck:
       test:

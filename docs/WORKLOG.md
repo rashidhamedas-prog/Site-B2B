@@ -1,8 +1,21 @@
+## 2026-10-28 — Omnichannel PR-7 Delete/Edit + backup (بدون merge/deploy)
+
+- جداول `omnichannel_post_backups` + `omnichannel_delivery_messages` (migration `20261028-003`)؛ مسیرهای delete-plan / messages/delete / edit / revert؛ withdraw با backup قبل از DELETE؛ وضعیت delivery `WITHDRAWN` بعد از حذف موفق.
+- پرچم `OMNICHANNEL_DELETE_EDIT_ENABLED` پیش‌فرض خاموش. Owner+goRef وقتی `OMNICHANNEL_RBAC_ENABLED` (وابسته به PR-6 #129 برای ماتریس کامل نقش).
+- شاخه `feat/omnichannel-pr7-delete-edit-backup` / PR #130. طرح: `docs/design/omnichannel-redesign/pr7-delete-edit-backup-plan.md`. قبل از migration روی ایران: `scripts/backup-postgres.sh`. Canary حذف زنده فقط Bale **4858359991** (مالک). Merge/deploy فقط با GO حامد.
+
 ## 2026-10-28 — Omnichannel PR-6 (Audit + roles)
 
 - Audit: ستون‌های `goRef`/`source`، نقش `users.omnichannelRole`، تریگر append-only (`20261028-002-omnichannel-audit-rbac`)؛ audit برای CRUDهای بی‌صدای connection/destination/template/media.
 - RBAC: VIEWER/PUBLISHER/OWNER پشت `OMNICHANNEL_RBAC_ENABLED` (پیش‌فرض خاموش)؛ Owner+goRef روی ماتریس از جمله **requeue-by-category زنده**.
 - شاخه `feat/omnichannel-pr6-audit-roles` / PR #129. برنامه: `docs/design/omnichannel-redesign/pr6-audit-roles-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr6-audit-roles.md`. قبل از migrate روی ایران dump؛ GO package continue-119-to-end 2026-10-28.
+
+## 2026-10-28 — Hotfix: `/ipc` :ro entrypoint (بدون merge/deploy)
+
+- ریشه crash-loop API بعد از #128: `[ -w /ipc ]` برای root روی mount `:ro` اغلب true است؛ سپس `chown` با EROFS می‌میرد و `set -eu` قبل از `su-exec`/`node` خارج می‌شود.
+- Fix: probe با `touch /ipc/.ipc-write-probe` (سپس rm)؛ فقط در موفقیت `chown`؛ در شکست هیچ chown.
+- Compose: `worker` و `worker-b` با `entrypoint: ['/usr/local/bin/docker-entrypoint.sh']` + `command: ['node','dist/worker.main']` تا command جایگزین ENTRYPOINT نشود.
+- شاخه `fix/omnichannel-ipc-entrypoint-ro`. گزارش: `docs/reports/2026-10-28-omnichannel-ipc-entrypoint-ro-hotfix.md`. بدون merge/deploy تا GO حامد.
 
 ## 2026-10-28 — Omnichannel `/ipc` entrypoint chown (#128)
 

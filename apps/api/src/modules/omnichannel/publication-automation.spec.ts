@@ -232,6 +232,22 @@ function main() {
   ]);
   assert(live.length === 1 && live[0].providerMessageId === 'm2' && live[0].destinationId === 'd1', 'newer CREATE wins; pending DELETE clears dest');
 
+  const withdrawnLive = foldLiveRemoteMessages([
+    { publicationId: 'p1', destinationId: 'd9', action: 'CREATE', status: 'WITHDRAWN', providerMessageId: 'gone' },
+    { publicationId: 'p1', destinationId: 'd9', action: 'CREATE', status: 'SUCCEEDED', providerMessageId: 'alive' },
+  ]);
+  assert(
+    withdrawnLive.length === 1 && withdrawnLive[0].providerMessageId === 'alive',
+    'WITHDRAWN CREATE is not live; later SUCCEEDED can be',
+  );
+  assert(
+    foldLiveRemoteMessages([
+      { publicationId: 'p1', destinationId: 'd9', action: 'CREATE', status: 'SUCCEEDED', providerMessageId: 'x' },
+      { publicationId: 'p1', destinationId: 'd9', action: 'CREATE', status: 'WITHDRAWN', providerMessageId: 'x' },
+    ]).length === 0,
+    'WITHDRAWN after SUCCEEDED clears live trail',
+  );
+
   const plan = planManualDeliveries(['d1', 'd2', 'd3'], live, new Set(['d3']));
   assert(plan.updates.length === 1 && plan.updates[0].providerMessageId === 'm2', 'existing dest becomes UPDATE');
   assert(plan.creates.some((row) => row.destinationId === 'd2'), 'empty dest becomes CREATE');
