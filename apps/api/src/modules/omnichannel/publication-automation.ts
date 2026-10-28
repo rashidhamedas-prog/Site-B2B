@@ -218,6 +218,9 @@ export function foldLiveRemoteMessages(rows: DeliveryTrailRow[]): LiveRemoteMess
         destinationId: row.destinationId,
         providerMessageId: row.providerMessageId,
       });
+    } else if (row.action === 'CREATE' && row.status === 'WITHDRAWN') {
+      // PR-7 D11: fully deleted CREATE is no longer live (even before DELETE row lands).
+      live.delete(key);
     } else if (row.action === 'DELETE' && ['SUCCEEDED', 'PENDING', 'PROCESSING', 'RETRY'].includes(row.status)) {
       live.delete(key);
     }

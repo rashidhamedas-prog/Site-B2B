@@ -13,10 +13,11 @@ import {
   RequiresGoRef,
 } from '../decorators/omnichannel-role.decorator';
 import { OmnichannelService } from '../services/omnichannel.service';
+import { OmnichannelDeleteService } from '../services/omnichannel-delete.service';
+import { OmnichannelEditService } from '../services/omnichannel-edit.service';
 import { OmnichannelHealthService } from '../services/omnichannel-health';
 import {
   ActorReasonDto,
-  BulkWithdrawPublicationsDto,
   ClearWaitingOutboxDto,
   ReviveConnectorDisabledDto,
   CreateConnectionDto,
@@ -34,7 +35,13 @@ import {
   PreviewDto,
   PutSecretDto,
   RequeueByCategoryDto,
+  BulkWithdrawPublicationsDto,
 } from '../dto/omnichannel.dto';
+import {
+  DeleteDeliveryMessagesDto,
+  EditDeliveryDto,
+  RevertDeliveryDto,
+} from '../dto/omnichannel-delete-edit.dto';
 import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import {
   areOmnichannelConnectorsEnabled,
@@ -57,6 +64,8 @@ type Authed = {
 export class OmnichannelAdminController {
   constructor(
     private readonly svc: OmnichannelService,
+    private readonly deletes: OmnichannelDeleteService,
+    private readonly edits: OmnichannelEditService,
     private readonly health: OmnichannelHealthService,
   ) {}
 
@@ -387,10 +396,54 @@ export class OmnichannelAdminController {
     return this.svc.reapproveDelivery(id, req.omnichannelActor, body.reason);
   }
 
+  @Get('deliveries/:deliveryId/delete-plan')
+  @OmnichannelMinRole('VIEWER')
+  @ApiOperation({ summary: 'پیش‌نمایش حذف پیام (backup + هشدار Bale ۴۸س)' })
+  deletePlan(@Param('deliveryId') deliveryId: string) {
+    return this.deletes.deletePlan(deliveryId);
+  }
+
+  @Post('deliveries/:deliveryId/messages/delete')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
+  @ApiOperation({ summary: 'حذف پیام‌های ارسال (Owner+goRef وقتی RBAC؛ تأیید SKU)' })
+  deleteMessages(
+    @Param('deliveryId') deliveryId: string,
+    @Body() body: DeleteDeliveryMessagesDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets(body);
+    return this.deletes.deleteMessages(deliveryId, body, req.omnichannelActor || { id: '' });
+  }
+
+  @Post('deliveries/:deliveryId/edit')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'ویرایش کپشن همان messageId (Publisher+)' })
+  editDelivery(
+    @Param('deliveryId') deliveryId: string,
+    @Body() body: EditDeliveryDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets(body);
+    return this.edits.edit(deliveryId, body, req.omnichannelActor || { id: '' });
+  }
+
+  @Post('deliveries/:deliveryId/revert')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'بازگردانی کپشن از post_backup' })
+  revertDelivery(
+    @Param('deliveryId') deliveryId: string,
+    @Body() body: RevertDeliveryDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets(body);
+    return this.edits.revert(deliveryId, body, req.omnichannelActor || { id: '' });
+  }
+
   @Post('publications/bulk-withdraw')
   @OmnichannelMinRole('OWNER')
   @RequiresGoRef()
-  @ApiOperation({ summary: 'برداشتن گروهی انتشارها از کانال (ادمین)' })
+  @ApiOperation({ summary: 'برداشتن گروهی انتشارها از کانال با backup قبل از DELETE' })
   bulkWithdrawPublications(
     @Body() body: BulkWithdrawPublicationsDto,
     @Req() req: Authed,
@@ -402,6 +455,7 @@ export class OmnichannelAdminController {
   @Post('publications/:id/withdraw')
   @OmnichannelMinRole('OWNER')
   @RequiresGoRef()
+  @ApiOperation({ summary: 'برداشت انتشار با backup قبل از DELETE (Owner+goRef)' })
   withdraw(@Param('id') id: string, @Body() body: ActorReasonDto, @Req() req: Authed) {
     assertNoPlaintextSecrets(body);
     return this.svc.withdraw(id, req.omnichannelActor, body.reason, body.goRef);

@@ -29,8 +29,13 @@ export type DeliveryAction = (typeof DELIVERY_ACTIONS)[number];
 export const OOS_POLICIES = ['UPDATE', 'HIDE', 'DELETE'] as const;
 export type OosPolicy = (typeof OOS_POLICIES)[number];
 
-export const DELIVERY_STATUSES = ['PENDING', 'PROCESSING', 'SUCCEEDED', 'RETRY', 'DEAD', 'HOLD'] as const;
+export const DELIVERY_STATUSES = ['PENDING', 'PROCESSING', 'SUCCEEDED', 'RETRY', 'DEAD', 'HOLD', 'WITHDRAWN'] as const;
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
+
+/** Optional PR-7 delete/edit/revert mutating routes. Default off until owner canary. */
+export function isOmnichannelDeleteEditEnabled(): boolean {
+  return process.env.OMNICHANNEL_DELETE_EDIT_ENABLED === 'true';
+}
 
 /** Snake_case reasons stored on publication_deliveries.deferredReason (and some lastError mirrors). */
 export const DELIVERY_DEFERRED_REASONS = [

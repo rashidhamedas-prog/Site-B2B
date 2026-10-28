@@ -7,8 +7,12 @@ import { ChannelTemplateEntity } from './entities/channel-template.entity';
 import { OutboxEventEntity } from './entities/outbox-event.entity';
 import { PublicationEntity } from './entities/publication.entity';
 import { PublicationDeliveryEntity } from './entities/publication-delivery.entity';
+import { OmnichannelPostBackupEntity } from './entities/omnichannel-post-backup.entity';
+import { OmnichannelDeliveryMessageEntity } from './entities/omnichannel-delivery-message.entity';
 import { OmnichannelAdminController } from './controllers/omnichannel-admin.controller';
 import { OmnichannelService } from './services/omnichannel.service';
+import { OmnichannelDeleteService } from './services/omnichannel-delete.service';
+import { OmnichannelEditService } from './services/omnichannel-edit.service';
 import { OmnichannelHealthService } from './services/omnichannel-health';
 import { OutboxService } from './services/outbox.service';
 import { ChannelProjectionService } from './services/channel-projection.service';
@@ -42,6 +46,8 @@ import { StorageService } from '../upload/storage.service';
       OutboxEventEntity,
       PublicationEntity,
       PublicationDeliveryEntity,
+      OmnichannelPostBackupEntity,
+      OmnichannelDeliveryMessageEntity,
       OmnichannelAuditEntity,
       OmnichannelMediaAssetEntity,
       ProductEntity,
@@ -55,6 +61,8 @@ import { StorageService } from '../upload/storage.service';
   controllers: [OmnichannelAdminController],
   providers: [
     OmnichannelService,
+    OmnichannelDeleteService,
+    OmnichannelEditService,
     OmnichannelHealthService,
     OutboxService,
     ChannelProjectionService,
