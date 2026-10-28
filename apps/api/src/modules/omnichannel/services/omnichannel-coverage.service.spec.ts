@@ -6,6 +6,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import {
   matchesCoverageFilter,
+  resolveTrailMessageIds,
   summarizeCoverageRows,
   type CoverageDestinationMeta,
   type CoverageProductRow,
@@ -25,9 +26,22 @@ assert(svc.includes('setAbsenceReason'), 'absence reason');
 assert(svc.includes('ingestOutOfPanel'), 'oop ingest');
 assert(svc.includes('coverage_absence_reason_set'), 'audit action');
 assert(svc.includes('out_of_panel'), 'oop source');
-assert(svc.includes('DEFAULT_LIMIT = 50') || svc.includes('DEFAULT_LIMIT=50') || svc.includes('50'), 'page size 50');
+assert(svc.includes('DEFAULT_LIMIT = 50'), 'page size 50');
+assert(svc.includes('LIMIT :limit OFFSET :offset') || svc.includes('LIMIT $'), 'SQL LIMIT/OFFSET paging');
+assert(svc.includes('selectFilteredProductPage'), 'SQL product page');
+assert(svc.includes('summarizeFilteredUniverse'), 'summary from filtered universe');
+assert(svc.includes('selectDuplicatePairs'), 'SQL duplicate pairs');
+assert(svc.includes('loadDeliveryMessageIds'), 'PR-7 delivery_messages loader');
+assert(svc.includes('OmnichannelDeliveryMessageEntity'), 'delivery_messages entity');
+assert(svc.includes("payload->>'productId' IN"), 'oop flags keyed by productId');
+assert(!svc.includes('.take(500)'), 'no last-500 global oop scan');
+assert(svc.includes('productId,') && svc.includes('ingestHash'), 'ingest stores productId in payload');
 assert(!svc.includes('OMNICHANNEL_CONNECTORS_ENABLED'), 'no connector flip');
 assert(!svc.includes('TELEGRAM_API_URL'), 'no egress');
+assert(
+  !/resolveProductUniverse[\s\S]{0,200}buildRowsForProducts[\s\S]{0,200}\.filter[\s\S]{0,80}\.slice/.test(svc),
+  'no full-catalog build+filter+slice',
+);
 
 assert(ctl.includes("Get('coverage')"), 'GET coverage');
 assert(ctl.includes("Get('coverage/duplicates')"), 'GET duplicates before :id');
@@ -37,14 +51,37 @@ assert(
     < ctl.indexOf("Get('coverage/:productId')"),
   'static ingest before param route',
 );
-assert(ctl.includes("@OmnichannelMinRole('PUBLISHER')"), 'publisher on coverage');
-assert(ctl.includes("@OmnichannelMinRole('OWNER')"), 'owner on ingest');
-assert(ctl.includes('@RequiresGoRef()'), 'goRef on ingest');
+{
+  const coverageBlock = ctl.slice(
+    ctl.indexOf("@Get('coverage')"),
+    ctl.indexOf("@Put('coverage/:productId/absence-reason')"),
+  );
+  assert(coverageBlock.includes("@OmnichannelMinRole('VIEWER')"), 'VIEWER on coverage reads');
+  assert(coverageBlock.includes("@OmnichannelMinRole('OWNER')"), 'OWNER on ingest');
+  assert(coverageBlock.includes('@RequiresGoRef()'), 'goRef on ingest');
+}
+assert(ctl.includes("@OmnichannelMinRole('PUBLISHER')"), 'PUBLISHER on absence write');
 assert(ctl.includes('coverageUi'), 'status exposes coverageUi');
 assert(ctl.includes('source') && ctl.includes('listAudits'), 'audits source filter wired');
 
 assert(rbac.includes('coverage_out_of_panel_ingest'), 'GO list includes ingest');
 assert(rbac.includes('ingestHash'), 'redact keeps ingestHash');
+assert(rbac.includes("'productId'"), 'redact keeps productId');
+
+assert(
+  JSON.stringify(resolveTrailMessageIds({
+    productId: 'p',
+    destinationId: 'd',
+    deliveryId: 'del',
+    publicationId: 'pub',
+    publicationStatus: 'PUBLISHED',
+    action: 'CREATE',
+    status: 'SUCCEEDED',
+    providerMessageId: 'csv-1,csv-2',
+    deliveryMessageIds: ['dm-1', 'dm-2'],
+  })) === JSON.stringify(['dm-1', 'dm-2']),
+  'delivery_messages preferred over CSV',
+);
 
 /* --- pagination / filter summary (pure) --- */
 {
@@ -97,10 +134,10 @@ assert(rbac.includes('ingestHash'), 'redact keeps ingestHash');
   const dupOnly = rows.filter((r) => matchesCoverageFilter(r, 'duplicate', dests));
   assert(dupOnly.length === 1 && dupOnly[0].sku === 'A', 'filter=duplicate');
   const page = dupOnly.slice(0, 50);
-  assert(page.length === 1, 'pagination slice');
-  const summary = summarizeCoverageRows(rows, dests);
-  assert(summary.duplicateProducts === 1, 'summary dup count');
-  assert(summary.gapRubikaNotBale === 1, 'gap rubika not bale');
+  assert(page.length === 1, 'pagination slice of filtered set only');
+  const summary = summarizeCoverageRows(dupOnly, dests);
+  assert(summary.duplicateProducts === 1, 'summary matches filtered rows');
+  assert(summary.gapRubikaNotBale === 0, 'filtered summary ignores non-dup gap');
 }
 
 console.log('omnichannel-coverage.service.spec.ts: ok');

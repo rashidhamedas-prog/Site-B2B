@@ -294,4 +294,19 @@ assert(storageSvc.includes('mediaAssetRow') && storageSvc.includes('upsert'), 'u
 assert(storageSvc.includes('mediaAssetDeleteMatch'), 'object delete tombstones media registry rows');
 assert(db.includes('OmnichannelMediaAssetEntity'), 'media registry on runtime TypeORM');
 
+/* --- PR-8 coverage matrix (read-mostly; UI behind flag) --- */
+{
+  const coverageSvc = src('modules/omnichannel/services/omnichannel-coverage.service.ts');
+  const coverageMatrix = src('modules/omnichannel/coverage-matrix.ts');
+  const constants = src('modules/omnichannel/omnichannel.constants.ts');
+  assert(omniAdmin.includes("Get('coverage')") && omniAdmin.includes("Get('coverage/duplicates')"), 'coverage list + duplicates routes');
+  assert(omniAdmin.includes("Post('coverage/out-of-panel/ingest')") && omniAdmin.includes("Put('coverage/:productId/absence-reason')"), 'coverage ingest + absence');
+  assert(omniAdmin.includes("@OmnichannelMinRole('VIEWER')") && omniAdmin.includes('listCoverage'), 'coverage reads VIEWER+');
+  assert(omniAdmin.includes('coverageUi') && constants.includes('OMNICHANNEL_COVERAGE_UI'), 'coverage UI flag default-gated');
+  assert(coverageSvc.includes('selectFilteredProductPage') && coverageSvc.includes('LIMIT :limit OFFSET :offset'), 'SQL-level coverage pagination');
+  assert(coverageSvc.includes('selectDuplicatePairs') && coverageSvc.includes('loadDeliveryMessageIds'), 'SQL duplicates + delivery_messages');
+  assert(coverageSvc.includes("payload->>'productId'") && coverageMatrix.includes('resolveTrailMessageIds'), 'oop by productId + message id prefer delivery_messages');
+  assert(adminOmni.includes('AdminOmnichannelCoverage') || adminOmni.includes('پوشش و تکرار'), 'admin coverage tab mount');
+}
+
 console.log('omnichannel-phase-acceptance.spec.ts: ok');

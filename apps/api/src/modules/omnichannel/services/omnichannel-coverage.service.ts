@@ -378,8 +378,11 @@ export class OmnichannelCoverageService {
       ch: input.salesChannel,
       limit: input.limit,
       offset,
+      telegramId: input.primary.TELEGRAM?.destinationId || null,
+      rubikaId: input.primary.RUBIKA?.destinationId || null,
+      baleId: input.primary.BALE?.destinationId || null,
     };
-    const where = this.buildFilterSql(input.filter, input.primary, input.q, params);
+    const where = this.buildFilterSql(input.filter, input.q, params);
     const countSql = `
       WITH ${this.coverageCtesSql()}
       SELECT COUNT(*)::int AS total
@@ -396,8 +399,10 @@ export class OmnichannelCoverageService {
       ORDER BY pr.sku ASC
       LIMIT :limit OFFSET :offset
     `;
-    const [countRow] = await this.products.manager.query(countSql, this.namedToPositional(countSql, params));
-    const rows = await this.products.manager.query(pageSql, this.namedToPositional(pageSql, params));
+    const countQ = bindNamedSql(countSql, params);
+    const pageQ = bindNamedSql(pageSql, params);
+    const [countRow] = await this.products.manager.query(countQ.sql, countQ.values);
+    const rows = await this.products.manager.query(pageQ.sql, pageQ.values);
     return {
       ids: rows.map((r: { id: string }) => String(r.id)),
       total: Number(countRow?.total || 0),
@@ -410,14 +415,13 @@ export class OmnichannelCoverageService {
     filter: CoverageFilter;
     primary: Record<string, CoverageDestinationMeta>;
   }): Promise<CoverageSummary> {
-    const params: Record<string, unknown> = { ch: input.salesChannel };
-    const where = this.buildFilterSql(input.filter, input.primary, input.q, params);
-    const telegramId = input.primary.TELEGRAM?.destinationId || null;
-    const rubikaId = input.primary.RUBIKA?.destinationId || null;
-    const baleId = input.primary.BALE?.destinationId || null;
-    params.telegramId = telegramId;
-    params.rubikaId = rubikaId;
-    params.baleId = baleId;
+    const params: Record<string, unknown> = {
+      ch: input.salesChannel,
+      telegramId: input.primary.TELEGRAM?.destinationId || null,
+      rubikaId: input.primary.RUBIKA?.destinationId || null,
+      baleId: input.primary.BALE?.destinationId || null,
+    };
+    const where = this.buildFilterSql(input.filter, input.q, params);
     const sql = `
       WITH ${this.coverageCtesSql()}
       SELECT
@@ -433,7 +437,8 @@ export class OmnichannelCoverageService {
       INNER JOIN products pr ON pr.id = f.product_id
       WHERE ${where}
     `;
-    const [row] = await this.products.manager.query(sql, this.namedToPositional(sql, params));
+    const bound = bindNamedSql(sql, params);
+    const [row] = await this.products.manager.query(bound.sql, bound.values);
     return {
       telegramLive: Number(row?.telegramLive || 0),
       rubikaLive: Number(row?.rubikaLive || 0),
@@ -506,69 +511,70 @@ live AS (
   GROUP BY d."sourceId", d."destinationId"
 ),
 oop AS (
-  SELECT DISTINCT COALESCE(a."entityId", a.payload->>'productId') AS product_id,
-         a.payload->>'destinationId' AS destination_id
+  SELECT DISTINCT
+    COALESCE(NULLIF(BTRIM(a.payload->>'productId'), ''), a."entityId"::text) AS product_id
   FROM omnichannel_audits a
   WHERE a.source = 'out_of_panel'
     AND a.action = 'coverage_out_of_panel_ingest'
-    AND (
-      a."entityType" = 'product'
-      OR (a.payload ? 'productId' AND NULLIF(BTRIM(a.payload->>'productId'), '') IS NOT NULL)
-    )
 ),
-absence AS (
-  SELECT "productId" AS product_id,
-         BOOL_OR("destinationId" IS NULL) AS row_wide,
-         ARRAY_AGG("destinationId") FILTER (WHERE "destinationId" IS NOT NULL) AS dest_ids
+absence_any AS (
+  SELECT DISTINCT "productId" AS product_id
   FROM omnichannel_coverage_absence
-  GROUP BY "productId"
 ),
 flagged AS (
   SELECT
     u.id AS product_id,
-    COALESCE(BOOL_OR(l.live_count > 1), false) AS is_duplicate,
-    COALESCE(BOOL_OR(l.destination_id = :telegramId AND l.live_count >= 1), false) AS telegram_live,
-    COALESCE(BOOL_OR(l.destination_id = :rubikaId AND l.live_count >= 1), false) AS rubika_live,
-    COALESCE(BOOL_OR(l.destination_id = :baleId AND l.live_count >= 1), false) AS bale_live,
     EXISTS (
-      SELECT 1 FROM oop o
-      WHERE o.product_id = u.id::text OR o.product_id = u.id
-    ) AS out_of_panel,
+      SELECT 1 FROM live l WHERE l.product_id = u.id AND l.live_count > 1
+    ) AS is_duplicate,
+    (
+      :telegramId::uuid IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM live l
+        WHERE l.product_id = u.id AND l.destination_id = :telegramId::uuid AND l.live_count >= 1
+      )
+    ) AS telegram_live,
+    (
+      :rubikaId::uuid IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM live l
+        WHERE l.product_id = u.id AND l.destination_id = :rubikaId::uuid AND l.live_count >= 1
+      )
+    ) AS rubika_live,
+    (
+      :baleId::uuid IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM live l
+        WHERE l.product_id = u.id AND l.destination_id = :baleId::uuid AND l.live_count >= 1
+      )
+    ) AS bale_live,
+    EXISTS (SELECT 1 FROM oop o WHERE o.product_id = u.id::text) AS out_of_panel,
     (
       (
-        (:telegramId::uuid IS NOT NULL AND NOT COALESCE(BOOL_OR(l.destination_id = :telegramId AND l.live_count >= 1), false))
-        OR (:rubikaId::uuid IS NOT NULL AND NOT COALESCE(BOOL_OR(l.destination_id = :rubikaId AND l.live_count >= 1), false))
-        OR (:baleId::uuid IS NOT NULL AND NOT COALESCE(BOOL_OR(l.destination_id = :baleId AND l.live_count >= 1), false))
+        (:telegramId::uuid IS NOT NULL AND NOT EXISTS (
+          SELECT 1 FROM live l
+          WHERE l.product_id = u.id AND l.destination_id = :telegramId::uuid AND l.live_count >= 1
+        ))
+        OR (:rubikaId::uuid IS NOT NULL AND NOT EXISTS (
+          SELECT 1 FROM live l
+          WHERE l.product_id = u.id AND l.destination_id = :rubikaId::uuid AND l.live_count >= 1
+        ))
+        OR (:baleId::uuid IS NOT NULL AND NOT EXISTS (
+          SELECT 1 FROM live l
+          WHERE l.product_id = u.id AND l.destination_id = :baleId::uuid AND l.live_count >= 1
+        ))
       )
-      AND NOT EXISTS (
-        SELECT 1 FROM absence ab
-        WHERE ab.product_id = u.id
-          AND (
-            ab.row_wide
-            OR ab.dest_ids && ARRAY[
-              NULLIF(:telegramId, '')::uuid,
-              NULLIF(:rubikaId, '')::uuid,
-              NULLIF(:baleId, '')::uuid
-            ]::uuid[]
-          )
-      )
+      AND NOT EXISTS (SELECT 1 FROM absence_any ab WHERE ab.product_id = u.id)
     ) AS missing_reason
   FROM universe u
-  LEFT JOIN live l ON l.product_id = u.id
-  GROUP BY u.id
 )`;
   }
 
   private buildFilterSql(
     filter: CoverageFilter,
-    primary: Record<string, CoverageDestinationMeta>,
     q: string,
     params: Record<string, unknown>,
   ): string {
-    params.telegramId = primary.TELEGRAM?.destinationId || null;
-    params.rubikaId = primary.RUBIKA?.destinationId || null;
-    params.baleId = primary.BALE?.destinationId || null;
-
     const parts: string[] = ['pr."deletedAt" IS NULL'];
     if (q) {
       params.q = `%${q}%`;
@@ -580,33 +586,6 @@ flagged AS (
     else if (filter === 'gap_rubika_not_bale') parts.push('f.rubika_live AND NOT f.bale_live');
     else if (filter === 'gap_bale_not_rubika') parts.push('f.bale_live AND NOT f.rubika_live');
     return parts.join(' AND ');
-  }
-
-  /**
-   * TypeORM manager.query uses positional $1… for pg. Convert :name placeholders in order of appearance.
-   */
-  private namedToPositional(sql: string, params: Record<string, unknown>): unknown[] {
-    const values: unknown[] = [];
-    const seen = new Map<string, number>();
-    // Walk unique :names in first-appearance order and rewrite sql — caller already has final SQL;
-    // we only build the values array matching $n order TypeORM expects when using ? or we rewrite.
-    // Use explicit rewrite:
-    void sql;
-    // Collect names in order of first appearance in original named SQL pattern.
-    const nameOrder: string[] = [];
-    const re = /:([a-zA-Z_][a-zA-Z0-9_]*)/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(sql)) !== null) {
-      const name = m[1];
-      if (!seen.has(name)) {
-        seen.set(name, nameOrder.length + 1);
-        nameOrder.push(name);
-      }
-    }
-    for (const name of nameOrder) {
-      values.push(params[name] ?? null);
-    }
-    return values;
   }
 
   private async buildRowsForProducts(
@@ -785,4 +764,23 @@ function firstImage(images: string[] | null | undefined): string | null {
   if (!Array.isArray(images) || !images.length) return null;
   const url = String(images[0] || '').trim();
   return url || null;
+}
+
+/** Rewrite `:name` placeholders to `$n` for `manager.query` (pg). */
+function bindNamedSql(
+  sql: string,
+  params: Record<string, unknown>,
+): { sql: string; values: unknown[] } {
+  const values: unknown[] = [];
+  const indexByName = new Map<string, number>();
+  const rewritten = sql.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_full, name: string) => {
+    let idx = indexByName.get(name);
+    if (!idx) {
+      values.push(Object.prototype.hasOwnProperty.call(params, name) ? params[name] : null);
+      idx = values.length;
+      indexByName.set(name, idx);
+    }
+    return `$${idx}`;
+  });
+  return { sql: rewritten, values };
 }

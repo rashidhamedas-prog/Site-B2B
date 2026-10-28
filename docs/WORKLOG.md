@@ -4,6 +4,13 @@
 - فیلتر `audits?source=out_of_panel`؛ Bale بدون لینک (D-3)؛ بدون کانکتور/egress/SMS/ربات.
 - شاخه `feat/omnichannel-pr8-coverage-matrix`. طرح: `docs/design/omnichannel-redesign/pr8-coverage-matrix-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr8-coverage.md`. GO package continue-119-to-end 2026-10-28 برای PR open — merge/deploy فقط با GO جدا.
 
+## 2026-10-28 — Omnichannel PR-8 Coverage matrix (بدون merge/deploy)
+
+- ماتریس پوشش محصول×کانال: `GET coverage` / `duplicates` / `:productId`، `PUT absence-reason`، `POST out-of-panel/ingest` (Owner+goRef؛ فقط audit).
+- صفحه‌بندی و فیلتر در SQL (`LIMIT/OFFSET`)؛ خلاصه روی همان universe فیلترشده؛ تکرارها با SQL pair؛ messageId از `delivery_messages` وقتی موجود.
+- جدول `omnichannel_coverage_absence` (`20261028-004`)؛ تب UI پشت `OMNICHANNEL_COVERAGE_UI=false`.
+- RBAC: VIEWER خواندن، PUBLISHER دلیل شکاف، OWNER reconcile. شاخه `feat/omnichannel-pr8-coverage-matrix`. طرح: `docs/design/omnichannel-redesign/pr8-coverage-matrix-plan.md`؛ گزارش: `docs/reports/2026-10-28-omnichannel-pr8-coverage.md`. Merge/deploy فقط با GO حامد.
+
 ## 2026-10-28 — Omnichannel PR-7 Delete/Edit + backup (بدون merge/deploy)
 
 - جداول `omnichannel_post_backups` + `omnichannel_delivery_messages` (migration `20261028-003`)؛ مسیرهای delete-plan / messages/delete / edit / revert؛ withdraw با backup قبل از DELETE؛ وضعیت delivery `WITHDRAWN` بعد از حذف موفق.

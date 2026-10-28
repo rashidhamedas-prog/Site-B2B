@@ -9,6 +9,7 @@ import {
   isActiveLiveCreate,
   matchesCoverageFilter,
   outOfPanelIngestHash,
+  resolveTrailMessageIds,
   sanitizeCoverageLink,
   summarizeCoverageRows,
   type CoverageDestinationMeta,
@@ -207,6 +208,34 @@ const dests: CoverageDestinationMeta[] = [
     occurredAt: '2026-10-26T12:00:00.000Z',
   });
   assert(a === b && a.startsWith('oop_'), 'ingest hash stable');
+}
+
+/* --- PR-7 delivery_messages preferred over CSV --- */
+{
+  const preferred = resolveTrailMessageIds({
+    productId: 'p',
+    destinationId: 'd',
+    deliveryId: 'del',
+    publicationId: 'pub',
+    publicationStatus: 'PUBLISHED',
+    action: 'CREATE',
+    status: 'SUCCEEDED',
+    providerMessageId: 'csv-a,csv-b',
+    deliveryMessageIds: ['msg-1', 'msg-2'],
+  });
+  assert(preferred.join(',') === 'msg-1,msg-2', 'delivery_messages win');
+  const fallback = resolveTrailMessageIds({
+    productId: 'p',
+    destinationId: 'd',
+    deliveryId: 'del',
+    publicationId: 'pub',
+    publicationStatus: 'PUBLISHED',
+    action: 'CREATE',
+    status: 'SUCCEEDED',
+    providerMessageId: 'csv-a,csv-b',
+    deliveryMessageIds: [],
+  });
+  assert(fallback.join(',') === 'csv-a,csv-b', 'CSV fallback');
 }
 
 console.log('coverage-matrix.spec.ts: ok');
