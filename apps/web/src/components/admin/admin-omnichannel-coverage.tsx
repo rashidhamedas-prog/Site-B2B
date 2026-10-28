@@ -310,10 +310,11 @@ export function AdminOmnichannelCoverage({
                   </button>
                   <button
                     type="button"
-                    className="btn btn-secondary btn-sm w-full"
-                    title="انتشار تکی کامل در PR-9"
+                    className="btn btn-secondary btn-sm w-full cursor-pointer"
+                    title="باز کردن ویزارد انتشار با این محصول"
                     disabled={!onPublishProduct}
                     onClick={() => onPublishProduct?.(row.productId)}
+                    data-omni-coverage-publish
                   >
                     انتشار جدا
                   </button>

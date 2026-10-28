@@ -50,10 +50,16 @@ import {
   areOmnichannelConnectorsEnabled,
   DELIVERY_DEFERRED_REASONS,
   isOmnichannelAutoPublishEnabled,
+  isOmnichannelComposerStrictDestinations,
   isOmnichannelProvider,
   isOmnichannelProviderEnabled,
   OUTBOX_EVENT_TYPES,
 } from '../omnichannel.constants';
+import {
+  assertComposerSendAllowed,
+  buildComposerPlan,
+  type ComposerSendMode,
+} from '../composer-plan';
 import {
   FREE_POST_SOURCE_TYPE,
   assertFreePostEnabled,
@@ -356,6 +362,25 @@ export class OmnichannelService {
   /** Live messenger posts for a source×channel (PR-7 withdraw/delete). */
   async listLiveRemoteMessages(sourceType: string, sourceId: string, channel: string) {
     return this.liveRemoteMessages(sourceType, sourceId, channel);
+  }
+
+  /** PR-9 composer: liveRemote + pending for dry-run dedupe (zero adapter I/O). */
+  async loadComposerDedupeContext(sourceType: string, sourceId: string, channel: string) {
+    const [liveRemote, pendingCreates] = await Promise.all([
+      this.liveRemoteMessages(sourceType, sourceId, channel),
+      this.pendingCreateDestinationsForSource(sourceType, sourceId, channel),
+    ]);
+    return { liveRemote, pendingCreates };
+  }
+
+  /** PR-9 composer: daily CREATE counters for one destination. */
+  async composerCountersForDestination(destinationId: string, channel: string) {
+    return this.automationCountersForDestination(destinationId, channel);
+  }
+
+  /** PR-9 composer: raw settings blob for quiet/cap resolve (not the public status DTO). */
+  async loadComposerStoredSettings() {
+    return this.loadStoredSettings();
   }
 
   /** Enqueue DELETE deliveries (shared by withdraw + selective delete). */
@@ -1675,7 +1700,24 @@ export class OmnichannelService {
         'ارسال به پیام‌رسان خاموش است (OMNICHANNEL_CONNECTORS_ENABLED). ارسال دستی فقط به این پرچم نیاز دارد؛ انتشار خودکار جداست (OMNICHANNEL_AUTO_PUBLISH).',
       );
     }
-    const targets = dryRun ? [] : await this.manualPublishTargets(projection.channel, dto.destinationId);
+    const explicitIds = Array.isArray(dto.destinationIds)
+      ? [...new Set(dto.destinationIds.map((id) => String(id).trim()).filter(Boolean))]
+      : [];
+    if (!dryRun && isOmnichannelComposerStrictDestinations() && !dto.destinationId && explicitIds.length === 0) {
+      throw new BadRequestException('حداقل یک مقصد را از فهرست انتخاب کنید (هیچ مقصدی به‌صورت پیش‌فرض تیک نمی‌خورد)');
+    }
+    if (!dryRun && !dto.reason?.trim()) {
+      // Composer confirm requires reason; keep legacy single-dest canary soft when flag off.
+      if (isOmnichannelComposerStrictDestinations()) {
+        throw new BadRequestException('دلیل انتشار برای ارسال زنده الزامی است');
+      }
+    }
+    const targets = await this.manualPublishTargets(
+      projection.channel,
+      dto.destinationId,
+      explicitIds.length ? explicitIds : undefined,
+      { allowEmpty: dryRun },
+    );
     if (!dryRun && targets.length === 0) {
       throw new BadRequestException(
         'هیچ مقصد آماده‌ای برای این کانال نیست؛ یک مقصد canary یا مقصد تأییدشده با اجازهٔ ارسال لازم است',
@@ -1710,12 +1752,43 @@ export class OmnichannelService {
         );
       }
     }
-    const liveRemote = dryRun
-      ? []
-      : await this.liveRemoteMessages(String(projection.sourceType), sourceId, projection.channel);
-    const pendingCreates = dryRun
-      ? new Set<string>()
-      : await this.pendingCreateDestinationsForSource(String(projection.sourceType), sourceId, projection.channel);
+    // PR-9: dry-run also loads liveRemote for dedupe truth (zero adapter calls).
+    const liveRemote = await this.liveRemoteMessages(
+      String(projection.sourceType),
+      sourceId,
+      projection.channel,
+    );
+    const pendingCreates = await this.pendingCreateDestinationsForSource(
+      String(projection.sourceType),
+      sourceId,
+      projection.channel,
+    );
+    const sendMode = normalizeComposerSendMode(dto.sendMode);
+    const scheduledAt = parseComposerScheduledAt(dto.scheduledAt);
+    const availableAt = await this.resolveComposerAvailableAt({
+      sendMode,
+      scheduledAt,
+      channel: projection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL',
+      targets,
+    });
+    const composerPlan = await this.buildCreatePublicationComposerPlan({
+      targets,
+      liveRemote,
+      pendingCreates,
+      sendMode,
+      scheduledAt,
+      projection,
+      captionOverrides: dto.captionOverrides,
+    });
+    if (!dryRun) {
+      try {
+        assertComposerSendAllowed(composerPlan, sendMode);
+      } catch (err) {
+        throw new BadRequestException(
+          err instanceof Error ? err.message : 'ارسال در ساعت سکوت مجاز نیست',
+        );
+      }
+    }
     const plan = planManualDeliveries(
       targets.map((dest) => dest.id),
       liveRemote,
@@ -1795,11 +1868,15 @@ export class OmnichannelService {
         ) => {
           for (const target of planTargets) {
             const dest = destById.get(target.destinationId);
-            const rendered = await this.publicationPayloadFor(
+            let rendered = await this.publicationPayloadFor(
               projection,
               dest?.connectionId,
               target.destinationId,
             );
+            const override = dto.captionOverrides?.[target.destinationId];
+            if (typeof override === 'string' && override.trim()) {
+              rendered = { ...rendered, text: override.trim().slice(0, 4096) };
+            }
             await this.enqueueDeliveries(manager, {
               publicationId: row.id,
               channel: projection.channel,
@@ -1808,6 +1885,7 @@ export class OmnichannelService {
               targets: [target],
               auto: false,
               sourceType: gatewaySource,
+              availableAt: availableAt || undefined,
             });
           }
         };
@@ -1829,6 +1907,7 @@ export class OmnichannelService {
             destinationIds: targets.map((dest) => dest.id),
             createCount: plan.creates.length,
             updateCount: plan.updates.length,
+            sendMode,
             ...(String(projection.sourceType) === FREE_POST_SOURCE_TYPE
               ? { hasMedia: Boolean((projection as { mediaUrl?: string | null }).mediaUrl), gateway: 'publication.deliver.requested' }
               : {}),
@@ -1843,22 +1922,25 @@ export class OmnichannelService {
       destinationIds: targets.map((dest) => dest.id),
       createCount: plan.creates.length,
       updateCount: plan.updates.length,
+      plan: composerPlan,
     };
   }
 
   /**
-   * Manual publish targets: an explicit destination (canary or verified), otherwise the same set
-   * automation would use — canary only unless automation is LIVE.
+   * Manual targets: explicit destinationId(s) if requested; otherwise every canary or verified
+   * destination on ACTIVE bots (independent of each bot's autoPublishMode).
+   * PR-9: destinationIds[] preferred; allowEmpty for dry-run with no destinations selected.
    */
-  /**
-   * Manual targets: one destination if requested; otherwise every canary or verified destination
-   * on ACTIVE bots (independent of each bot's autoPublishMode).
-   */
-  private async manualPublishTargets(channel: string, destinationId?: string) {
+  private async manualPublishTargets(
+    channel: string,
+    destinationId?: string,
+    destinationIds?: string[],
+    opts?: { allowEmpty?: boolean },
+  ) {
     const dests = await this.destinations.find({ where: { enabled: true } });
     const conns = await this.connections.find();
-    if (destinationId) {
-      const dest = dests.find((row) => row.id === destinationId);
+    const pickOne = async (id: string) => {
+      const dest = dests.find((row) => row.id === id);
       if (!dest) throw new NotFoundException('مقصد یافت نشد یا غیرفعال است');
       const conn = conns.find((row) => row.id === dest.connectionId);
       if (!conn || !isOmnichannelProvider(conn.provider) || conn.channel !== channel) {
@@ -1868,9 +1950,109 @@ export class OmnichannelService {
       if (!isCanarySettings(dest.settings) && !destinationCanPost(dest.settings)) {
         throw new BadRequestException('این مقصد هنوز بررسی نشده؛ اول «بررسی دسترسی ربات» را بزنید');
       }
-      return [dest];
+      return dest;
+    };
+    if (destinationIds?.length) {
+      const out = [];
+      for (const id of destinationIds) out.push(await pickOne(id));
+      return out;
     }
+    if (destinationId) return [await pickOne(destinationId)];
+    if (opts?.allowEmpty) return [];
     return selectAutomationDestinations(dests, conns, channel, 'LIVE');
+  }
+
+  private async buildCreatePublicationComposerPlan(input: {
+    targets: Array<{ id: string; connectionId: string }>;
+    liveRemote: Array<{ publicationId: string; destinationId: string; providerMessageId: string }>;
+    pendingCreates: ReadonlySet<string>;
+    sendMode: ComposerSendMode;
+    scheduledAt: Date | null;
+    projection: Record<string, unknown>;
+    captionOverrides?: Record<string, string>;
+  }) {
+    if (!input.targets.length) {
+      return buildComposerPlan({
+        destinations: [],
+        liveRemote: input.liveRemote,
+        pendingCreates: input.pendingCreates,
+        sendMode: input.sendMode,
+        scheduledAt: input.scheduledAt,
+      });
+    }
+    const channel = input.projection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    const conns = await this.connections.find();
+    const connById = new Map(conns.map((c) => [c.id, c]));
+    const global = await this.loadStoredSettings();
+    const metas = [];
+    for (const dest of input.targets) {
+      const conn = connById.get(dest.connectionId);
+      const destRow = await this.destinations.findOne({ where: { id: dest.id } });
+      const resolved = destRow
+        ? resolveDestinationPublishSettings(
+          destRow.publishSettings,
+          conn?.publishSettings,
+          global,
+          channel,
+        )
+        : null;
+      const counters = await this.automationCountersForDestination(dest.id, channel);
+      let renderedPreview = '';
+      try {
+        const rendered = await this.publicationPayloadFor(
+          input.projection,
+          dest.connectionId,
+          dest.id,
+        );
+        const override = input.captionOverrides?.[dest.id];
+        renderedPreview = typeof override === 'string' && override.trim()
+          ? override.trim().slice(0, 4096)
+          : String(rendered.text || '').slice(0, 4096);
+      } catch {
+        renderedPreview = '';
+      }
+      metas.push({
+        destinationId: dest.id,
+        channel,
+        provider: conn && isOmnichannelProvider(conn.provider) ? conn.provider : 'TELEGRAM',
+        renderedPreview,
+        quietStartHour: resolved?.automation.quietStartHour ?? null,
+        quietEndHour: resolved?.automation.quietEndHour ?? null,
+        sentToday: counters.sentToday,
+        dailyCap: resolved?.automation.dailyCap ?? 10,
+        lastScheduledAt: counters.lastScheduledAt,
+        minGapSeconds: resolved?.automation.minGapSeconds ?? 0,
+      });
+    }
+    return buildComposerPlan({
+      destinations: metas,
+      liveRemote: input.liveRemote,
+      pendingCreates: input.pendingCreates,
+      sendMode: input.sendMode,
+      scheduledAt: input.scheduledAt,
+    });
+  }
+
+  private async resolveComposerAvailableAt(input: {
+    sendMode: ComposerSendMode;
+    scheduledAt: Date | null;
+    channel: 'RETAIL' | 'WHOLESALE';
+    targets: Array<{ id: string; connectionId: string }>;
+  }): Promise<Date | null> {
+    if (input.sendMode === 'scheduled' && input.scheduledAt) {
+      return input.scheduledAt;
+    }
+    if (input.sendMode === 'now') return null;
+    // next_slot: use tightest deferred slot across targets (gap + quiet).
+    if (!input.targets.length) return null;
+    let latest: Date | null = null;
+    const now = new Date();
+    for (const dest of input.targets) {
+      const slot = await this.nextCreateAvailableAt(dest.id, now);
+      if (!latest || slot.availableAt > latest) latest = slot.availableAt;
+    }
+    if (latest && latest.getTime() > now.getTime() + 1000) return latest;
+    return null;
   }
 
   /** Cap / gap / mode for destinations (tightest daily room if several). */
@@ -3742,4 +3924,15 @@ export class OmnichannelService {
       chosen,
     });
   }
+}
+
+function normalizeComposerSendMode(value: unknown): ComposerSendMode {
+  if (value === 'now' || value === 'scheduled' || value === 'next_slot') return value;
+  return 'next_slot';
+}
+
+function parseComposerScheduledAt(raw: unknown): Date | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const d = new Date(raw);
+  return Number.isFinite(d.getTime()) ? d : null;
 }

@@ -57,6 +57,8 @@ src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts
 src/modules/omnichannel/provider-message-ids.spec.ts
 src/modules/omnichannel/coverage-matrix.spec.ts
 src/modules/omnichannel/services/omnichannel-coverage.service.spec.ts
+src/modules/omnichannel/composer-plan.spec.ts
+src/modules/omnichannel/services/omnichannel-composer.service.spec.ts
 src/modules/omnichannel/services/omnichannel-delete.service.spec.ts
 src/modules/omnichannel/services/omnichannel-edit.service.spec.ts
 src/database/migrations/20261028-003-omnichannel-post-backup.spec.ts

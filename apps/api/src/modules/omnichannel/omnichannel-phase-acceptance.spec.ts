@@ -309,4 +309,18 @@ assert(db.includes('OmnichannelMediaAssetEntity'), 'media registry on runtime Ty
   assert(adminOmni.includes('AdminOmnichannelCoverage') || adminOmni.includes('پوشش و تکرار'), 'admin coverage tab mount');
 }
 
+/* --- PR-9 composer (wizard behind flag; dry-run loads liveRemote, zero adapters) --- */
+{
+  const composerPlan = src('modules/omnichannel/composer-plan.ts');
+  const composerSvc = src('modules/omnichannel/services/omnichannel-composer.service.ts');
+  const constants = src('modules/omnichannel/omnichannel.constants.ts');
+  assert(omniAdmin.includes("Get('composer/products')") && omniAdmin.includes("Post('composer/plan')"), 'composer routes');
+  assert(omniAdmin.includes('composerUi') && constants.includes('OMNICHANNEL_COMPOSER_UI'), 'composer UI flag default-gated');
+  assert(composerPlan.includes('buildComposerPlan') && composerPlan.includes('pending_create'), 'pure plan CREATE/UPDATE/SKIP');
+  assert(composerSvc.includes('loadComposerDedupeContext') && !composerSvc.includes('TelegramAdapter'), 'plan loads liveRemote without adapters');
+  assert(omniSvc.includes('plan: composerPlan') && omniSvc.includes('liveRemote = await this.liveRemoteMessages'), 'createPublication dry-run returns plan with liveRemote');
+  assert(adminOmni.includes('AdminOmnichannelComposer') || adminOmni.includes('انتشار جدید'), 'admin composer tab mount');
+  assert(!composerPlan.includes('TELEGRAM_API_URL') && !composerSvc.includes('TELEGRAM_API_URL'), 'no PR-12 egress in composer');
+}
+
 console.log('omnichannel-phase-acceptance.spec.ts: ok');

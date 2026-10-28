@@ -56,6 +56,12 @@ assert(roleMeetsMinimum('VIEWER', 'VIEWER') === true, 'coverage GET role VIEWER 
 assert(roleMeetsMinimum('VIEWER', 'PUBLISHER') === false, 'viewer cannot absence-reason write');
 assert(roleMeetsMinimum('PUBLISHER', 'OWNER') === false, 'publisher cannot oop reconcile');
 assert(roleMeetsMinimum('OWNER', 'OWNER') === true, 'owner can oop reconcile');
+assert(roleMeetsMinimum('PUBLISHER', 'PUBLISHER') === true, 'composer/plan → PUBLISHER');
+assert(roleMeetsMinimum('VIEWER', 'PUBLISHER') === false, 'viewer cannot composer/plan');
+assert(
+  actionRequiresGoRef('publications_requeue_by_category_live') === true,
+  'composer bulk requeue live → OWNER+goRef',
+);
 
 try {
   assertGoRefPresent('  ');

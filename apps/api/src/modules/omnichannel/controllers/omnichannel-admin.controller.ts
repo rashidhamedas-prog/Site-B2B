@@ -17,10 +17,12 @@ import { OmnichannelDeleteService } from '../services/omnichannel-delete.service
 import { OmnichannelEditService } from '../services/omnichannel-edit.service';
 import { OmnichannelHealthService } from '../services/omnichannel-health';
 import { OmnichannelCoverageService } from '../services/omnichannel-coverage.service';
+import { OmnichannelComposerService } from '../services/omnichannel-composer.service';
 import {
   ActorReasonDto,
   ClearWaitingOutboxDto,
   ReviveConnectorDisabledDto,
+  ComposerPlanDto,
   CreateConnectionDto,
   CreateDestinationDto,
   CreatePublicationDto,
@@ -51,6 +53,7 @@ import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import {
   areOmnichannelConnectorsEnabled,
   isOmnichannelAutoPublishEnabled,
+  isOmnichannelComposerUiEnabled,
   isOmnichannelCoverageUiEnabled,
   isOmnichannelFreePostEnabled,
 } from '../omnichannel.constants';
@@ -74,6 +77,7 @@ export class OmnichannelAdminController {
     private readonly edits: OmnichannelEditService,
     private readonly health: OmnichannelHealthService,
     private readonly coverage: OmnichannelCoverageService,
+    private readonly composer: OmnichannelComposerService,
   ) {}
 
   @Get('health')
@@ -99,7 +103,9 @@ export class OmnichannelAdminController {
       freePost: isOmnichannelFreePostEnabled(),
       /** PR-8 coverage matrix tab. Default false until staging validate. */
       coverageUi: isOmnichannelCoverageUiEnabled(),
-      phase: 8,
+      /** PR-9 composer wizard tab. Default false until validated. */
+      composerUi: isOmnichannelComposerUiEnabled(),
+      phase: 9,
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
       outbox,
@@ -336,6 +342,25 @@ export class OmnichannelAdminController {
   preview(@Body() body: PreviewDto) {
     assertNoPlaintextSecrets(body);
     return this.svc.preview(body);
+  }
+
+  @Get('composer/products')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'جستجوی محصول برای ویزارد انتشار (حداکثر ۲۰)' })
+  composerProducts(
+    @Query('q') q?: string,
+    @Query('channel') channel?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.composer.searchProducts({ q, channel, limit });
+  }
+
+  @Post('composer/plan')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'برنامه خشک انتشار (dedupe از liveRemote؛ بدون adapter)' })
+  composerPlan(@Body() body: ComposerPlanDto) {
+    assertNoPlaintextSecrets(body);
+    return this.composer.plan(body);
   }
 
   @Post('publications')

@@ -1,4 +1,11 @@
-﻿## 2026-10-28T13:30:00Z — PR-8 Coverage matrix (implement + PR open)
+﻿## 2026-10-28T17:45:00Z — PR-9 Composer (implement + PR open)
+
+- Branch `feat/omnichannel-pr9-composer` worktree `D:/proje/Site-B2B-pr9` from `origin/master` @ 9e0db80d (PR-8 #138).
+- Delivered: `composer-plan` + composer service/routes, createPublication plan/dedupe on dry-run, wizard UI behind `OMNICHANNEL_COMPOSER_UI=false`, coverage deep-link, plan doc committed, no migration.
+- Hard stops: no PR-12/14, no FORCE, no live mass send, no connector enable, no merge/deploy.
+- Next: unit specs + tsc → push PR; owner GO for merge; optional Iran UI flag + Bale 4858359991 smoke.
+
+## 2026-10-28T13:30:00Z — PR-8 Coverage matrix (implement + PR open)
 
 - Branch `feat/omnichannel-pr8-coverage-matrix` worktree `D:/proje/Site-B2B-pr8` from `origin/master` @ 5ebb10c8 (includes PR-7).
 - Delivered: coverage-matrix pure+spec, coverage service+routes+RBAC, absence migration, UI tab behind `OMNICHANNEL_COVERAGE_UI`, audits `?source=`, WORKLOG+report.

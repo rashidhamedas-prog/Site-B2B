@@ -124,6 +124,8 @@ export type Status = {
   freePost?: boolean;
   /** OMNICHANNEL_COVERAGE_UI. Coverage matrix tab when true. */
   coverageUi?: boolean;
+  /** OMNICHANNEL_COMPOSER_UI. Composer wizard tab when true. */
+  composerUi?: boolean;
   phase: number;
   retailCanaryLimit: number;
   wholesaleCanaryLimit: number;
