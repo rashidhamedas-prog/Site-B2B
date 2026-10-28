@@ -20,6 +20,7 @@ import { PublicationEntity } from '../entities/publication.entity';
 import { OutboxEventEntity } from '../entities/outbox-event.entity';
 import { FREE_POST_SOURCE_TYPE } from '../free-post';
 import { areOmnichannelConnectorsEnabled } from '../omnichannel.constants';
+import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import {
   DELETE_EDIT_DISABLED_MESSAGE,
   assertDeleteEditEnabled,
@@ -240,6 +241,12 @@ export class OmnichannelDeleteService {
     let remoteDeletes = 0;
     const backupIds: string[] = [];
     const live = await this.omni.listLiveRemoteMessages(row.sourceType, row.sourceId, row.channel);
+    const deleteTargets: Array<{
+      destinationId: string;
+      providerMessageId?: string;
+      publicationId?: string;
+      createDeliveryId?: string;
+    }> = [];
 
     for (const msg of live) {
       const createRow = await this.findSucceededCreate(msg.publicationId, msg.destinationId, msg.providerMessageId);
@@ -258,18 +265,20 @@ export class OmnichannelDeleteService {
         goRef: normalizedGoRef || null,
       });
       backupIds.push(backup.id);
+      deleteTargets.push({
+        destinationId: msg.destinationId,
+        providerMessageId: msg.providerMessageId,
+        publicationId: msg.publicationId,
+        createDeliveryId: createRow.id,
+      });
     }
 
-    if (areOmnichannelConnectorsEnabled() && live.length) {
+    if (areOmnichannelConnectorsEnabled() && deleteTargets.length) {
       remoteDeletes = await this.omni.enqueueRemoteDeletes({
         publicationId: row.id,
         channel: row.channel,
         sourceType: row.sourceType === FREE_POST_SOURCE_TYPE ? FREE_POST_SOURCE_TYPE : undefined,
-        targets: live.map((msg) => ({
-          destinationId: msg.destinationId,
-          providerMessageId: msg.providerMessageId,
-          publicationId: msg.publicationId,
-        })),
+        targets: deleteTargets,
       });
     }
 
@@ -440,6 +449,13 @@ export class OmnichannelDeleteService {
     actorId: string;
     goRef: string | null;
   }) {
+    // Never persist bot tokens / query secrets in backup snapshots.
+    assertNoPlaintextSecrets({
+      caption: input.caption,
+      mediaUrls: input.mediaUrls,
+      reason: input.reason,
+      goRef: input.goRef,
+    });
     return this.backups.save(
       this.backups.create({
         deliveryId: input.delivery.id,
