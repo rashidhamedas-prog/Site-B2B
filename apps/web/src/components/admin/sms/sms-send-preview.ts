@@ -1,5 +1,23 @@
 /** Segment preview request/response helpers (no React). */
 
+/** Debounce for live segment preview requests. */
+export const PREVIEW_DEBOUNCE_MS = 400;
+
+export type CitySegmentRule = { field: 'city'; op: 'in'; value: string[] };
+
+export function canEditUnitPrice(role: string | null | undefined): boolean {
+  return role === 'ADMIN' || role === 'SMS_MANAGER';
+}
+
+/** Empty input → null. Invalid / negative → null (server rejects negatives). */
+export function parseUnitPriceInput(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.floor(n);
+}
+
 export type SegmentPreviewFunnel = {
   total: number;
   duplicates: number;
@@ -16,8 +34,15 @@ export type SegmentPreviewFunnel = {
   unitPricePerPart?: number | null;
 };
 
+/** Same city rule the wizard uses when creating a campaign. */
+export function buildCitySegmentRules(city: string): CitySegmentRule[] {
+  const trimmed = city.trim();
+  return trimmed ? [{ field: 'city', op: 'in', value: [trimmed] }] : [];
+}
+
 export function priceCaption(unitPricePerPart: number | null | undefined): string {
-  return unitPricePerPart == null ? 'قیمت تنظیم نشده' : '';
+  if (unitPricePerPart == null) return 'قیمت تنظیم نشده';
+  return `${Math.floor(unitPricePerPart).toLocaleString('fa-IR')} ریال`;
 }
 
 /** Request body for segment preview — always send footer-applied previewBody as `text`. */
@@ -25,12 +50,13 @@ export function buildSegmentPreviewPayload(
   sources: string[],
   previewBody: string,
   messageClass: string,
+  rules: CitySegmentRule[] = [],
 ) {
   return {
     sources,
     text: previewBody,
     messageClass,
-    rules: [] as unknown[],
+    rules,
   };
 }
 

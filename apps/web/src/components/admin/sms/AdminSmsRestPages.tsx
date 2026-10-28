@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api';
+import { getRole } from '@/lib/auth';
 import { ensureOptOutFooter } from './sms-parts';
 import { PartCounter } from './PartCounter';
 import { insertVariable, isTemplateVar } from './template-vars';
 import { VariableChips } from './VariableChips';
+import { canEditUnitPrice, parseUnitPriceInput, priceCaption } from './sms-send-ui';
 import { PhonePreview, SmsClassBadge, SmsSection, SmsStatusBadge } from './sms-ui';
 
 export function AdminSmsTemplates() {
@@ -342,11 +344,15 @@ export function AdminSmsAudit() {
 export function AdminSmsSettings() {
   const [s, setS] = useState<any>(null);
   const [probe, setProbe] = useState<string | null>(null);
+  const role = typeof window !== 'undefined' ? getRole() : null;
+  const allowUnitPrice = canEditUnitPrice(role);
   const load = () => apiClient.get('/admin/sms/settings').then(setS).catch(() => undefined);
   useEffect(() => {
     load();
   }, []);
   if (!s) return <div className="h-32 animate-pulse rounded-2xl bg-gray-100" aria-busy="true" />;
+  const unitPriceValue =
+    s.unitPricePerPart == null || s.unitPricePerPart === '' ? '' : String(s.unitPricePerPart);
   return (
     <SmsSection title="تنظیمات پنل پیامک">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -374,6 +380,28 @@ export function AdminSmsSettings() {
             value={s.creditWarnThreshold}
             onChange={(e) => setS({ ...s, creditWarnThreshold: Number(e.target.value) })}
           />
+        </label>
+        <label className="text-sm">
+          قیمت هر پارت (ریال)
+          <input
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            disabled={!allowUnitPrice}
+            placeholder="خالی = تنظیم‌نشده"
+            className="mt-1 w-full rounded-lg border px-3 py-2 disabled:bg-gray-50"
+            value={unitPriceValue}
+            onChange={(e) =>
+              setS({
+                ...s,
+                unitPricePerPart: parseUnitPriceInput(e.target.value),
+              })
+            }
+          />
+          <span className="mt-1 block text-xs text-gray-500" role="status">
+            {priceCaption(s.unitPricePerPart ?? null)}
+          </span>
         </label>
         <label className="text-sm">
           شماره‌های تست (با ویرگول، حداکثر ۵)

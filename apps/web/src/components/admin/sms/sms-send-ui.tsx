@@ -1,21 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { normalizeTypedCount } from './sms-parts';
 import {
+  PREVIEW_DEBOUNCE_MS,
+  buildCitySegmentRules,
   buildSegmentPreviewPayload,
   consumeSegmentPreviewFunnel,
   formatRecipientPreviewStatus,
   priceCaption,
+  type CitySegmentRule,
   type SegmentPreviewFunnel,
 } from './sms-send-preview';
 
 export {
+  PREVIEW_DEBOUNCE_MS,
+  buildCitySegmentRules,
   buildSegmentPreviewPayload,
+  canEditUnitPrice,
   consumeSegmentPreviewFunnel,
   formatRecipientPreviewStatus,
+  parseUnitPriceInput,
   priceCaption,
+  type CitySegmentRule,
   type SegmentPreviewFunnel,
 } from './sms-send-preview';
 
@@ -80,14 +88,17 @@ export function RecipientPreviewPanel({
   sources,
   previewBody,
   messageClass,
+  rules = [],
 }: {
   sources: string[];
   previewBody: string;
   messageClass: string;
+  rules?: CitySegmentRule[];
 }) {
   const [status, setStatus] = useState('مخاطبی انتخاب نشده');
   const [tone, setTone] = useState<'ok' | 'warn' | 'error'>('ok');
   const [funnel, setFunnel] = useState<SegmentPreviewFunnel | null>(null);
+  const rulesKey = useMemo(() => JSON.stringify(rules), [rules]);
 
   useEffect(() => {
     if (!sources.length) {
@@ -97,10 +108,11 @@ export function RecipientPreviewPanel({
       return;
     }
     const timer = window.setTimeout(() => {
+      const parsedRules = JSON.parse(rulesKey) as CitySegmentRule[];
       apiClient
         .post<Partial<SegmentPreviewFunnel>>(
           '/admin/sms/segments/preview',
-          buildSegmentPreviewPayload(sources, previewBody, messageClass),
+          buildSegmentPreviewPayload(sources, previewBody, messageClass, parsedRules),
         )
         .then((row) => {
           const next = consumeSegmentPreviewFunnel(row);
@@ -114,9 +126,9 @@ export function RecipientPreviewPanel({
           setStatus('پیش‌نمایش در دسترس نیست');
           setTone('error');
         });
-    }, 400);
+    }, PREVIEW_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [sources, previewBody, messageClass]);
+  }, [sources, previewBody, messageClass, rulesKey]);
 
   const className =
     tone === 'error'

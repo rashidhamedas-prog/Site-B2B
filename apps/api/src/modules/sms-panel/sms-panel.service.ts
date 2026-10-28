@@ -43,9 +43,10 @@ import { previewAudience } from './audience/audience-preview';
 import { parseSegmentRules, SegmentRuleError } from './audience/segment-rules';
 import {
   bulkNeedsSecondApproval,
-  canEditUnitPrice,
   decideSingleSend,
+  decideUnitPricePatch,
   deferIfOutsideWindow,
+  priceCaption,
   scheduleOutsideWindow,
 } from './audience/send-audience';
 import {
@@ -193,14 +194,19 @@ export class SmsPanelService {
     ip?: string,
     actorRole?: string,
   ): Promise<SmsPanelSettings> {
-    if ('unitPricePerPart' in patch && actorRole && !canEditUnitPrice(actorRole)) {
-      throw new ForbiddenException({
-        message: 'تغییر قیمت واحد فقط برای مدیر پیامک و مدیر کل مجاز است',
-        code: 'SMS_FORBIDDEN',
-      });
-    }
     const cur = await this.getPanelSettings();
-    const next = resolveSmsPanelSettings({ ...cur, ...patch });
+    const merged: Partial<SmsPanelSettings> = { ...patch };
+    if ('unitPricePerPart' in patch) {
+      const decided = decideUnitPricePatch(actorRole, patch.unitPricePerPart);
+      if (decided.ok === false) {
+        if (decided.http === 403) {
+          throw new ForbiddenException({ message: decided.message, code: decided.code });
+        }
+        throw new BadRequestException({ message: decided.message, code: decided.code });
+      }
+      merged.unitPricePerPart = decided.value;
+    }
+    const next = resolveSmsPanelSettings({ ...cur, ...merged });
     await this.settings.set(SMS_PANEL_SETTINGS_KEY, next as unknown as Record<string, any>);
     await this.auditLog({
       actorId,
@@ -1192,7 +1198,7 @@ export class SmsPanelService {
       insufficient: estimatedParts > available,
       eligibleRows,
       unitPricePerPart: price,
-      priceCaption: price == null ? 'قیمت تنظیم نشده' : null,
+      priceCaption: priceCaption(price) || null,
     };
   }
 

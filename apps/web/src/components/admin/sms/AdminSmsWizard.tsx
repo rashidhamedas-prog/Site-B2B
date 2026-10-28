@@ -11,6 +11,7 @@ import {
   RecipientPreviewPanel,
   ScheduleField,
   SegmentBuilder,
+  buildCitySegmentRules,
   priceCaption,
 } from './sms-send-ui';
 import './sms-wizard.css';
@@ -38,6 +39,7 @@ export function AdminSmsWizard() {
   const [unitPrice, setUnitPrice] = useState<number | null>(null);
 
   const previewBody = useMemo(() => ensureOptOutFooter(body, messageClass), [body, messageClass]);
+  const cityRules = useMemo(() => buildCitySegmentRules(city), [city]);
 
   useEffect(() => {
     apiClient
@@ -52,9 +54,7 @@ export function AdminSmsWizard() {
     try {
       const list = await apiClient.post<any>('/admin/sms/lists', { name: `لیست ${name}` });
       await apiClient.post(`/admin/sms/lists/${list.id}/import`, { csv });
-      const rules = city.trim()
-        ? [{ field: 'city', op: 'in', value: [city.trim()] }]
-        : [];
+      const rules = cityRules;
       const camp = await apiClient.post<any>('/admin/sms/campaigns', {
         name,
         messageClass,
@@ -157,6 +157,7 @@ export function AdminSmsWizard() {
               sources={sources}
               previewBody={previewBody}
               messageClass={messageClass}
+              rules={cityRules}
             />
           </div>
           <textarea
