@@ -1,8 +1,10 @@
 import {
-  BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException,
+  BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, NotFoundException, forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, IsNull, Repository } from 'typeorm';
+import { OmnichannelDeleteService } from './omnichannel-delete.service';
+import type { DeleteEditActor } from '../omnichannel-delete-edit-rbac';
 import { ChannelProjectionService } from './channel-projection.service';
 import { canaryExceeded, canaryLimitFor } from '../../product/channel-projection';
 import { normalizeSalesChannel } from '../../product/channel-product-projection';
@@ -285,6 +287,8 @@ export class OmnichannelService {
     private readonly adapters: ChannelAdapterRegistry,
     private readonly outbox: OutboxService,
     private readonly tokenVault: OmnichannelTokenVaultService,
+    @Inject(forwardRef(() => OmnichannelDeleteService))
+    private readonly deleteService: OmnichannelDeleteService,
   ) {}
 
   private requireActor(actor?: Actor) {
@@ -326,6 +330,76 @@ export class OmnichannelService {
         payload,
       }),
     );
+  }
+
+  /** Public audit writer for delete/edit services (PR-7). */
+  async recordOmnichannelAudit(
+    actor: Actor | DeleteEditActor,
+    action: string,
+    entityType: string,
+    entityId: string,
+    channel: string | null,
+    reason?: string | null,
+    payload: Record<string, unknown> = {},
+  ) {
+    await this.audit(this.requireActor(actor), action, entityType, entityId, channel, reason, payload);
+  }
+
+  /** Live messenger posts for a source×channel (PR-7 withdraw/delete). */
+  async listLiveRemoteMessages(sourceType: string, sourceId: string, channel: string) {
+    return this.liveRemoteMessages(sourceType, sourceId, channel);
+  }
+
+  /** Enqueue DELETE deliveries (shared by withdraw + selective delete). */
+  async enqueueRemoteDeletes(input: {
+    publicationId: string;
+    channel: string;
+    sourceType?: string;
+    targets: Array<{
+      destinationId: string;
+      providerMessageId?: string;
+      publicationId?: string;
+      createDeliveryId?: string;
+    }>;
+  }): Promise<number> {
+    return this.enqueueDeliveries(this.publications.manager, {
+      publicationId: input.publicationId,
+      channel: input.channel,
+      action: 'DELETE',
+      rendered: null,
+      targets: input.targets,
+      auto: false,
+      sourceType: input.sourceType,
+    });
+  }
+
+  /** Enqueue UPDATE deliveries (admin edit/revert). */
+  async enqueueRemoteUpdates(input: {
+    publicationId: string;
+    channel: string;
+    sourceType?: string;
+    rendered: RenderedPublication;
+    targets: Array<{ destinationId: string; providerMessageId?: string; publicationId?: string }>;
+  }): Promise<number> {
+    return this.enqueueDeliveries(this.publications.manager, {
+      publicationId: input.publicationId,
+      channel: input.channel,
+      action: 'UPDATE',
+      rendered: input.rendered,
+      targets: input.targets,
+      auto: false,
+      sourceType: input.sourceType,
+    });
+  }
+
+  /** Worker hook after remote DELETE succeeds (PR-7 delivery WITHDRAWN + delivery_messages). */
+  async onRemoteDeleteSucceeded(opts: {
+    publicationId: string;
+    destinationId: string;
+    providerMessageId?: string | null;
+    createDeliveryId?: string | null;
+  }): Promise<void> {
+    await this.deleteService.onDeleteSucceeded(opts);
   }
 
   async listConnections() {
@@ -1915,37 +1989,8 @@ export class OmnichannelService {
 
   async withdraw(id: string, actor?: Actor, reason?: string, goRef?: string | null) {
     const who = this.requireActor(actor);
-    const row = await this.publications.findOne({ where: { id } });
-    if (!row) throw new NotFoundException('انتشار یافت نشد');
-    row.status = 'WITHDRAWN';
-    const saved = await this.publications.save(row);
-    // Sibling rows for the same source×channel (legacy duplicates) also leave the channel.
-    await this.publications.update(
-      { sourceType: row.sourceType, sourceId: row.sourceId, channel: row.channel },
-      { status: 'WITHDRAWN' },
-    );
-    let remoteDeletes = 0;
-    if (areOmnichannelConnectorsEnabled()) {
-      // Delete every live messenger post for this product/channel — not only this publication id.
-      const live = await this.liveRemoteMessages(row.sourceType, row.sourceId, row.channel);
-      if (live.length) {
-        remoteDeletes = await this.enqueueDeliveries(this.publications.manager, {
-          publicationId: row.id,
-          channel: row.channel,
-          action: 'DELETE',
-          rendered: null,
-          targets: live.map((msg) => ({
-            destinationId: msg.destinationId,
-            providerMessageId: msg.providerMessageId,
-            publicationId: msg.publicationId,
-          })),
-          auto: false,
-          sourceType: row.sourceType === FREE_POST_SOURCE_TYPE ? FREE_POST_SOURCE_TYPE : undefined,
-        });
-      }
-    }
-    await this.audit(who, 'withdraw', 'PUBLICATION', saved.id, row.channel, reason, { remoteDeletes }, { goRef });
-    return saved;
+    // PR-7: backup-before-delete + shared DELETE enqueue (Owner+goRef when RBAC on / PR-6).
+    return this.deleteService.withdrawPublication(id, who, reason, goRef);
   }
 
   /**
@@ -3217,7 +3262,12 @@ export class OmnichannelService {
       channel: string;
       action: 'CREATE' | 'UPDATE' | 'DELETE';
       rendered: RenderedPublication | null;
-      targets: Array<{ destinationId: string; providerMessageId?: string; publicationId?: string }>;
+      targets: Array<{
+        destinationId: string;
+        providerMessageId?: string;
+        publicationId?: string;
+        createDeliveryId?: string;
+      }>;
       auto: boolean;
       availableAt?: Date;
       /** Set only for FREE_POST so the worker can audit after the shared adapter send. */
@@ -3242,7 +3292,12 @@ export class OmnichannelService {
       availableAt?: Date;
       sourceType?: string;
     },
-    target: { destinationId: string; providerMessageId?: string; publicationId?: string },
+    target: {
+      destinationId: string;
+      providerMessageId?: string;
+      publicationId?: string;
+      createDeliveryId?: string;
+    },
     allowConvert: boolean,
   ): Promise<number> {
     return manager.transaction(async (tx) => {
@@ -3494,7 +3549,7 @@ export class OmnichannelService {
       rendered: RenderedPublication | null;
       sourceType?: string;
     },
-    target: { destinationId: string; providerMessageId?: string },
+    target: { destinationId: string; providerMessageId?: string; createDeliveryId?: string },
     publicationId: string,
     sourceType: string,
   ): Record<string, unknown> {
@@ -3505,6 +3560,7 @@ export class OmnichannelService {
       channel: input.channel,
       auto: input.auto,
       ...(target.providerMessageId ? { providerMessageId: target.providerMessageId } : {}),
+      ...(target.createDeliveryId ? { createDeliveryId: target.createDeliveryId } : {}),
       ...(sourceType === FREE_POST_SOURCE_TYPE || input.sourceType === FREE_POST_SOURCE_TYPE
         ? { sourceType: FREE_POST_SOURCE_TYPE }
         : {}),

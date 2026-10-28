@@ -21,6 +21,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-28T12:15:00Z — PR-7 Delete/Edit + backup (implementer)
+
+- Reclaimed stale TASK-20260826-001 claims for this slice only: `omnichannel.service.ts`, `omnichannel-admin.controller.ts`, `outbox-worker.service.ts`, `omnichannel.constants.ts`, `omnichannel.module.ts`, `publication-automation.ts`, `omnichannel-phase-acceptance.spec.ts`, `unit-specs.txt`, `WORKLOG.md`, `.env.example`.
+- Branch `feat/omnichannel-pr7-delete-edit-backup` worktree `D:/proje/Site-B2B-pr7` from `origin/master` (PR-6 #129 still open — note Owner+goRef dependency).
+- NEW: migration `20261028-003`, post_backup + delivery_message entities, delete/edit services, provider-message-ids helper, specs, plan doc, report.
+- Hard stops: no connector enable, no PR-12/egress, no live canary delete, no FORCE/SKIP_DRAIN, no merge/deploy.
+- Next: unit specs + tsc → push PR to master; owner Iran DB backup before migration; rebase after #129.
+
 ## 2026-10-27T16:45:00Z — PR-1 Health read-only committed (no push/deploy)
 
 - Branch `feat/omnichannel-health-readonly` commit `54a017ff` (base drain-resume `90b30634`).

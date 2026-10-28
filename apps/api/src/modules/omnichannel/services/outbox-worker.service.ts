@@ -623,7 +623,13 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       await adapter.delete(input);
       const deletedPublicationId = String(payload.publicationId || '');
       if (deletedPublicationId) {
-        await this.omnichannel.supersedeCreatesAfterDelete(deletedPublicationId, destinationId);
+        // PR-7: supersede + mark CREATE WITHDRAWN + delivery_messages.deletedAt
+        await this.omnichannel.onRemoteDeleteSucceeded({
+          publicationId: deletedPublicationId,
+          destinationId,
+          providerMessageId: String(payload.providerMessageId || input.providerMessageId || ''),
+          createDeliveryId: payload.createDeliveryId ? String(payload.createDeliveryId) : null,
+        });
       }
     } else {
       try {

@@ -1,3 +1,9 @@
+## 2026-10-28 — Omnichannel PR-7 Delete/Edit + backup (بدون merge/deploy)
+
+- جداول `omnichannel_post_backups` + `omnichannel_delivery_messages` (migration `20261028-003`)؛ مسیرهای delete-plan / messages/delete / edit / revert؛ withdraw با backup قبل از DELETE؛ وضعیت delivery `WITHDRAWN` بعد از حذف موفق.
+- پرچم `OMNICHANNEL_DELETE_EDIT_ENABLED` پیش‌فرض خاموش. Owner+goRef وقتی `OMNICHANNEL_RBAC_ENABLED` (وابسته به PR-6 #129 برای ماتریس کامل نقش).
+- شاخه `feat/omnichannel-pr7-delete-edit-backup` / PR #130. طرح: `docs/design/omnichannel-redesign/pr7-delete-edit-backup-plan.md`. قبل از migration روی ایران: `scripts/backup-postgres.sh`. Canary حذف زنده فقط Bale **4858359991** (مالک). Merge/deploy فقط با GO حامد.
+
 ## 2026-10-28 — Omnichannel PR-6 (Audit + roles)
 
 - Audit: ستون‌های `goRef`/`source`، نقش `users.omnichannelRole`، تریگر append-only (`20261028-002-omnichannel-audit-rbac`)؛ audit برای CRUDهای بی‌صدای connection/destination/template/media.

@@ -170,6 +170,35 @@ assert(
     && workerSrc.includes('publication deliver missing destination'),
   'publish silence fix: requeue reopens withdrawn; worker fails missing dest',
 );
+{
+  const constants = src('modules/omnichannel/omnichannel.constants.ts');
+  assert(
+    constants.includes("'WITHDRAWN'")
+      && /DELIVERY_STATUSES[\s\S]*WITHDRAWN/.test(constants),
+    'PR-7 delivery status WITHDRAWN',
+  );
+  assert(
+    omniAdmin.includes('deliveries/:deliveryId/delete-plan')
+      && omniAdmin.includes('deliveries/:deliveryId/messages/delete')
+      && omniAdmin.includes('deliveries/:deliveryId/edit')
+      && omniAdmin.includes('deliveries/:deliveryId/revert'),
+    'PR-7 delete-plan / delete / edit / revert routes',
+  );
+  assert(
+    omniSvc.includes('onRemoteDeleteSucceeded')
+      && workerSrc.includes('onRemoteDeleteSucceeded'),
+    'PR-7 worker marks WITHDRAWN after DELETE',
+  );
+  assert(
+    src('modules/omnichannel/services/omnichannel-delete.service.ts').includes('withdrawPublication')
+      && omniSvc.includes('deleteService.withdrawPublication'),
+    'PR-7 withdraw reuses backup+delete pipeline',
+  );
+  assert(
+    src('database/migrations/20261028-003-omnichannel-post-backup.ts').includes('omnichannel_post_backups'),
+    'PR-7 post_backup migration',
+  );
+}
 assert(
   src('modules/omnichannel/publication-automation.ts').includes('Orphan heal'),
   'stock_changed heals orphan DRAFT under OOS DELETE',
