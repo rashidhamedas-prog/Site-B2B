@@ -1,3 +1,11 @@
+## 2026-10-29T21:15:00Z — PR-14 Order bots CODE (implementer)
+
+- Claimed `TASK-20261029-omni-pr14-order-bots` on branch `ai/TASK-20261029-pr14-order-bots` worktree `D:/proje/Site-B2B-pr14` from `origin/master` @ ≥ ab4019b0 (tip includes #148).
+- Soft-reclaimed stale PR-8 holds on shared controller/module/AdminOmnichannel/constants (PR-8 already merged to master).
+- Delivered: mig `20261030-001`, bots/* pure+specs, inbound/inbox/poller, webhook controller, admin inbox routes, UI tab flag OFF, test-owner-chat enabled when ownerChatId+goRef set.
+- Hard stops: bots env default OFF; no connector enable; no Telegram egress; no canary remap `4858359991`; no FORCE/SKIP_DRAIN; no invent IDs; no SMS; no deploy.
+- Next: unit specs + tsc → push PR to master; Owner merge/migrate/smoke GO separate. Bots stay OFF.
+
 ## 2026-10-29T22:40:00Z — PR-13 Unanswered alert (implement + PR open)
 
 - GO حامد ۲۹ اکتبر ۲۰۲۶ — implement + open PR; **no merge/deploy**.

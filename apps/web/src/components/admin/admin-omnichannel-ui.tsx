@@ -140,6 +140,8 @@ export type Status = {
   omnichannelRole?: 'VIEWER' | 'PUBLISHER' | 'OWNER' | null;
   /** OMNICHANNEL_UNANSWERED_ALERTS_UI. Unanswered alerts tab when true. */
   unansweredAlertsUi?: boolean;
+  /** PR-14 order-bot inbox. Default false. */
+  orderBotUi?: boolean;
   phase: number;
   retailCanaryLimit: number;
   wholesaleCanaryLimit: number;

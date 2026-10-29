@@ -391,4 +391,59 @@ export class BaleAdapter implements ChannelAdapter {
       timeoutMs: TELEGRAM_PHOTO_FETCH_TIMEOUT_MS,
     });
   }
+
+  /**
+   * PR-14 order-bot: getUpdates with acknowledged offset (unlike discoverChats).
+   * Only used when orderBotEnabled; never invents chat ids.
+   */
+  async fetchOrderBotUpdates(
+    secretRef: string,
+    offset?: number | null,
+  ): Promise<{ ok: boolean; error?: string; updates: UpdateLike[]; nextOffset: number | null }> {
+    this.assertEnabled();
+    const token = resolveBaleToken(secretRef);
+    if (!token) return { ok: false, error: 'invalid_credential', updates: [], nextOffset: null };
+    try {
+      const body: Record<string, unknown> = { limit: 50 };
+      if (offset != null && Number.isFinite(Number(offset))) body.offset = Number(offset);
+      const updates = await this.baleCall<UpdateLike[]>(token, 'getUpdates', body);
+      const list = Array.isArray(updates) ? updates : [];
+      let nextOffset: number | null = null;
+      for (const u of list) {
+        const id = Number((u as { update_id?: number }).update_id);
+        if (Number.isFinite(id)) nextOffset = Math.max(nextOffset ?? 0, id + 1);
+      }
+      return { ok: true, updates: list, nextOffset };
+    } catch (err: unknown) {
+      const description = err && typeof err === 'object' ? String((err as { description?: string }).description || '') : '';
+      return {
+        ok: false,
+        error: /webhook/i.test(description) ? 'webhook_active' : classifyTelegramThrow(err),
+        updates: [],
+        nextOffset: null,
+      };
+    }
+  }
+
+  /** Documented setWebhook helper — secret never logged. */
+  async setOrderBotWebhook(
+    secretRef: string,
+    url: string,
+    secretToken: string,
+  ): Promise<{ ok: boolean; error?: string }> {
+    this.assertEnabled();
+    const token = resolveBaleToken(secretRef);
+    if (!token) return { ok: false, error: 'invalid_credential' };
+    const hookUrl = String(url || '').trim();
+    if (!hookUrl.startsWith('https://')) return { ok: false, error: 'invalid_webhook_url' };
+    try {
+      await this.baleCall(token, 'setWebhook', {
+        url: hookUrl,
+        ...(secretToken ? { secret_token: String(secretToken).slice(0, 256) } : {}),
+      });
+      return { ok: true };
+    } catch (err: unknown) {
+      return { ok: false, error: classifyTelegramThrow(err) };
+    }
+  }
 }
