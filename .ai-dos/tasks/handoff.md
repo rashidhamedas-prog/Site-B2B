@@ -1,6 +1,6 @@
 ## 2026-10-30T02:00:00Z — PR-14 security + phase-review pushed (#149)
 
-- Branch `ai/TASK-20261029-pr14-order-bots` · worktree `D:/proje/Site-B2B-pr14` · PR https://github.com/rashidhamedas-prog/Site-B2B/pull/149
+- Branch `ai/TASK-20261029-pr14-order-bots` · worktree `D:/proje/Site-B2B-pr14` · PR https://github.com/rashidhamedas-prog/Site-B2B/pull/149 · head `949aa968`
 - Fixed: no CREDIT phone-only; timingSafeEqual; private-only; PII mask; unique→duplicate 200; enable audit+goRef; worker `maybePoll`; rate-limit notice send/persist; plan md on branch.
 - Evidence: bot unit specs FAILS=0; `apps/api` + `apps/web` `tsc --noEmit` exit 0.
 - Bots OFF. No merge/deploy.
