@@ -16,14 +16,15 @@
 | مورد | وضعیت |
 | --- | --- |
 | `app_settings.sms.enabled` | true |
-| `otpTemplateId` | YES |
+| `otpTemplateId` | رشته غیرخالی با **طول ۱** (عملاً نامعتبر برای verify؛ اغلب placeholder مثل `0`) |
 | `lineNumber` | YES |
 | `apiKey` | YES |
 | `egressBaseUrl` | NO (روی ایران معمولاً لازم نیست) |
 
-### حدس
+### تکمیل علت
 
-- پاسخ غیر `status:1` از sms.ir یا خطای موقت شبکه (لاگ API اخیراً با ری‌استارت پاک شده بود) — بدون نمونه لاگ حفظ‌شده قطعی نیست.
+5. **`otpTemplateId` بی‌اعتبار (طول ۱):** مسیر قدیمی با `!secrets.otpTemplateId` این مقدار را «موجود» می‌بیند و `/send/verify` با template بی‌اعتبار می‌زند → شکست PROVIDER → ۵۰۳. کد جدید با `Number(...) > 0` آن را به fallback خط خدماتی می‌برد تا قالب واقعی ست شود.
+6. لاگ Docker برای ۶–۸ آبان به‌خاطر ری‌استارت API (~۲۰:۲۰ UTC ۲۹ اکتبر) تقریباً خالی است.
 
 ## ۲) تعداد گیرکرده
 
@@ -54,4 +55,5 @@
 
 1. GO برای merge + نوشتن `deploy-approval.json` با SHA نهایی.
 2. پس از دیپلوی: در `/admin/sales-partners` تب درخواست‌ها → dry-run/دکمه‌های جدید؛ ارسال واقعی برای افراد گیرکرده.
-3. اگر هنوز OTP عمومی شکست خورد: اعتبار/قالب verify در sms.ir را در پنل sms.ir چک کنید.
+3. در تنظیمات SMS، **`otpTemplateId` واقعی قالب verify** را بگذارید (الان طول ۱ / placeholder است).
+4. اگر هنوز OTP شکست خورد: اعتبار sms.ir و تأیید قالب در پنل sms.ir را چک کنید.

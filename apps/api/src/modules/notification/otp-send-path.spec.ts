@@ -18,6 +18,11 @@ const unavailable = chooseOtpSendPath({ otpTemplateId: 0, lineService: '' });
 assert.equal(unavailable.mode, 'unavailable');
 assert.equal(unavailable.path, null);
 
+// Production often stores "0" as a placeholder — must not call /send/verify with template 0.
+const zeroStr = chooseOtpSendPath({ otpTemplateId: '0', lineService: '9982007567' });
+assert.equal(zeroStr.mode, 'service_line_fallback');
+assert.equal(zeroStr.path, '/send/bulk');
+
 // Never a promo/consent mode
 for (const p of [verify, fallback, unavailable]) {
   assert.equal(otpPathIsTransactional(p), true);
