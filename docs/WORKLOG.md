@@ -1,3 +1,9 @@
+## 2026-10-30 — Omnichannel PR-14 security + phase-review (#149؛ bots OFF)
+
+- Security: بدون CREDIT از phone-only؛ `timingSafeSecretEqual`؛ فقط private chat؛ ماسک `09*********`؛ unique→duplicate ۲۰۰؛ enable با audit+goRef.
+- Phase: `maybePoll` از outbox worker؛ notice فارسی rate-limit persist+send؛ `pr14-order-bots-plan.md` روی شاخه.
+- بدون merge/deploy؛ flags OFF. PR #149.
+
 ## 2026-10-30 — Omnichannel PR-14 Order bots CODE (flags OFF؛ بدون merge/deploy)
 
 - inbound Bale webhook + Rubika poller + Telegram stub؛ FSM سفارش عمده؛ PFI از Order+Invoice؛ inbox پنل؛ `orderBotEnabled` پیش‌فرض OFF.

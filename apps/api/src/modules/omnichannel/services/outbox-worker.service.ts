@@ -23,6 +23,7 @@ import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { isNonRetryableProviderError, safeWorkerError } from '../adapters/telegram-errors';
 import { OmnichannelService } from './omnichannel.service';
 import { OmnichannelAlertsService } from './omnichannel-alerts.service';
+import { OmnichannelBotPollerService } from './omnichannel-bot-poller.service';
 import { OmnichannelTokenVaultService } from './omnichannel-token-vault.service';
 import { PHASE4_EVENT_TYPES, shouldDeadLetter } from './outbox-lease';
 import {
@@ -102,6 +103,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     private readonly omnichannel: OmnichannelService,
     private readonly tokenVault: OmnichannelTokenVaultService,
     @Optional() private readonly alerts?: OmnichannelAlertsService,
+    @Optional() private readonly botPoller?: OmnichannelBotPollerService,
     @Optional() private readonly marketing?: CustomerMarketingService,
     @Optional() private readonly marketingSms?: MarketingSmsSender,
   ) {}
@@ -243,6 +245,14 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       } catch (scanErr: unknown) {
         this.logger.warn(
           `unanswered alert scan failed: ${scanErr instanceof Error ? scanErr.message : String(scanErr)}`,
+        );
+      }
+      // PR-14 order-bot poller (no-op when flags / orderBotEnabled OFF).
+      try {
+        await this.botPoller?.maybePoll();
+      } catch (pollErr: unknown) {
+        this.logger.warn(
+          `order-bot poll failed: ${pollErr instanceof Error ? pollErr.message : String(pollErr)}`,
         );
       }
       await this.tokenVault.refreshIfStale();

@@ -14,6 +14,25 @@
 - Public webhooks: `POST /v1/omnichannel/bots/bale/webhook`, `…/telegram/webhook` (Telegram flag OFF; no Worker/TELEGRAM_API_URL change).
 - UI: «صندوق ربات‌ها» behind `OMNICHANNEL_ORDER_BOT_UI=false`; channel-settings «تست آی‌دی مقصد» wired.
 
+## Security + phase-review (same PR #149)
+
+**Fixed**
+- No CREDIT / OrderService from phone-only PFI — PROFORMA draft only when `verifiedCustomerBinding` + `customerId`.
+- Webhook secret via `timingSafeSecretEqual` (fail-closed on empty).
+- Private-chat only (`non_private` / `no_private_message`).
+- `maskIranianMobiles` on body / preview / customer reply / owner forward.
+- Unique violation → `{ ok: true, duplicate: true }` (HTTP 200).
+- `setOrderBotEnabled` always audits with mandatory `goRef`.
+- Outbox worker tick calls `botPoller?.maybePoll()` (no-op when flags OFF).
+- Rate-limit soft-block: persist system message + `trySendCustomerReply` with Persian `notice`.
+- Plan doc `docs/design/omnichannel-redesign/pr14-order-bots-plan.md` on branch.
+
+**Deferred / intentional**
+- Live Bale/Rubika/Telegram smoke, merge, deploy, Iran migrate.
+- Auto-PFI without verified binding (holds/forwards; no phone-at-rest lookup invent).
+- Telegram Worker / `TELEGRAM_API_URL` egress unchanged.
+- Connector flags / live-send remain OFF.
+
 ## Hard stops held
 
 - No `OMNICHANNEL_CONNECTORS_ENABLED` / `OMNICHANNEL_AUTO_PUBLISH` flip.

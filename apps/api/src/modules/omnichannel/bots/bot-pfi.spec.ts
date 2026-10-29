@@ -1,6 +1,7 @@
 import {
+  assertBotNeverUsesCredit,
   botPfiAuditSummary,
-  buildBotOrderPayload,
+  buildBotProformaDraft,
   buildBotProformaPayload,
   formatPfiCustomerMessage,
 } from './bot-pfi';
@@ -11,7 +12,7 @@ function assert(cond: boolean, msg: string) {
 
 let threw = false;
 try {
-  buildBotOrderPayload({
+  buildBotProformaDraft({
     customerId: 'c1',
     productId: 'p1',
     qty: 2,
@@ -26,7 +27,7 @@ try {
 }
 assert(threw, 'moq reject throws');
 
-const order = buildBotOrderPayload({
+const draft = buildBotProformaDraft({
   customerId: 'c1',
   productId: 'p1',
   productVariantId: 'v1',
@@ -38,19 +39,30 @@ const order = buildBotOrderPayload({
   conversationId: 'conv1',
   customerPhoneMasked: '0912***89',
 });
-assert(order.channel === 'WHOLESALE', 'wholesale');
-assert(order.items[0].quantity === 10, 'qty');
-assert(!/token|botToken|secret/i.test(JSON.stringify(order)), 'no secrets in payload');
+assert(draft.type === 'PROFORMA', 'proforma only');
+assert(draft.orderId == null, 'no order link by default');
+assert(draft.status === 'DRAFT', 'draft');
+assert(!/CREDIT/i.test(JSON.stringify(draft)), 'no CREDIT');
+assert(!/token|botToken|secret/i.test(JSON.stringify(draft)), 'no secrets');
 
 const inv = buildBotProformaPayload({
   customerId: 'c1',
-  orderId: 'o1',
+  orderId: null,
   subtotal: 1000,
   conversationId: 'conv1',
 });
 assert(inv.type === 'PROFORMA', 'proforma type');
 
 assert(/PFI-2026-00001/.test(formatPfiCustomerMessage('PFI-2026-00001')), 'pfi in message');
+
+let creditBlocked = false;
+try {
+  assertBotNeverUsesCredit('CREDIT');
+} catch {
+  creditBlocked = true;
+}
+assert(creditBlocked, 'CREDIT forbidden');
+assertBotNeverUsesCredit('ONLINE');
 
 const audit = botPfiAuditSummary({
   conversationId: 'conv1',

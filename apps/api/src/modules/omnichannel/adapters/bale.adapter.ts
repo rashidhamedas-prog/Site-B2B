@@ -425,7 +425,7 @@ export class BaleAdapter implements ChannelAdapter {
     }
   }
 
-  /** Documented setWebhook helper — secret never logged. */
+  /** Documented setWebhook helper — secret never logged; secret_token required. */
   async setOrderBotWebhook(
     secretRef: string,
     url: string,
@@ -436,10 +436,12 @@ export class BaleAdapter implements ChannelAdapter {
     if (!token) return { ok: false, error: 'invalid_credential' };
     const hookUrl = String(url || '').trim();
     if (!hookUrl.startsWith('https://')) return { ok: false, error: 'invalid_webhook_url' };
+    const secret = String(secretToken || '').trim();
+    if (!secret) return { ok: false, error: 'secret_token_required' };
     try {
       await this.baleCall(token, 'setWebhook', {
         url: hookUrl,
-        ...(secretToken ? { secret_token: String(secretToken).slice(0, 256) } : {}),
+        secret_token: secret.slice(0, 256),
       });
       return { ok: true };
     } catch (err: unknown) {

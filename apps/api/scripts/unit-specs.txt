@@ -79,6 +79,8 @@ src/modules/omnichannel/bots/bot-order-fsm.spec.ts
 src/modules/omnichannel/bots/bot-catalog.spec.ts
 src/modules/omnichannel/bots/bot-pfi.spec.ts
 src/modules/omnichannel/bots/bot-order-enabled.spec.ts
+src/modules/omnichannel/bots/bot-pii.spec.ts
+src/modules/omnichannel/bots/bot-webhook-secret.spec.ts
 src/modules/omnichannel/services/omnichannel-bot-inbound.service.spec.ts
 src/modules/omnichannel/services/omnichannel-bot-inbox.service.spec.ts
 src/modules/omnichannel/services/omnichannel-bot-poller.service.spec.ts

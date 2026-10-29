@@ -1,6 +1,7 @@
 /**
- * PR-14 order-bot inbound: secret-validated ingest → idempotent persist → FSM → optional PFI.
+ * PR-14 order-bot inbound: secret-validated ingest → idempotent persist → FSM → optional PFI draft.
  * Bots default OFF; never invent chat IDs; never DM Hamed personally (ownerChatId only).
+ * HARD STOP: never create WHOLESALE CREDIT orders from phone-only match.
  */
 import {
   ForbiddenException,
@@ -9,6 +10,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { createHash } from 'crypto';
 import { Repository } from 'typeorm';
 import { OmnichannelBotConversationEntity } from '../entities/omnichannel-bot-conversation.entity';
 import { OmnichannelBotMessageEntity } from '../entities/omnichannel-bot-message.entity';
@@ -19,17 +21,16 @@ import { ownerChatIdForDestination } from '../channel-settings';
 import {
   extractRubikaMessageId,
   extractTelegramFamilyMessageId,
-  inboundIdempotencyKey,
+  isUniqueViolation,
+  resolveInboundMessageId,
 } from '../bots/bot-inbound-idempotency';
 import { checkBotRateLimit } from '../bots/bot-rate-limit';
 import { transitionBotOrderFsm, BOT_MENU_COPY, parseStartSku } from '../bots/bot-order-fsm';
 import { projectBotCatalog } from '../bots/bot-catalog';
-import {
-  buildBotOrderPayload,
-  buildBotProformaPayload,
-  formatPfiCustomerMessage,
-} from '../bots/bot-pfi';
+import { buildBotProformaDraft, formatPfiCustomerMessage } from '../bots/bot-pfi';
+import { maskIranianMobiles } from '../bots/bot-pii';
 import { readOrderBotEnabled } from '../bots/bot-order-enabled';
+import { timingSafeSecretEqual } from '../bots/bot-webhook-secret';
 import {
   isOmnichannelOrderBotBaleEnabled,
   isOmnichannelOrderBotRubikaEnabled,
@@ -38,7 +39,6 @@ import {
 import { truncateBodyPreview, BODY_PREVIEW_MAX } from '../unanswered-alert-policy';
 import { ProductService } from '../../product/product.service';
 import { CustomerService } from '../../customer/customer.service';
-import { OrderService } from '../../order/order.service';
 import { InvoiceService } from '../../invoice/invoice.service';
 import { parseTelegramInboundUpdate } from '../adapters/telegram.adapter';
 
@@ -66,7 +66,6 @@ export class OmnichannelBotInboundService {
     private readonly adapters: ChannelAdapterRegistry,
     private readonly products: ProductService,
     private readonly customers: CustomerService,
-    private readonly orders: OrderService,
     private readonly invoices: InvoiceService,
   ) {}
 
@@ -78,7 +77,7 @@ export class OmnichannelBotInboundService {
       throw new UnauthorizedException('webhook_secret_not_configured');
     }
     const got = String(headerSecret || '').trim();
-    if (!got || got !== expected) {
+    if (!got || !timingSafeSecretEqual(expected, got)) {
       throw new UnauthorizedException('invalid_webhook_secret');
     }
   }
@@ -120,6 +119,10 @@ export class OmnichannelBotInboundService {
       return { ok: true, ignored: 'order_bot_disabled' };
     }
     const chatId = String(update.chat_id || '').trim();
+    // Rubika private chats typically u0… — reject channel/group prefixes.
+    if (/^(c0|g0|b0)/i.test(chatId)) {
+      return { ok: true, ignored: 'non_private' };
+    }
     const nm = update.new_message as Record<string, unknown> | undefined;
     const text = String(nm?.text || update.text || '').trim();
     const providerMessageId = extractRubikaMessageId(update);
@@ -129,6 +132,7 @@ export class OmnichannelBotInboundService {
       customerChatId: chatId,
       text,
       providerMessageId,
+      updateId: update.update_id != null ? String(update.update_id) : null,
     });
   }
 
@@ -143,17 +147,25 @@ export class OmnichannelBotInboundService {
     if (!parsed?.customerChatId) {
       return { ok: true, ignored: 'no_private_message' };
     }
+    if (!parsed.privateChat) {
+      return { ok: true, ignored: 'non_private' };
+    }
     const conn = await this.findOrderBotConnection(provider);
     if (!conn) return { ok: true, ignored: 'no_enabled_connection' };
     if (!readOrderBotEnabled(conn.publishSettings)) {
       return { ok: true, ignored: 'order_bot_disabled' };
     }
+    const updateId =
+      body && typeof body === 'object' && 'update_id' in (body as object)
+        ? String((body as { update_id?: unknown }).update_id ?? '')
+        : null;
     return this.processInbound({
       provider,
       connectionId: conn.id,
       customerChatId: parsed.customerChatId,
       text: parsed.text,
       providerMessageId: parsed.providerMessageId,
+      updateId,
     });
   }
 
@@ -161,6 +173,8 @@ export class OmnichannelBotInboundService {
     customerChatId: string;
     text: string;
     providerMessageId: string | null;
+    privateChat: boolean;
+    chatType: string;
   } | null {
     if (!body || typeof body !== 'object') return null;
     const u = body as Record<string, unknown>;
@@ -168,10 +182,15 @@ export class OmnichannelBotInboundService {
     const chat = msg?.chat as Record<string, unknown> | undefined;
     const chatId = chat?.id != null ? String(chat.id) : '';
     if (!chatId) return null;
+    const chatType = String(chat?.type || '').toLowerCase();
+    // Require explicit private; empty type treated as reject for safety on Bale.
+    const privateChat = chatType === 'private';
     return {
       customerChatId: chatId,
       text: String(msg?.text || '').trim(),
       providerMessageId: extractTelegramFamilyMessageId(body),
+      privateChat,
+      chatType,
     };
   }
 
@@ -191,8 +210,11 @@ export class OmnichannelBotInboundService {
       take: 20,
       order: { createdAt: 'ASC' },
     });
-    // Prefer destination marked canary in settings; else first.
     return dests.find((d) => d.settings?.isCanary === true) || dests[0] || null;
+  }
+
+  private safePreview(text: string, max = BODY_PREVIEW_MAX): string {
+    return truncateBodyPreview(maskIranianMobiles(text), max);
   }
 
   async processInbound(input: {
@@ -201,27 +223,12 @@ export class OmnichannelBotInboundService {
     customerChatId: string;
     text: string;
     providerMessageId: string | null;
+    updateId?: string | null;
     destinationId?: string;
   }): Promise<InboundProcessResult> {
     const provider = String(input.provider || '').toUpperCase();
     const customerChatId = String(input.customerChatId || '').trim();
     if (!customerChatId) return { ok: false, ignored: 'missing_chat' };
-
-    const rate = checkBotRateLimit({ provider, customerChatId });
-    if (!rate.allowed) {
-      // Persist soft notice without advancing when possible — still update timestamps lightly.
-      return { ok: true, ignored: 'rate_limited' };
-    }
-
-    const key = inboundIdempotencyKey(provider, input.providerMessageId);
-    if (key) {
-      const existing = await this.messages.findOne({
-        where: { provider: key.provider, providerMessageId: key.providerMessageId },
-      });
-      if (existing) {
-        return { ok: true, duplicate: true, conversationId: existing.conversationId };
-      }
-    }
 
     const dest =
       (input.destinationId
@@ -229,6 +236,36 @@ export class OmnichannelBotInboundService {
         : null)
       || (await this.findDestinationForConnection(input.connectionId));
     if (!dest) return { ok: false, ignored: 'destination_missing' };
+
+    const rate = checkBotRateLimit({ provider, customerChatId });
+    if (rate.allowed === false) {
+      await this.persistSoftBlockNotice({
+        dest,
+        connectionId: input.connectionId,
+        provider,
+        customerChatId,
+        notice: rate.notice,
+      });
+      return { ok: true, ignored: 'rate_limited' };
+    }
+
+    const key = resolveInboundMessageId({
+      provider,
+      customerChatId,
+      extractedId: input.providerMessageId,
+      updateId: input.updateId,
+      text: input.text,
+    });
+    if (!key) {
+      return { ok: true, ignored: 'missing_message_id' };
+    }
+
+    const existing = await this.messages.findOne({
+      where: { provider: key.provider, providerMessageId: key.providerMessageId },
+    });
+    if (existing) {
+      return { ok: true, duplicate: true, conversationId: existing.conversationId };
+    }
 
     let conv = await this.conversations.findOne({
       where: {
@@ -263,17 +300,24 @@ export class OmnichannelBotInboundService {
       await this.conversations.save(conv);
     }
 
-    await this.messages.save(
-      this.messages.create({
-        conversationId: conv.id,
-        direction: 'inbound',
-        bodyPreview: truncateBodyPreview(input.text, BODY_PREVIEW_MAX),
-        body: String(input.text || '').slice(0, 2000),
-        provider,
-        providerMessageId: key?.providerMessageId ?? null,
-        meta: null,
-      }),
-    );
+    try {
+      await this.messages.save(
+        this.messages.create({
+          conversationId: conv.id,
+          direction: 'inbound',
+          bodyPreview: this.safePreview(input.text),
+          body: maskIranianMobiles(input.text).slice(0, 2000),
+          provider,
+          providerMessageId: key.providerMessageId,
+          meta: null,
+        }),
+      );
+    } catch (err: unknown) {
+      if (isUniqueViolation(err)) {
+        return { ok: true, duplicate: true, conversationId: conv.id };
+      }
+      throw err;
+    }
 
     const hasPriorPfi = await this.hasPriorPfi(provider, customerChatId, conv.id);
     let catalog = null as ReturnType<typeof projectBotCatalog>;
@@ -319,24 +363,29 @@ export class OmnichannelBotInboundService {
 
     if (fsm.createPfi) {
       try {
-        const pfi = await this.createPfiFromConversation(conv);
+        const pfi = await this.createProformaDraftFromConversation(conv);
         if (pfi.invoiceNumber) {
           reply = formatPfiCustomerMessage(pfi.invoiceNumber);
-          conv.orderId = pfi.orderId;
+          conv.orderId = null;
           conv.invoiceId = pfi.invoiceId;
           conv.state = 'PFI_CREATED';
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'pfi_failed';
-        this.logger.warn(`bot pfi failed conv=${conv.id}: ${msg}`);
-        reply = 'ثبت پیش‌فاکتور با خطا مواجه شد. کارشناس پیگیری می‌کند.';
+        this.logger.warn(`bot pfi draft failed conv=${conv.id}: ${msg}`);
+        if (msg === 'customer_binding_required') {
+          reply =
+            'سفارش شما ثبت موقت شد. برای صدور پیش‌فاکتور، کارشناس هویت شما را تأیید می‌کند.';
+          conv.state = 'SENSITIVE_HOLD';
+        } else {
+          reply = 'ثبت پیش‌فاکتور با خطا مواجه شد. کارشناس پیگیری می‌کند.';
+        }
         fsm.forwardOwner = true;
       }
     }
 
     conv.autoRepliedAt = now;
     conv.lastOutboundAt = now;
-    // Auto-reply counts as staff for unanswered scanner (SLA < 60s).
     conv.lastStaffReplyAt = now;
     conv.unansweredSince = null;
     await this.conversations.save(conv);
@@ -345,8 +394,8 @@ export class OmnichannelBotInboundService {
       this.messages.create({
         conversationId: conv.id,
         direction: 'outbound',
-        bodyPreview: truncateBodyPreview(reply, BODY_PREVIEW_MAX),
-        body: reply.slice(0, 2000),
+        bodyPreview: this.safePreview(reply),
+        body: maskIranianMobiles(reply).slice(0, 2000),
         provider,
         providerMessageId: null,
         meta: { step: conv.state },
@@ -361,7 +410,7 @@ export class OmnichannelBotInboundService {
         provider,
         customerChatId,
         state: conv.state,
-        preview: truncateBodyPreview(input.text, 120),
+        preview: this.safePreview(input.text, 120),
       });
     }
 
@@ -370,6 +419,67 @@ export class OmnichannelBotInboundService {
       conversationId: conv.id,
       state: conv.state,
     };
+  }
+
+  private async persistSoftBlockNotice(input: {
+    dest: ChannelDestinationEntity;
+    connectionId: string;
+    provider: string;
+    customerChatId: string;
+    notice: string;
+  }): Promise<void> {
+    let conv = await this.conversations.findOne({
+      where: {
+        destinationId: input.dest.id,
+        customerChatId: input.customerChatId,
+        status: 'open',
+      },
+    });
+    const now = new Date();
+    if (!conv) {
+      conv = await this.conversations.save(
+        this.conversations.create({
+          destinationId: input.dest.id,
+          connectionId: input.connectionId,
+          provider: input.provider,
+          customerChatId: input.customerChatId,
+          externalChatId: input.customerChatId,
+          state: 'MENU',
+          statePayload: {},
+          tags: ['spam_flag'],
+          lastCustomerMessageAt: now,
+          lastInboundAt: now,
+          lastOutboundAt: now,
+          lastStaffReplyAt: now,
+          autoRepliedAt: now,
+          status: 'open',
+        }),
+      );
+    } else {
+      const tags = Array.isArray(conv.tags) ? [...conv.tags] : [];
+      if (!tags.includes('spam_flag')) tags.push('spam_flag');
+      conv.tags = tags;
+      conv.lastOutboundAt = now;
+      conv.lastStaffReplyAt = now;
+      await this.conversations.save(conv);
+    }
+    await this.messages.save(
+      this.messages.create({
+        conversationId: conv.id,
+        direction: 'system',
+        bodyPreview: this.safePreview(input.notice),
+        body: input.notice.slice(0, 500),
+        provider: input.provider,
+        providerMessageId: null,
+        meta: { softBlock: true },
+      }),
+    );
+    await this.trySendCustomerReply(
+      input.dest,
+      input.connectionId,
+      input.customerChatId,
+      input.notice,
+    );
   }
 
   private async hasPriorPfi(
@@ -390,14 +500,34 @@ export class OmnichannelBotInboundService {
     return !!prior;
   }
 
-  private async createPfiFromConversation(conv: OmnichannelBotConversationEntity): Promise<{
+  /**
+   * PROFORMA DRAFT only — never OrderService CREDIT.
+   * Phone match links customerId for ops; verifiedCustomerBinding defaults false.
+   * Full phone is not stored; last4 alone cannot re-lookup — require masked recovery via ops
+   * or ephemeral hash lookup: we look up by reconstructing from inbound only when
+   * statePayload still has last4 AND we have a one-shot env allowlist — instead:
+   * require customerId already on statePayload from a prior verified path, else
+   * look up by phoneLast4 is unsafe. So: use findByPhone only when verifiedCustomerBinding
+   * is true AND customerPhoneHash matches; otherwise require customerId on payload.
+   *
+   * Practical default (security): look up ACTIVE customer only when
+   * `statePayload.verifiedCustomerBinding === true` and `customerId` already set;
+   * otherwise create draft against a dedicated bot-draft customer is not invented —
+   * escalate to owner without invoice if no verified customerId.
+   */
+  private async createProformaDraftFromConversation(conv: OmnichannelBotConversationEntity): Promise<{
     orderId: string | null;
     invoiceId: string | null;
     invoiceNumber: string | null;
   }> {
-    const phone = String(conv.statePayload?.customerPhone || '').trim();
-    if (!phone) throw new Error('customer_phone_missing');
-    const customer = await this.customers.findByPhone(phone);
+    const verified = conv.statePayload?.verifiedCustomerBinding === true;
+    const customerId = String(conv.statePayload?.customerId || '').trim();
+    if (!verified || !customerId) {
+      // Phone-only path: do not create CREDIT order; also skip auto invoice until binding.
+      // Persist hold + forward instead of inventing customer.
+      throw new Error('customer_binding_required');
+    }
+    const customer = await this.customers.findOne(customerId).catch(() => null);
     if (!customer || String((customer as { status?: string }).status || '') !== 'ACTIVE') {
       throw new Error('customer_not_active');
     }
@@ -410,8 +540,8 @@ export class OmnichannelBotInboundService {
     }
     if (!resolvedProductId) throw new Error('product_missing');
 
-    const orderPayload = buildBotOrderPayload({
-      customerId: String((customer as { id: string }).id),
+    const draft = buildBotProformaDraft({
+      customerId,
       productId: resolvedProductId,
       productVariantId: (conv.statePayload?.variantId as string) || null,
       qty: Number(conv.statePayload?.qty) || 0,
@@ -421,21 +551,11 @@ export class OmnichannelBotInboundService {
       productName: String(conv.statePayload?.productName || sku),
       conversationId: conv.id,
       customerPhoneMasked: String(conv.statePayload?.customerPhoneMasked || ''),
+      verifiedCustomerBinding: true,
     });
-
-    const order = await this.orders.create(orderPayload as never);
-    const subtotal = Number((order as { total?: number; subtotal?: number }).subtotal
-      ?? (order as { total?: number }).total
-      ?? 0);
-    const invPayload = buildBotProformaPayload({
-      customerId: orderPayload.customerId,
-      orderId: String((order as { id: string }).id),
-      subtotal,
-      conversationId: conv.id,
-    });
-    const invoice = await this.invoices.create(invPayload as never);
+    const invoice = await this.invoices.create(draft as never);
     return {
-      orderId: String((order as { id: string }).id),
+      orderId: null,
       invoiceId: String((invoice as { id: string }).id),
       invoiceNumber: String((invoice as { invoiceNumber?: string }).invoiceNumber || ''),
     };
@@ -451,14 +571,14 @@ export class OmnichannelBotInboundService {
     const secretRef = String(conn?.secretRef || '').trim();
     if (!secretRef) return;
     const provider = String(conn?.provider || '').toUpperCase();
-    if (provider === 'TELEGRAM') return; // no Telegram egress change / live send from stub
+    if (provider === 'TELEGRAM') return;
     try {
       const adapter = this.adapters.for(provider);
       await adapter.create({
         secretRef,
         chatId: customerChatId,
         destinationKey: customerChatId,
-        text,
+        text: maskIranianMobiles(text),
         parseMode: 'PLAIN',
       });
     } catch (err: unknown) {
@@ -490,11 +610,16 @@ export class OmnichannelBotInboundService {
     if (!secretRef) return;
     const provider = String(conn?.provider || '').toUpperCase();
     if (provider === 'TELEGRAM') return;
+    const chatHint = createHash('sha256')
+      .update(`${summary.provider}:${summary.customerChatId}`)
+      .digest('hex')
+      .slice(0, 8);
     const text =
       `صندوق ربات — ${summary.provider}\n`
       + `گفتگو: ${summary.conversationId}\n`
+      + `چت: …${chatHint}\n`
       + `وضعیت: ${summary.state}\n`
-      + `پیام: ${summary.preview}`;
+      + `پیام: ${maskIranianMobiles(summary.preview)}`;
     try {
       const adapter = this.adapters.for(provider);
       await adapter.create({
@@ -511,17 +636,20 @@ export class OmnichannelBotInboundService {
   }
 }
 
-/** Thrown when PATCH order-bot lacks Owner goRef under RBAC. */
+/**
+ * Owner + goRef required for enable when RBAC on.
+ * Live enable still needs OMNICHANNEL_RBAC_ENABLED=true (documented).
+ */
 export function assertOrderBotEnableAllowed(input: {
   role: string;
   goRef: unknown;
   rbacEnabled: boolean;
 }): void {
+  if (!String(input.goRef || '').trim()) {
+    throw new ForbiddenException('goRef الزامی است');
+  }
   if (!input.rbacEnabled) return;
   if (String(input.role || '').toUpperCase() !== 'OWNER') {
     throw new ForbiddenException('فقط Owner می‌تواند ربات سفارش را فعال کند');
-  }
-  if (!String(input.goRef || '').trim()) {
-    throw new ForbiddenException('goRef الزامی است');
   }
 }

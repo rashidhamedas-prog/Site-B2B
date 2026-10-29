@@ -647,6 +647,7 @@ export class OmnichannelAdminController {
     assertNoPlaintextSecrets(body || {});
     const role = (req.omnichannelActor?.omnichannelRole || 'OWNER') as OmnichannelRole;
     return this.botInbox.setOrderBotEnabled(id, body.enabled === true, {
+      id: req.omnichannelActor?.id,
       role,
       goRef: body.goRef,
     });

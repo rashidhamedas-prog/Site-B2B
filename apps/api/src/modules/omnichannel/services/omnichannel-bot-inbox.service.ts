@@ -15,6 +15,7 @@ import { OmnichannelBotConversationEntity } from '../entities/omnichannel-bot-co
 import { OmnichannelBotMessageEntity } from '../entities/omnichannel-bot-message.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
+import { OmnichannelAuditEntity } from '../entities/omnichannel-audit.entity';
 import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { OmnichannelAlertsService } from './omnichannel-alerts.service';
 import { ownerChatIdConfigured, ownerChatIdForDestination } from '../channel-settings';
@@ -24,10 +25,12 @@ import { truncateBodyPreview, BODY_PREVIEW_MAX } from '../unanswered-alert-polic
 import {
   assertGoRefPresent,
   isOmnichannelRbacEnabled,
+  normalizeGoRef,
   roleMeetsMinimum,
   type OmnichannelRole,
 } from '../omnichannel-rbac';
 import { isDocumentedBaleCanaryKey } from '../canary-live-guard';
+import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 
 @Injectable()
 export class OmnichannelBotInboxService {
@@ -42,6 +45,8 @@ export class OmnichannelBotInboxService {
     private readonly destinations: Repository<ChannelDestinationEntity>,
     @InjectRepository(ChannelConnectionEntity)
     private readonly connections: Repository<ChannelConnectionEntity>,
+    @InjectRepository(OmnichannelAuditEntity)
+    private readonly audits: Repository<OmnichannelAuditEntity>,
     private readonly adapters: ChannelAdapterRegistry,
     private readonly alerts: OmnichannelAlertsService,
   ) {}
@@ -84,7 +89,7 @@ export class OmnichannelBotInboxService {
       return {
         id: c.id,
         provider: c.provider,
-        customerChatId: c.customerChatId,
+        /** List: masked only — full chat id on thread detail. */
         customerLabel: `…${String(c.customerChatId).slice(-4)}`,
         state: c.state,
         tags,
@@ -240,24 +245,51 @@ export class OmnichannelBotInboxService {
     return { ok: true };
   }
 
+  /**
+   * Enable/disable order bot. Always audits with goRef (even if RBAC off).
+   * Live enable still needs OMNICHANNEL_RBAC_ENABLED=true for Owner gate;
+   * goRef is mandatory on every call for audit trail.
+   */
   async setOrderBotEnabled(
     connectionId: string,
     enabled: boolean,
-    actor: { role: OmnichannelRole; goRef?: string },
+    actor: { id?: string; role: OmnichannelRole; goRef?: string },
   ): Promise<{ ok: boolean; orderBotEnabled: boolean }> {
+    const goRef = assertGoRefPresent(actor.goRef);
     assertOrderBotEnableAllowed({
       role: actor.role,
-      goRef: actor.goRef,
+      goRef,
       rbacEnabled: isOmnichannelRbacEnabled(),
     });
-    if (isOmnichannelRbacEnabled()) assertGoRefPresent(actor.goRef);
     const conn = await this.connections.findOne({ where: { id: connectionId } });
     if (!conn) throw new NotFoundException('اتصال یافت نشد');
+    const before = readOrderBotEnabled(conn.publishSettings);
     conn.publishSettings = withOrderBotEnabled(
       (conn.publishSettings || {}) as Record<string, unknown>,
       enabled === true,
     );
     await this.connections.save(conn);
+    const payload = {
+      enabled: enabled === true,
+      before,
+      provider: conn.provider,
+      goRef: normalizeGoRef(goRef),
+      note: 'Live enable still requires OMNICHANNEL_RBAC_ENABLED=true for Owner role gate',
+    };
+    assertNoPlaintextSecrets(payload);
+    await this.audits.save(
+      this.audits.create({
+        actorId: String(actor.id || 'unknown'),
+        action: 'order_bot_enable',
+        entityType: 'CONNECTION',
+        entityId: connectionId,
+        channel: conn.channel || null,
+        reason: null,
+        goRef: normalizeGoRef(goRef),
+        source: 'panel',
+        payload,
+      }),
+    );
     // Canary dual-role: warn only — never clear/remap 4858359991.
     const dests = await this.destinations.find({ where: { connectionId }, take: 20 });
     for (const d of dests) {

@@ -3,6 +3,9 @@ import {
   extractTelegramFamilyMessageId,
   inboundIdempotencyKey,
   isDuplicateInbound,
+  isUniqueViolation,
+  resolveInboundMessageId,
+  synthesizeInboundMessageId,
 } from './bot-inbound-idempotency';
 
 function assert(cond: boolean, msg: string) {
@@ -35,5 +38,32 @@ assert(
   !isDuplicateInbound({ provider: 'BALE', providerMessageId: '43' }, k1!),
   'different id not dup',
 );
+
+const syn = synthesizeInboundMessageId({
+  provider: 'BALE',
+  customerChatId: 'c1',
+  updateId: '9',
+  text: 'سلام',
+});
+assert(!!syn && syn.startsWith('syn:'), 'synthesized');
+const again = synthesizeInboundMessageId({
+  provider: 'BALE',
+  customerChatId: 'c1',
+  updateId: '9',
+  text: 'سلام',
+});
+assert(syn === again, 'stable synthesize');
+
+const resolved = resolveInboundMessageId({
+  provider: 'BALE',
+  customerChatId: 'c1',
+  extractedId: null,
+  updateId: '1',
+  text: 'x',
+});
+assert(!!resolved, 'resolve synthesizes');
+
+assert(isUniqueViolation({ code: '23505', message: 'dup' }), 'pg unique');
+assert(isUniqueViolation(new Error('duplicate key')), 'msg unique');
 
 console.log('bot-inbound-idempotency.spec.ts: ok');

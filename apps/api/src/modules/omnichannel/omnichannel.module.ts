@@ -48,7 +48,6 @@ import { UploadModule } from '../upload/upload.module';
 import { StorageService } from '../upload/storage.service';
 import { ProductModule } from '../product/product.module';
 import { CustomerModule } from '../customer/customer.module';
-import { OrderModule } from '../order/order.module';
 import { InvoiceModule } from '../invoice/invoice.module';
 
 @Global()
@@ -58,7 +57,6 @@ import { InvoiceModule } from '../invoice/invoice.module';
     UploadModule,
     forwardRef(() => ProductModule),
     forwardRef(() => CustomerModule),
-    forwardRef(() => OrderModule),
     forwardRef(() => InvoiceModule),
     TypeOrmModule.forFeature([
       ChannelConnectionEntity,

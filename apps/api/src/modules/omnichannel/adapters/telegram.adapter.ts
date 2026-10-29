@@ -107,12 +107,16 @@ export function parseTelegramInboundUpdate(update: unknown): {
   customerChatId: string;
   text: string;
   providerMessageId: string | null;
+  chatType: string;
+  privateChat: boolean;
 } | null {
   if (!update || typeof update !== 'object') return null;
   const u = update as UpdateLike;
   const msg = u.message || u.callback_query?.message;
   const chatId = msg?.chat?.id != null ? String(msg.chat.id) : '';
   if (!chatId) return null;
+  const chatType = String(msg?.chat?.type || '').toLowerCase();
+  const privateChat = chatType === 'private';
   const text = String(u.message?.text || u.callback_query?.data || '').trim();
   const mid =
     u.message?.message_id != null
@@ -120,7 +124,7 @@ export function parseTelegramInboundUpdate(update: unknown): {
       : u.update_id != null
         ? `upd:${u.update_id}`
         : null;
-  return { customerChatId: chatId, text, providerMessageId: mid };
+  return { customerChatId: chatId, text, providerMessageId: mid, chatType, privateChat };
 }
 
 /** Pure: chats worth showing an admin, newest first, de-duplicated by id. Private user chats are skipped. */

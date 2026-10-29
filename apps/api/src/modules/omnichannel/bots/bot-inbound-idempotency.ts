@@ -1,7 +1,13 @@
 /**
  * PR-14 pure helpers — inbound update/message idempotency keys.
  * Prefer unique (provider, providerMessageId); also support update_id.
+ *
+ * Choice when message id missing: synthesize stable sha256-based id from
+ * provider|customerChatId|update_id|textPrefix (documented). If even that
+ * lacks chat+provider, return null → caller rejects with ignored missing_message_id.
  */
+
+import { createHash } from 'crypto';
 
 export type InboundIdempotencyKey = {
   provider: string;
@@ -57,6 +63,47 @@ export function extractRubikaMessageId(update: unknown): string | null {
   return null;
 }
 
+/**
+ * Synthesize stable id when provider omitted message_id.
+ * Returns null when provider or customerChatId missing (reject path).
+ */
+export function synthesizeInboundMessageId(input: {
+  provider: string;
+  customerChatId: string;
+  updateId?: string | null;
+  text?: string;
+}): string | null {
+  const provider = normalizeProvider(input.provider);
+  const chat = String(input.customerChatId || '').trim();
+  if (!provider || !chat) return null;
+  const material = [
+    provider,
+    chat,
+    String(input.updateId || ''),
+    String(input.text || '').slice(0, 64),
+  ].join('|');
+  const hash = createHash('sha256').update(material).digest('hex').slice(0, 32);
+  return `syn:${hash}`;
+}
+
+export function resolveInboundMessageId(input: {
+  provider: string;
+  customerChatId: string;
+  extractedId: string | null;
+  updateId?: string | null;
+  text?: string;
+}): InboundIdempotencyKey | null {
+  const extracted = inboundIdempotencyKey(input.provider, input.extractedId);
+  if (extracted) return extracted;
+  const syn = synthesizeInboundMessageId({
+    provider: input.provider,
+    customerChatId: input.customerChatId,
+    updateId: input.updateId,
+    text: input.text,
+  });
+  return inboundIdempotencyKey(input.provider, syn);
+}
+
 /** Duplicate when key already seen — return 200 no-op. */
 export function isDuplicateInbound(
   existing: { provider?: string | null; providerMessageId?: string | null } | null | undefined,
@@ -67,4 +114,13 @@ export function isDuplicateInbound(
     normalizeProvider(existing.provider) === key.provider
     && normalizeProviderMessageId(existing.providerMessageId) === key.providerMessageId
   );
+}
+
+export function isUniqueViolation(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err || '');
+  const code =
+    err && typeof err === 'object' && 'code' in err
+      ? String((err as { code?: string }).code || '')
+      : '';
+  return code === '23505' || /unique|duplicate/i.test(msg);
 }

@@ -5,6 +5,7 @@
 
 import type { BotConversationState } from '../entities/omnichannel-bot-conversation.entity';
 import { classifySensitive, SENSITIVE_CUSTOMER_COPY, ensureSensitiveTag } from './bot-sensitive';
+import { maskPhoneDisplay, phoneLast4, sanitizeCustomerInfoForStorage } from './bot-pii';
 
 export const BOT_MENU_COPY =
   'سلام! به ربات سفارش عمده خوش آمدید.\n'
@@ -246,14 +247,19 @@ export function transitionBotOrderFsm(ctx: FsmContext, inboundText: string): Fsm
           reply: 'شماره موبایل معتبر (09…) یافت نشد. دوباره بفرستید.',
         };
       }
+      const masked = maskPhoneDisplay(phoneMatch[1]);
+      const last4 = phoneLast4(phoneMatch[1]);
+      const info = sanitizeCustomerInfoForStorage(text);
       const sens = classifySensitive({ text, hasPriorPfi: ctx.hasPriorPfi });
       if (sens.sensitive) {
         return {
           state: 'SENSITIVE_HOLD',
           statePayload: {
             ...payload(ctx),
-            customerPhoneMasked: `${phoneMatch[1].slice(0, 4)}***${phoneMatch[1].slice(-2)}`,
-            customerInfo: text.slice(0, 200),
+            customerPhoneMasked: masked,
+            customerPhoneLast4: last4,
+            // Full phone never persisted — ops re-collects after verified binding.
+            customerInfo: info,
           },
           tags: ensureSensitiveTag(tags),
           reply: SENSITIVE_CUSTOMER_COPY,
@@ -264,9 +270,9 @@ export function transitionBotOrderFsm(ctx: FsmContext, inboundText: string): Fsm
         state: 'SUMMARY',
         statePayload: {
           ...payload(ctx),
-          customerPhoneMasked: `${phoneMatch[1].slice(0, 4)}***${phoneMatch[1].slice(-2)}`,
-          customerPhone: phoneMatch[1],
-          customerInfo: text.slice(0, 200),
+          customerPhoneMasked: masked,
+          customerPhoneLast4: last4,
+          customerInfo: info,
         },
         tags,
         reply:
