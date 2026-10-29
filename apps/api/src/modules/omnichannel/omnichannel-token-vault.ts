@@ -36,7 +36,17 @@ export type SecretStatus = {
   source: TokenSource;
   fingerprint: string | null;
   updatedAt: string | null;
+  /**
+   * When `OMNICHANNEL_VAULT_STRICT_MESSENGERS` is on for BALE/RUBIKA, env alone
+   * (or env alongside vault) is ignored at resolve time. Fingerprint-only signal.
+   */
+  envIgnored?: boolean;
 };
+
+/** BALE/RUBIKA only — Telegram exempt. Default off until Owner confirms vault entries on Iran. */
+export function isVaultStrictMessengers(env: NodeJS.ProcessEnv = process.env): boolean {
+  return String(env.OMNICHANNEL_VAULT_STRICT_MESSENGERS || '').trim().toLowerCase() === 'true';
+}
 
 const overlay = new Map<string, string>();
 const overlayMeta = new Map<string, VaultEntryPublic>();
@@ -194,12 +204,19 @@ export function publicSecretStatus(
   const inEnv = String(env[name] || '').trim().length > 0;
   const meta = peekVaultMeta(name);
   const source: TokenSource = inVault && inEnv ? 'both' : inVault ? 'vault' : inEnv ? 'env' : 'none';
+  const provider = providerFromSecretRef(name);
+  const strictMessenger = isVaultStrictMessengers(env)
+    && (provider === 'BALE' || provider === 'RUBIKA');
+  const envIgnored = Boolean(strictMessenger && inEnv);
+  // Under strict BALE/RUBIKA, env alone is not usable (resolveProviderToken → null).
+  const configured = inVault || (inEnv && !strictMessenger);
   return {
     secretRef: name,
-    configured: source !== 'none',
+    configured,
     source,
     fingerprint: meta?.fingerprint || null,
     updatedAt: meta?.updatedAt || null,
+    ...(envIgnored ? { envIgnored: true } : {}),
   };
 }
 

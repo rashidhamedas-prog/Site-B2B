@@ -100,6 +100,8 @@ export type SecretStatus = {
   source: 'none' | 'env' | 'vault' | 'both';
   fingerprint: string | null;
   updatedAt: string | null;
+  /** Strict vault for BALE/RUBIKA: env present but ignored at resolve time. */
+  envIgnored?: boolean;
 };
 
 export type DiscoveredChat = {
@@ -137,6 +139,8 @@ export type Status = {
   wholesaleCanaryLimit: number;
   providers?: ProviderInfo[];
   secrets?: SecretStatus[];
+  /** OMNICHANNEL_VAULT_STRICT_MESSENGERS — BALE/RUBIKA vault-only. Telegram unchanged. */
+  strictMessengers?: boolean;
   canaryDestinationIds?: Record<Channel, Partial<Record<Provider, string | null>>>;
   retailOosPolicy?: OosPolicy;
   wholesaleOosPolicy?: OosPolicy;

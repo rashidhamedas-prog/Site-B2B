@@ -52,6 +52,7 @@ src/modules/upload/storage-upload-channel.spec.ts
 src/modules/upload/storage.service.spec.ts
 src/modules/omnichannel/omnichannel-secrets.spec.ts
 src/modules/omnichannel/omnichannel-token-vault.spec.ts
+src/modules/omnichannel/provider-egress.spec.ts
 src/modules/omnichannel/oos-policy.spec.ts
 src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts
 src/modules/omnichannel/provider-message-ids.spec.ts

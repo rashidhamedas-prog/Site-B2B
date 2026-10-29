@@ -16,6 +16,7 @@ import {
   type OwnedImageReader,
   type UpdateLike,
 } from './telegram.adapter';
+import { BALE_API_DEFAULT, resolveMessengerApiBase } from '../provider-egress';
 import { sanitizePhotoUrls } from '../publication-template';
 import { channelDerivativeKey } from '../../upload/storage-delete';
 import { isCompleteJpeg } from '../../upload/channel-image';
@@ -42,8 +43,10 @@ import {
  *  - sendMediaGroup has no reply_markup (buttons ride on a follow-up text message).
  *  - deleteMessage only works for messages younger than 48 hours.
  *  - getChatMembersCount (plural) instead of getChatMemberCount.
+ * Runtime base: `resolveMessengerApiBase('BALE')` (`BALE_API_URL` or this default).
  */
 export const BALE_API = 'https://tapi.bale.ai';
+if (BALE_API !== BALE_API_DEFAULT) throw new Error('bale_api_default_mismatch');
 export const BALE_ALBUM_CAPTION_LIMIT = 1024;
 export const BALE_TEXT_LIMIT = 4096;
 
@@ -83,7 +86,7 @@ export class BaleAdapter implements ChannelAdapter {
     timeoutMs = 12_000,
   ): Promise<T> {
     const form = typeof FormData !== 'undefined' && body instanceof FormData;
-    const res = await this.http(`${BALE_API}/bot${token}/${method}`, {
+    const res = await this.http(`${resolveMessengerApiBase('BALE')}/bot${token}/${method}`, {
       method: 'POST',
       headers: form ? undefined : { 'Content-Type': 'application/json' },
       body: form ? body : body ? JSON.stringify(body) : undefined,

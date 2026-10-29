@@ -7,6 +7,7 @@ import {
 import { isOmnichannelProviderEnabled } from '../omnichannel.constants';
 import { redactProviderError } from './telegram-errors';
 import { resolveProviderToken, telegramSendOptions } from './telegram.adapter';
+import { RUBIKA_API_DEFAULT, resolveMessengerApiBase } from '../provider-egress';
 import {
   RUBIKA_METADATA_LIMIT,
   canonicalToPlain,
@@ -28,8 +29,10 @@ import { prepareChannelJpeg } from '../../upload/channel-image';
  *    so posting rights are proven with a test post.
  *  - getUpdates(limit, offset_id) → { updates[{chat_id, new_message}], next_offset_id }.
  *  - Button model documents no URL field, so buttons become `🔗 label: url` lines with a Link part.
+ * Runtime base: `resolveMessengerApiBase('RUBIKA')` (`RUBIKA_API_URL` or this default).
  */
 export const RUBIKA_API = 'https://botapi.rubika.ir/v3';
+if (RUBIKA_API !== RUBIKA_API_DEFAULT) throw new Error('rubika_api_default_mismatch');
 export const RUBIKA_TEXT_LIMIT = 4096;
 export const RUBIKA_IMAGE_LIMIT_BYTES = 10 * 1024 * 1024;
 
@@ -124,7 +127,7 @@ export class RubikaAdapter implements ChannelAdapter {
     body: Record<string, unknown> = {},
     timeoutMs = 12_000,
   ): Promise<T> {
-    const res = await this.http(`${RUBIKA_API}/${token}/${method}`, {
+    const res = await this.http(`${resolveMessengerApiBase('RUBIKA')}/${token}/${method}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

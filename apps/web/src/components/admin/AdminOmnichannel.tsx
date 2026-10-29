@@ -1068,6 +1068,11 @@ export function AdminOmnichannel() {
           }, 'حذف توکن ناموفق', `توکن پنل ${providerLabel(provider)} حذف شد`);
         }}
       />
+      {status?.strictMessengers ? (
+        <Callout tone="warn">حالت vault سخت برای بله/روبیکا فعال است؛ توکن فقط از پنل خوانده می‌شود و env نادیده گرفته می‌شود. توکن تلگرام در فاز جدا — مسیر فعلی تغییر نمی‌کند.</Callout>
+      ) : (
+        <Callout tone="info">توکن تلگرام در فاز جدا — مسیر فعلی تغییر نمی‌کند. برای بله/روبیکا ترجیحاً از پنل (vault) ذخیره کنید.</Callout>
+      )}
       <p className="text-sm font-semibold text-gray-900">کدام ربات را ثبت می‌کنید؟</p>
       <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="پیام‌رسان">
         {providerInfos.map((info) => {
