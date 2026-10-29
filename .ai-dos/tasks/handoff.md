@@ -1,11 +1,19 @@
+## 2026-10-29T22:40:00Z — PR-13 Unanswered alert (implement + PR open)
+
+- GO حامد ۲۹ اکتبر ۲۰۲۶ — implement + open PR; **no merge/deploy**.
+- Worktree `D:/proje/Site-B2B-pr13` branch `feat/omnichannel-pr13-unanswered-alert` rebased onto `origin/master` @ e920e4a2 (includes #144 PR-12 vault/egress + #145 panel urgent + #142 PR-10). Uses PR-10 `ownerChatIdForDestination`.
+- Delivered: migration `20261029-001`, entities, unanswered-alert-policy + alerts service, worker tick hook, alerts routes/RBAC, UI tab behind flag, unit specs + phase-acceptance, WORKLOG+report.
+- Hard stops: no invented chat IDs, empty ownerChatId → panel-only, no FORCE/SMS/Telegram egress, bots OFF, no connector enable.
+- Next: CI green → owner merge GO → Iran backup → migrate → optional UI flag.
+
 ## 2026-10-29T19:35:00Z — PR-12 vault + egress BALE/RUBIKA (implement + PR open)
 
 - Branch `feat/omnichannel-pr12-vault-egress-bale-rubika` worktree `D:/proje/Site-B2B-pr12` rebased onto `origin/master` (includes #145 panel urgent + #142 PR-10).
-- PR https://github.com/rashidhamedas-prog/Site-B2B/pull/144 — **open**, no merge/deploy.
+- PR https://github.com/rashidhamedas-prog/Site-B2B/pull/144 — **merged** to master (`e920e4a2`).
 - Delivered: `provider-egress` + BALE/RUBIKA `BALE_API_URL`/`RUBIKA_API_URL`; `OMNICHANNEL_VAULT_STRICT_MESSENGERS` (default false); scrubber `/v3/`; status `strictMessengers`/`envIgnored`; Telegram `telegramApiBase` body / `TELEGRAM_API_URL` / Worker **untouched** (only shared `resolveProviderToken` strict branch for BALE/RUBIKA).
 - Evidence: local `ts-node --transpile-only` specs green (egress, vault, bale, rubika, phase-acceptance, telegram-errors, telegram.adapter); api+web `tsc --noEmit` exit 0.
 - Hard stops held: no FORCE, no connector enable, no SMS, no TG egress move.
-- Next: parent/owner merge GO after CI + confirm Iran vault entries before enabling strict.
+- Next: confirm Iran vault entries before enabling strict.
 
 ## 2026-10-29T19:45:00Z — Panel urgent §1 IMPLEMENT + PR open
 
@@ -28,9 +36,10 @@
 
 - Branch `feat/omnichannel-pr10-settings-templates` worktree `D:/proje/Site-B2B-pr10` from `origin/master` @ d2bf03fb (PR-9).
 - Delivered: nested `channelSettings`, ضدآب guard, cross-channel contamination warn/activate-fail, `OmnichannelSettingsService`, scrubbed wholesale defaults (no invented handles), UI tabs default off, composer reads `showPriceDefault`.
-- PR https://github.com/rashidhamedas-prog/Site-B2B/pull/142 — no merge/deploy (parent after CI).
+- PR https://github.com/rashidhamedas-prog/Site-B2B/pull/142 — merged to master.
 - Hard stops held: no FORCE/SKIP_DRAIN, no connector enable, no egress/SMS/PR-14 inbound, no invented chat IDs.
-- Next: CI green → parent merge with same GO → optional staging UI/strict flags; Hamed fills ownerChatId/contact/order-bot.
+- Next: optional staging UI/strict flags; Hamed fills ownerChatId/contact/order-bot.
+
 ## 2026-10-28T17:45:00Z — PR-9 Composer (implement + PR open)
 
 - Branch `feat/omnichannel-pr9-composer` worktree `D:/proje/Site-B2B-pr9` from `origin/master` @ 9e0db80d (PR-8 #138).

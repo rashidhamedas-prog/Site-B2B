@@ -19,6 +19,7 @@ import { OmnichannelCoverageService } from '../services/omnichannel-coverage.ser
 import { OmnichannelComposerService } from '../services/omnichannel-composer.service';
 import { OmnichannelSettingsService } from '../services/omnichannel-settings.service';
 import { OmnichannelMediaService } from '../services/omnichannel-media.service';
+import { OmnichannelAlertsService } from '../services/omnichannel-alerts.service';
 import {
   ActorReasonDto,
   ClearWaitingOutboxDto,
@@ -59,6 +60,10 @@ import {
   ScanMediaDto,
   ValidateMediaDto,
 } from '../dto/omnichannel-media.dto';
+import {
+  AckOmnichannelAlertDto,
+  ResolveOmnichannelAlertDto,
+} from '../dto/omnichannel-alerts.dto';
 import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import { isVaultStrictMessengers } from '../omnichannel-token-vault';
 import {
@@ -70,6 +75,7 @@ import {
   isOmnichannelFreePostEnabled,
   isOmnichannelTemplatesUiEnabled,
   isOmnichannelMediaHealthUiEnabled,
+  isOmnichannelUnansweredAlertsUiEnabled,
 } from '../omnichannel.constants';
 import { providerReadiness } from '../provider-capabilities';
 import {
@@ -98,6 +104,7 @@ export class OmnichannelAdminController {
     private readonly composer: OmnichannelComposerService,
     private readonly channelSettings: OmnichannelSettingsService,
     private readonly media: OmnichannelMediaService,
+    private readonly alerts: OmnichannelAlertsService,
   ) {}
 
   @Get('health')
@@ -135,7 +142,9 @@ export class OmnichannelAdminController {
       templatesUi: isOmnichannelTemplatesUiEnabled(),
       /** PR-11 media health tab. Default false until staging validate. */
       mediaHealthUi: isOmnichannelMediaHealthUiEnabled(),
-      phase: 11,
+      /** PR-13 unanswered alerts tab. Default false until validated. */
+      unansweredAlertsUi: isOmnichannelUnansweredAlertsUiEnabled(),
+      phase: 13,
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
       outbox,
@@ -529,6 +538,32 @@ export class OmnichannelAdminController {
     @Query('source') source?: string,
   ) {
     return this.svc.listAudits(destinationId, source);
+  }
+
+  @Get('alerts')
+  @OmnichannelMinRole('VIEWER')
+  @ApiOperation({ summary: 'هشدارهای بی‌پاسخ بات (پنل؛ PR-13)' })
+  listAlerts(
+    @Query('status') status?: string,
+    @Query('destinationId') destinationId?: string,
+  ) {
+    return this.alerts.listAlerts({ status, destinationId });
+  }
+
+  @Post('alerts/:id/ack')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'علامت دیده‌شدن هشدار در پنل' })
+  ackAlert(@Param('id') id: string, @Body() body: AckOmnichannelAlertDto) {
+    assertNoPlaintextSecrets(body || {});
+    return this.alerts.ackAlert(id);
+  }
+
+  @Post('alerts/:id/resolve')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'بستن هشدار پس از رسیدگی' })
+  resolveAlert(@Param('id') id: string, @Body() body: ResolveOmnichannelAlertDto) {
+    assertNoPlaintextSecrets(body || {});
+    return this.alerts.resolveAlert(id);
   }
 
   @Get('coverage')

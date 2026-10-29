@@ -12,6 +12,7 @@ import { AdminOmnichannelComposer } from './admin-omnichannel-composer';
 import { AdminOmnichannelChannelSettings } from './admin-omnichannel-channel-settings';
 import { AdminOmnichannelTemplates } from './admin-omnichannel-templates';
 import { AdminOmnichannelMediaHealth } from './admin-omnichannel-media-health';
+import { AdminOmnichannelAlerts } from './admin-omnichannel-alerts';
 import {
   AdminOmnichannelPager,
   parseListPageResponse,
@@ -93,7 +94,7 @@ import {
   type WithdrawAction,
 } from './admin-omnichannel-ui';
 
-type View = 'status' | 'publish' | 'composer' | 'settings' | 'ops' | 'coverage' | 'channelSettings' | 'templates' | 'media-health';
+type View = 'status' | 'publish' | 'composer' | 'settings' | 'ops' | 'coverage' | 'channelSettings' | 'templates' | 'media-health' | 'alerts';
 type Step = 'bot' | 'channels' | 'template' | 'rules' | 'activate';
 type SourceType = 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE' | 'FREE_POST';
 type OutboxScope = 'channel' | 'all';
@@ -2516,6 +2517,7 @@ export function AdminOmnichannel() {
             ? [['templates', 'قالب‌ها'] as [View, string]]
             : []),
           ...(status?.mediaHealthUi ? [['media-health', 'رسانه'] as [View, string]] : []),
+          ...(status?.unansweredAlertsUi ? [['alerts', 'هشدارها'] as [View, string]] : []),
           ['settings', 'تنظیمات'],
           ['ops', 'صف و حسابرسی'],
         ] as Array<[View, string]>).map(([id, label]) => (
@@ -2646,6 +2648,23 @@ export function AdminOmnichannel() {
           apiClient={apiClient}
           enabled={Boolean(status?.mediaHealthUi)}
           canScan={String(status?.omnichannelRole || 'OWNER') !== 'VIEWER'}
+          onNotice={setNotice}
+          onError={setError}
+        />
+      )}
+      {view === 'alerts' && status?.unansweredAlertsUi && (
+        <AdminOmnichannelAlerts
+          apiClient={apiClient}
+          enabled={Boolean(status?.unansweredAlertsUi)}
+          onOpenSettings={() => {
+            if (status?.channelSettingsUi) {
+              setView('channelSettings');
+              return;
+            }
+            setView('settings');
+            setSettingsCollapsed(false);
+            setStep('channels');
+          }}
           onNotice={setNotice}
           onError={setError}
         />

@@ -10,6 +10,9 @@ import { PublicationDeliveryEntity } from './entities/publication-delivery.entit
 import { OmnichannelPostBackupEntity } from './entities/omnichannel-post-backup.entity';
 import { OmnichannelDeliveryMessageEntity } from './entities/omnichannel-delivery-message.entity';
 import { OmnichannelCoverageAbsenceEntity } from './entities/omnichannel-coverage-absence.entity';
+import { OmnichannelBotConversationEntity } from './entities/omnichannel-bot-conversation.entity';
+import { OmnichannelBotMessageEntity } from './entities/omnichannel-bot-message.entity';
+import { OmnichannelAlertEntity } from './entities/omnichannel-alert.entity';
 import { OmnichannelAdminController } from './controllers/omnichannel-admin.controller';
 import { OmnichannelService } from './services/omnichannel.service';
 import { OmnichannelDeleteService } from './services/omnichannel-delete.service';
@@ -19,6 +22,7 @@ import { OmnichannelCoverageService } from './services/omnichannel-coverage.serv
 import { OmnichannelComposerService } from './services/omnichannel-composer.service';
 import { OmnichannelSettingsService } from './services/omnichannel-settings.service';
 import { OmnichannelMediaService } from './services/omnichannel-media.service';
+import { OmnichannelAlertsService } from './services/omnichannel-alerts.service';
 import { OutboxService } from './services/outbox.service';
 import { ChannelProjectionService } from './services/channel-projection.service';
 import { TelegramAdapter } from './adapters/telegram.adapter';
@@ -54,6 +58,9 @@ import { StorageService } from '../upload/storage.service';
       OmnichannelPostBackupEntity,
       OmnichannelDeliveryMessageEntity,
       OmnichannelCoverageAbsenceEntity,
+      OmnichannelBotConversationEntity,
+      OmnichannelBotMessageEntity,
+      OmnichannelAlertEntity,
       OmnichannelAuditEntity,
       OmnichannelMediaAssetEntity,
       ProductEntity,
@@ -74,6 +81,7 @@ import { StorageService } from '../upload/storage.service';
     OmnichannelComposerService,
     OmnichannelSettingsService,
     OmnichannelMediaService,
+    OmnichannelAlertsService,
     OutboxService,
     ChannelProjectionService,
     {
@@ -100,6 +108,14 @@ import { StorageService } from '../upload/storage.service';
     OmnichannelRoleGuard,
     OmnichannelTokenVaultService,
   ],
-  exports: [OmnichannelService, OutboxService, ChannelProjectionService, TelegramAdapter, ChannelAdapterRegistry, OmnichannelTokenVaultService],
+  exports: [
+    OmnichannelService,
+    OutboxService,
+    ChannelProjectionService,
+    TelegramAdapter,
+    ChannelAdapterRegistry,
+    OmnichannelTokenVaultService,
+    OmnichannelAlertsService,
+  ],
 })
 export class OmnichannelModule {}
