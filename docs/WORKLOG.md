@@ -11,6 +11,11 @@
 - Scrubber `/v3/{token}/`؛ status `strictMessengers` + `envIgnored`؛ یادداشت فاز تلگرام در پنل secrets.
 - شاخه `feat/omnichannel-pr12-vault-egress-bale-rubika`. طرح: `docs/design/omnichannel-redesign/pr12-vault-egress-plan.md`؛ گزارش: `docs/reports/2026-10-29-omnichannel-pr12-vault.md`. GO حامد ۲۹ اکتبر ۲۰۲۶ برای PR open — merge/deploy فقط با GO جدا.
 
+## 2026-10-30 — fix SMS OTP templateId 0 → bulk fallback (GO حامد)
+
+- `normalizeOtpTemplateId`: `0`/`"0"`/خالی از settings دیگر به `/send/verify` نمی‌رود؛ bulk `otpFallback` + یک‌بار fallback اگر verify قالب نامعتبر بدهد.
+- شاخه `fix/sms-otp-template-zero`. تست: `provider.spec` + `notification.otp-send.spec`. GO حامد 2026-10-30 → PR merge + deploy ایران.
+
 ## 2026-10-29 — CURSOR-FIX checkout auth / payment / login UI (GO حامد)
 
 - برنچ `fix/checkout-auth-redirects`: ۴۰۱ host-aware، حذف auto-login عمده، `/account` روی `.com` → portal، لینک customerId پرداخت، UI ورود جامد.

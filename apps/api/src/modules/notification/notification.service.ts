@@ -168,6 +168,27 @@ export class NotificationService {
     return (await this.sendOtpDetailed(receptor, token)).ok;
   }
 
+  /** OTP bulk path (otpFallback template). Never logs the code value. */
+  private async sendOtpBulkFallback(
+    receptor: string,
+    token: string,
+    apiKey: string,
+    secrets: ResolvedSmsSecrets,
+    cfg: Awaited<ReturnType<SettingsService['sms']>>,
+  ): Promise<SmsTransportResult> {
+    const message = await this.template('otpFallback', { code: token });
+    return this.postResult(
+      apiKey,
+      '/send/bulk',
+      {
+        lineNumber: secrets.lineService || undefined,
+        messageText: message,
+        mobiles: [receptor],
+      },
+      cfg,
+    );
+  }
+
   /** Same send as sendOtp, with timeout/network kept distinct from a hard provider reject. */
   async sendOtpDetailed(receptor: string, token: string): Promise<SmsTransportResult> {
     const cfg = await this.settings.sms();
@@ -176,20 +197,11 @@ export class NotificationService {
       this.logger.log(`[SMS off] OTP to=${receptor}`);
       return { ok: false, errorCode: 'DISABLED', errorMessage: 'disabled', via: 'direct', durationMs: 0 };
     }
+    // Normalized empty (incl. settings Number 0 → "") → bulk + lineService.
     if (!secrets.otpTemplateId) {
-      const message = await this.template('otpFallback', { code: token });
-      return this.postResult(
-        secrets.apiKey,
-        '/send/bulk',
-        {
-          lineNumber: secrets.lineService || undefined,
-          messageText: message,
-          mobiles: [receptor],
-        },
-        cfg,
-      );
+      return this.sendOtpBulkFallback(receptor, token, secrets.apiKey, secrets, cfg);
     }
-    return this.postResult(
+    const verify = await this.postResult(
       secrets.apiKey,
       '/send/verify',
       {
@@ -199,6 +211,15 @@ export class NotificationService {
       },
       cfg,
     );
+    if (verify.ok) return verify;
+    // Provider/template reject only — keep TIMEOUT/NETWORK as-is for otpDispatch pending.
+    if (verify.errorCode === 'TIMEOUT' || verify.errorCode === 'NETWORK' || verify.errorCode === 'DISABLED') {
+      return verify;
+    }
+    this.logger.warn(
+      `OTP /send/verify failed (code=${verify.errorCode || 'PROVIDER'} msg=${verify.errorMessage || ''}); falling back to /send/bulk once`,
+    );
+    return this.sendOtpBulkFallback(receptor, token, secrets.apiKey, secrets, cfg);
   }
 
   // ── Business event helpers (each toggleable in settings) ──
