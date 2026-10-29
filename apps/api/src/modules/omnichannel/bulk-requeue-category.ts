@@ -21,11 +21,15 @@ export function staggeredAvailableAt(
   return new Date(now.getTime() + i * gap * 1000);
 }
 
+export const CLEAR_WAITING_CONFIRM_PHRASE = 'خالی';
+
 export function normalizeClearWaitingInput(body: {
   reason?: unknown;
   confirm?: unknown;
   scope?: unknown;
   channels?: unknown;
+  /** Optional second-confirm phrase (UI sends «خالی»). */
+  confirmPhrase?: unknown;
 }): {
   ok: true;
   reason: string;
@@ -41,6 +45,12 @@ export function normalizeClearWaitingInput(body: {
   }
   if (reason.length > 240) {
     return { error: 'دلیل حداکثر ۲۴۰ نویسه است' };
+  }
+  if (body?.confirmPhrase !== undefined && body?.confirmPhrase !== null) {
+    const phrase = String(body.confirmPhrase).trim();
+    if (phrase !== CLEAR_WAITING_CONFIRM_PHRASE) {
+      return { error: `برای تأیید باید عبارت «${CLEAR_WAITING_CONFIRM_PHRASE}» را ارسال کنید` };
+    }
   }
   const rawScope = String(body?.scope ?? 'channel').toLowerCase();
   const scope: 'all' | 'channel' = rawScope === 'all' ? 'all' : 'channel';

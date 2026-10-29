@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UseGuards,
+  Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, Put, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -9,7 +9,6 @@ import { OmnichannelAdminGuard } from '../guards/omnichannel-admin.guard';
 import { OmnichannelRoleGuard } from '../guards/omnichannel-role.guard';
 import {
   OmnichannelMinRole,
-  OmnichannelOwnerWhenLive,
   RequiresGoRef,
 } from '../decorators/omnichannel-role.decorator';
 import { OmnichannelService } from '../services/omnichannel.service';
@@ -65,7 +64,11 @@ import {
   isOmnichannelTemplatesUiEnabled,
 } from '../omnichannel.constants';
 import { providerReadiness } from '../provider-capabilities';
-import type { OmnichannelRole } from '../omnichannel-rbac';
+import {
+  isOmnichannelRbacEnabled,
+  roleMeetsMinimum,
+  type OmnichannelRole,
+} from '../omnichannel-rbac';
 
 type Authed = {
   omnichannelActor?: { id: string; role?: string; omnichannelRole?: OmnichannelRole };
@@ -96,7 +99,7 @@ export class OmnichannelAdminController {
 
   @Get('status')
   @ApiOperation({ summary: 'وضعیت پرچم Omnichannel' })
-  async status(@Query('destinationId') destinationId?: string) {
+  async status(@Query('destinationId') destinationId?: string, @Req() req?: Authed) {
     await this.svc.ensureProductTemplates();
     const [settings, outbox, diagnosis] = await Promise.all([
       this.svc.getSettings(),
@@ -104,6 +107,7 @@ export class OmnichannelAdminController {
       this.svc.diagnoseGateBlock(destinationId),
     ]);
     const scoped = diagnosis.scopedPublish;
+    const rbacEnabled = isOmnichannelRbacEnabled();
     return {
       autoPublish: isOmnichannelAutoPublishEnabled(),
       connectors: areOmnichannelConnectorsEnabled(),
@@ -128,6 +132,8 @@ export class OmnichannelAdminController {
       /** DEAD outbox by eventType (channel vs all). */
       outboxDeadByEventType: diagnosis.outboxDeadByEventType,
       scopedDestinationId: destinationId || null,
+      rbacEnabled,
+      omnichannelRole: req?.omnichannelActor?.omnichannelRole || (rbacEnabled ? 'PUBLISHER' : 'OWNER'),
       /** Per-platform capability matrix + boolean readiness (enabled flag, token present). Never token values. */
       providers: providerReadiness(),
       /** Write-only token inventory: source + fingerprint, never the secret. */
@@ -445,8 +451,13 @@ export class OmnichannelAdminController {
   }
 
   @Get('publications')
-  listPublications(@Query('destinationId') destinationId?: string) {
-    return this.svc.listPublications(destinationId);
+  listPublications(
+    @Query('destinationId') destinationId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.svc.listPublications({ destinationId, page, limit, q });
   }
 
   @Get('deliveries')
@@ -455,8 +466,12 @@ export class OmnichannelAdminController {
   }
 
   @Get('outbox')
-  listOutbox(@Query('destinationId') destinationId?: string) {
-    return this.svc.listOutbox(destinationId);
+  listOutbox(
+    @Query('destinationId') destinationId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.svc.listOutbox({ destinationId, page, limit });
   }
 
   @Post('outbox/clear-waiting')
@@ -479,10 +494,15 @@ export class OmnichannelAdminController {
 
   @Post('publications/requeue-by-category')
   @OmnichannelMinRole('PUBLISHER')
-  @OmnichannelOwnerWhenLive()
-  @ApiOperation({ summary: 'ارسال مجدد همه محصولات یک دسته به کانال‌های آماده' })
+  @ApiOperation({ summary: 'ارسال مجدد همه محصولات یک دسته به کانال‌های آماده (dryRun=PUBLISHER؛ زنده=Owner)' })
   requeueByCategory(@Body() body: RequeueByCategoryDto, @Req() req: Authed) {
     assertNoPlaintextSecrets(body);
+    if (body?.dryRun !== true) {
+      const role = req.omnichannelActor?.omnichannelRole || 'VIEWER';
+      if (!roleMeetsMinimum(role, 'OWNER')) {
+        throw new ForbiddenException('ارسال زندهٔ دسته فقط برای نقش Owner مجاز است');
+      }
+    }
     return this.svc.requeueByCategory(body, req.omnichannelActor);
   }
 
@@ -637,8 +657,8 @@ export class OmnichannelAdminController {
   }
 
   @Get('media')
-  listMedia() {
-    return this.svc.listMedia();
+  listMedia(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.svc.listMedia({ page, limit });
   }
 
   @Patch('media/:id')
