@@ -1,4 +1,13 @@
-﻿## 2026-10-29T19:30:00Z — PR-10 Channel settings + templates (implement + PR open)
+## 2026-10-29T19:45:00Z — Panel urgent §1 IMPLEMENT + PR open
+
+- Soft-reclaimed thin mounts: `AdminOmnichannel.tsx`, `admin-omnichannel-ui.tsx`, `omnichannel-admin.controller.ts`, `omnichannel.service.ts`.
+- Worktree `D:/proje/Site-B2B-panel-urgent` · branch `fix/omnichannel-panel-urgent-20261029`.
+- Delivered: canary-live-guard (Rubika 400; Bale dual-role warn only), list pagination, health per-dest cap + lastErrorAt, FA error/labels/blast UI, Owner blast gates, report+WORKLOG+plan.
+- HARD STOP held: no canary clear on `4858359991`; no FORCE/egress/SMS/held mutation; no merge/deploy.
+- Evidence: unit specs (ts-node) + api/web `tsc --noEmit` green.
+- Next: parent review/merge GO; ops SQL for PR7 leftover + Rubika canary unmark if needed.
+
+## 2026-10-29T19:30:00Z — PR-10 Channel settings + templates (implement + PR open)
 
 - Branch `feat/omnichannel-pr10-settings-templates` worktree `D:/proje/Site-B2B-pr10` from `origin/master` @ d2bf03fb (PR-9).
 - Delivered: nested `channelSettings`, ضدآب guard, cross-channel contamination warn/activate-fail, `OmnichannelSettingsService`, scrubbed wholesale defaults (no invented handles), UI tabs default off, composer reads `showPriceDefault`.

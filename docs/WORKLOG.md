@@ -1,3 +1,9 @@
+## 2026-10-29 — Omnichannel panel urgent §1 (بدون merge/deploy)
+
+- HARD STOP: Bale `4858359991` = کانال عمده بله — بدون clear/remap canary؛ فقط هشدار dual-role. Rubika `@Toliditaranom_omde` canary → 400.
+- Guard + pagination + FA errors/labels + blast Owner×۲confirm + per-dest cap (بدون max-as-sum) + health stale error.
+- شاخه `fix/omnichannel-panel-urgent-20261029`. طرح: `docs/design/omnichannel-redesign/pr-panel-urgent-20261029-plan.md`؛ گزارش: `docs/reports/2026-10-29-omnichannel-panel-urgent.md`. Held 5047/K-00006/Telegram HOLD دست‌نخورده. Merge/deploy فقط با GO جدا.
+
 ## 2026-10-29 — Omnichannel PR-10 Channel settings + templates (بدون merge/deploy)
 
 - تنظیمات کاملاً جدای هر مقصد (۳×۲): کپشن/فوتر/تماس/ربات سفارش/UTM/`ownerChatId` خالی؛ گارد «ضدآب»؛ هشدار آلودگی بین کانال‌ها.

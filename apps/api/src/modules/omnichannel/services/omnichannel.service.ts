@@ -228,6 +228,12 @@ import {
 import { isNonRetryableProviderError, redactProviderError } from '../adapters/telegram-errors';
 import { isMissingRelationError } from '../media-registry';
 import {
+  assertCanaryToggleAllowed,
+  isDocumentedBaleCanaryKey,
+  type CanaryProvider,
+} from '../canary-live-guard';
+import { paginateItems } from './omnichannel-list-page';
+import {
   assertGoRefPresent,
   GO_REF_REQUIRED_MESSAGE,
   isOmnichannelRbacEnabled,
@@ -608,6 +614,56 @@ export class OmnichannelService {
     return { ok: true };
   }
 
+  private decoratePublicDestination<T extends {
+    destinationKey: string;
+    displayName?: string;
+    isCanary?: boolean;
+    settings?: Record<string, unknown>;
+  }>(
+    publicRow: T,
+    connection: { provider: string; channel: string },
+  ) {
+    const isCanary = publicRow.isCanary === true || publicRow.settings?.isCanary === true;
+    const canaryIsLivePrimaryWarning = Boolean(
+      isCanary
+      && connection.provider === 'BALE'
+      && isDocumentedBaleCanaryKey(publicRow.destinationKey),
+    );
+    return { ...publicRow, canaryIsLivePrimaryWarning };
+  }
+
+  private assertCanaryAllowedForConnection(
+    connection: ChannelConnectionEntity,
+    input: {
+      wantCanary: boolean;
+      destinationKey: string;
+      displayName?: string;
+      verifiedCanPost?: boolean;
+      forceCanaryOnLive?: boolean;
+      goRef?: string;
+    },
+  ) {
+    if (!input.wantCanary) return { canaryIsLivePrimaryWarning: false };
+    const provider = (isOmnichannelProvider(connection.provider)
+      ? connection.provider
+      : 'TELEGRAM') as CanaryProvider;
+    const channel = connection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    const gate = assertCanaryToggleAllowed({
+      wantCanary: true,
+      destinationKey: input.destinationKey,
+      displayName: input.displayName,
+      provider,
+      channel,
+      verifiedCanPost: input.verifiedCanPost,
+      forceCanaryOnLive: input.forceCanaryOnLive,
+      goRef: input.goRef,
+    });
+    if (gate.ok === false) {
+      throw new BadRequestException(gate.messageFa);
+    }
+    return { canaryIsLivePrimaryWarning: gate.canaryIsLivePrimaryWarning === true };
+  }
+
   async listDestinations() {
     const [rows, conns, global] = await Promise.all([
       this.destinations.find({ order: { createdAt: 'DESC' } }),
@@ -624,10 +680,14 @@ export class OmnichannelService {
         global,
         channel,
       );
-      return {
+      const publicRow = {
         ...toPublicDestination(row),
         publishSettings: publicDestinationPublishSettings(resolved),
       };
+      return this.decoratePublicDestination(publicRow, {
+        provider: conn?.provider || 'TELEGRAM',
+        channel,
+      });
     });
   }
 
@@ -642,6 +702,13 @@ export class OmnichannelService {
     if (exists) throw new ConflictException('مقصد تکراری است');
     const settings = sanitizeDestinationSettings(dto.settings);
     if (settings.isCanary === true) {
+      this.assertCanaryAllowedForConnection(connection, {
+        wantCanary: true,
+        destinationKey: dto.destinationKey,
+        displayName: dto.displayName,
+        forceCanaryOnLive: (dto as { forceCanaryOnLive?: boolean }).forceCanaryOnLive,
+        goRef: dto.goRef,
+      });
       await this.assertUniqueCanary(connection.id);
     }
     const global = await this.loadStoredSettings();
@@ -666,12 +733,12 @@ export class OmnichannelService {
       displayName: saved.displayName,
       connectionId: saved.connectionId,
     }, { goRef: dto.goRef });
-    return {
+    return this.decoratePublicDestination({
       ...toPublicDestination(saved),
       publishSettings: publicDestinationPublishSettings(
         resolveDestinationPublishSettings(saved.publishSettings, connection.publishSettings, global, channel),
       ),
-    };
+    }, connection);
   }
 
   async patchDestination(id: string, dto: PatchDestinationDto, actor?: Actor) {
@@ -690,6 +757,15 @@ export class OmnichannelService {
     if (dto.enabled !== undefined) row.enabled = dto.enabled;
     if (dto.isCanary !== undefined) {
       if (dto.isCanary === true) {
+        const verified = row.settings?.verified as { canPost?: boolean } | undefined;
+        this.assertCanaryAllowedForConnection(connection, {
+          wantCanary: true,
+          destinationKey: row.destinationKey,
+          displayName: dto.displayName ?? row.displayName,
+          verifiedCanPost: verified?.canPost === true,
+          forceCanaryOnLive: dto.forceCanaryOnLive,
+          goRef: dto.goRef,
+        });
         await this.assertUniqueCanary(connection.id, row.id);
       }
       row.settings = mergeDestinationSettings(row.settings, dto.isCanary);
@@ -702,8 +778,8 @@ export class OmnichannelService {
         enabled: saved.enabled,
         isCanary: saved.settings?.isCanary === true,
       },
-    });
-    return toPublicDestination(saved);
+    }, { goRef: dto.goRef });
+    return this.decoratePublicDestination(toPublicDestination(saved), connection);
   }
 
   async deleteDestination(id: string, actor?: Actor, goRef?: string | null) {
@@ -1200,7 +1276,14 @@ export class OmnichannelService {
     return saved;
   }
 
-  async listPublications(destinationId?: string) {
+  async listPublications(opts?: {
+    destinationId?: string;
+    page?: number | string;
+    limit?: number | string;
+    q?: string;
+  }) {
+    const destinationId = opts?.destinationId;
+    let items: PublicationEntity[];
     if (destinationId) {
       const deliveryRows = await this.deliveries.find({
         where: { destinationId },
@@ -1208,16 +1291,27 @@ export class OmnichannelService {
         take: 500,
       });
       const ids = [...new Set(deliveryRows.map((row) => row.publicationId))];
-      if (!ids.length) return [];
+      if (!ids.length) {
+        return paginateItems([], opts?.page, opts?.limit);
+      }
       const rows = await this.publications.find({
         where: { id: In(ids) },
         order: { createdAt: 'DESC' },
         take: 300,
       });
-      return latestPublicationsBySource(rows).slice(0, 100);
+      items = latestPublicationsBySource(rows);
+    } else {
+      const rows = await this.publications.find({ order: { createdAt: 'DESC' }, take: 300 });
+      items = latestPublicationsBySource(rows);
     }
-    const rows = await this.publications.find({ order: { createdAt: 'DESC' }, take: 300 });
-    return latestPublicationsBySource(rows).slice(0, 100);
+    const q = String(opts?.q || '').trim().toLowerCase();
+    if (q) {
+      items = items.filter((row) => {
+        const blob = `${row.sourceId || ''}\n${JSON.stringify(row.projection || {})}`.toLowerCase();
+        return blob.includes(q);
+      });
+    }
+    return paginateItems(items, opts?.page, opts?.limit);
   }
 
   async listDeliveries(destinationId?: string) {
@@ -1377,19 +1471,24 @@ export class OmnichannelService {
     return { gateBlockReason, sentToday, outboxDeadByEventType: deadBreakdown, scopedPublish };
   }
 
-  async listOutbox(destinationId?: string) {
+  async listOutbox(opts?: {
+    destinationId?: string;
+    page?: number | string;
+    limit?: number | string;
+  }) {
+    const destinationId = opts?.destinationId;
     let rows: OutboxEventEntity[];
     if (destinationId) {
       rows = await this.events
         .createQueryBuilder('e')
         .where("e.payload->>'destinationId' = :destinationId", { destinationId })
         .orderBy('e.createdAt', 'DESC')
-        .take(100)
+        .take(300)
         .getMany();
     } else {
-      rows = await this.events.find({ order: { createdAt: 'DESC' }, take: 100 });
+      rows = await this.events.find({ order: { createdAt: 'DESC' }, take: 300 });
     }
-    return rows.map((row) => ({
+    const mapped = rows.map((row) => ({
       id: row.id,
       eventType: row.eventType,
       aggregateId: row.aggregateId,
@@ -1397,9 +1496,10 @@ export class OmnichannelService {
       status: row.status,
       attempts: row.attempts,
       availableAt: row.availableAt,
-        lastError: row.lastError ? redactProviderError(row.lastError) : row.lastError,
+      lastError: row.lastError ? redactProviderError(row.lastError) : row.lastError,
       createdAt: row.createdAt,
     }));
+    return paginateItems(mapped, opts?.page, opts?.limit);
   }
 
   /**
@@ -1530,16 +1630,17 @@ export class OmnichannelService {
         dailyCap: automation.dailyCap,
         sentToday: counters.sentToday,
         dailyRoom,
+        minGapSeconds: automation.minGapSeconds,
         connectionId: publishScope.connectionId || null,
         skipped: [] as Array<{ productId: string; reason: string }>,
         errors: [] as Array<{ productId: string; error: string }>,
       };
     }
-    // Defense in depth (guard also enforces Owner + goRef when RBAC on).
+    // Live blast always Owner (even when mode is CANARY); dryRun stays PUBLISHER+.
+    if (!roleMeetsMinimum(who.omnichannelRole || 'PUBLISHER', 'OWNER')) {
+      throw new ForbiddenException('ارسال زندهٔ دسته فقط برای نقش Owner مجاز است');
+    }
     if (isOmnichannelRbacEnabled()) {
-      if (!roleMeetsMinimum(who.omnichannelRole || 'PUBLISHER', 'OWNER')) {
-        throw new ForbiddenException('ارسال زندهٔ دسته فقط برای نقش Owner مجاز است');
-      }
       try {
         assertGoRefPresent(dto.goRef);
       } catch {
@@ -1591,6 +1692,7 @@ export class OmnichannelService {
     let queued = 0;
     let scheduleIndex = 0;
     let createRoom = dailyRoom;
+    const cappedToDailyRoom = batch.length > dailyRoom;
     for (const productId of batch) {
       if (createRoom <= 0) {
         skipped.push({ productId, reason: 'سقف پست روزانه پر شد' });
@@ -1645,6 +1747,11 @@ export class OmnichannelService {
       offset: normalized.offset,
       nextOffset: hasMore ? normalized.offset + batch.length : null,
       queued,
+      dailyCap: automation.dailyCap,
+      sentToday: counters.sentToday,
+      dailyRoom,
+      minGapSeconds: gap,
+      cappedToDailyRoom,
       skipped,
       errors,
       outbox: await this.outboxMetrics(),
@@ -3270,15 +3377,16 @@ export class OmnichannelService {
     return { deletable: true, references: count };
   }
 
-  async listMedia() {
+  async listMedia(opts?: { page?: number | string; limit?: number | string }) {
     try {
-      return await this.mediaAssets.find({
+      const rows = await this.mediaAssets.find({
         order: { createdAt: 'DESC' },
-        take: 100,
+        take: 300,
         select: ['id', 'publicUrl', 'storageKey', 'altText', 'ownerType', 'ownerId', 'createdAt'],
       });
+      return paginateItems(rows, opts?.page, opts?.limit);
     } catch (err) {
-      if (isMissingRelationError(err)) return [];
+      if (isMissingRelationError(err)) return paginateItems([], opts?.page, opts?.limit);
       throw err;
     }
   }

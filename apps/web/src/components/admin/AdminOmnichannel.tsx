@@ -12,6 +12,20 @@ import { AdminOmnichannelComposer } from './admin-omnichannel-composer';
 import { AdminOmnichannelChannelSettings } from './admin-omnichannel-channel-settings';
 import { AdminOmnichannelTemplates } from './admin-omnichannel-templates';
 import {
+  AdminOmnichannelPager,
+  parseListPageResponse,
+  type ListPageMeta,
+} from './admin-omnichannel-pagination';
+import {
+  BlastOwnerGateHint,
+  canRunOwnerBlast,
+  confirmBlastStart,
+  confirmClearWaiting,
+  CLEAR_WAITING_CONFIRM_PHRASE,
+} from './admin-omnichannel-blast';
+import { modeLabelFa } from './admin-omnichannel-labels';
+import { errorLabelWithCodeTitle } from './admin-omnichannel-error-labels';
+import {
   AttentionStrip,
   Badge,
   Callout,
@@ -199,7 +213,7 @@ function gapLabel(seconds: number) {
 }
 
 function modeLabel(mode?: AutoPublishMode) {
-  return mode === 'LIVE' ? 'زنده' : mode === 'CANARY' ? 'آزمایشی' : 'خاموش';
+  return modeLabelFa(mode);
 }
 
 function summarizeBulkWithdraw(result: BulkWithdrawResult): string {
@@ -317,6 +331,20 @@ export function AdminOmnichannel() {
   const [requeuePreview, setRequeuePreview] = useState<{ matched: number; hasMore: boolean } | null>(null);
   const [requeueOffset, setRequeueOffset] = useState(0);
   const [requeueTargetId, setRequeueTargetId] = useState('');
+  const [pubsPage, setPubsPage] = useState(1);
+  const [outboxPage, setOutboxPage] = useState(1);
+  const [mediaPage, setMediaPage] = useState(1);
+  const [pubsMeta, setPubsMeta] = useState<ListPageMeta>({ page: 1, limit: 20, total: 0 });
+  const [outboxMeta, setOutboxMeta] = useState<ListPageMeta>({ page: 1, limit: 20, total: 0 });
+  const [mediaMeta, setMediaMeta] = useState<ListPageMeta>({ page: 1, limit: 20, total: 0 });
+  const [requeueRoomPreview, setRequeueRoomPreview] = useState<{
+    matched: number;
+    hasMore: boolean;
+    dailyRoom?: number;
+    dailyCap?: number;
+    sentToday?: number;
+    minGapSeconds?: number;
+  } | null>(null);
 
   const [deletePlan, setDeletePlan] = useState<DeletePlan | null>(null);
   const [deleteConfirmSku, setDeleteConfirmSku] = useState('');
@@ -328,8 +356,9 @@ export function AdminOmnichannel() {
     try {
       const scopeId = selectedDestinationIdRef.current;
       const q = scopeId ? `?destinationId=${encodeURIComponent(scopeId)}` : '';
+      const pageQs = (page: number) => `${q}${q ? '&' : '?'}page=${page}&limit=20`;
       // Soft lists must not blank the whole console when one endpoint fails (e.g. brief API restart → HTML 502).
-      const [st, healthRes, conns, dests, tpls, pubs, dels, box, logs, files, cats] = await Promise.all([
+      const [st, healthRes, conns, dests, tpls, pubsRaw, dels, boxRaw, logs, filesRaw, cats] = await Promise.all([
         apiClient.get<Status>(`/omnichannel/status${q}`),
         apiClient.get<OmnichannelHealthPayload>('/omnichannel/health').then(
           (row) => ({ ok: true as const, row }),
@@ -338,13 +367,16 @@ export function AdminOmnichannel() {
         apiClient.get<Connection[]>('/omnichannel/connections'),
         apiClient.get<Destination[]>('/omnichannel/destinations'),
         apiClient.get<Template[]>(`/omnichannel/templates${q}`),
-        apiClient.get<Publication[]>(`/omnichannel/publications${q}`),
+        apiClient.get<unknown>(`/omnichannel/publications${pageQs(pubsPage)}`),
         apiClient.get<Delivery[]>(`/omnichannel/deliveries${q}`),
-        apiClient.get<OutboxRow[]>(`/omnichannel/outbox${q}`),
+        apiClient.get<unknown>(`/omnichannel/outbox${pageQs(outboxPage)}`),
         apiClient.get<AuditRow[]>(`/omnichannel/audits${q}`).catch(() => [] as AuditRow[]),
-        apiClient.get<MediaRow[]>('/omnichannel/media').catch(() => [] as MediaRow[]),
+        apiClient.get<unknown>(`/omnichannel/media?page=${mediaPage}&limit=20`).catch(() => ({ items: [] })),
         apiClient.get<CategoryOption[]>('/categories/admin').catch(() => [] as CategoryOption[]),
       ]);
+      const pubsParsed = parseListPageResponse<Publication>(pubsRaw);
+      const boxParsed = parseListPageResponse<OutboxRow>(boxRaw);
+      const mediaParsed = parseListPageResponse<MediaRow>(filesRaw);
       setStatus(st);
       setHealth(healthRes.ok ? healthRes.row : null);
       setHealthError(!healthRes.ok);
@@ -352,11 +384,14 @@ export function AdminOmnichannel() {
       setConnections(conns);
       setDestinations(dests);
       setTemplates(tpls);
-      setPublications(pubs);
+      setPublications(pubsParsed.items);
+      setPubsMeta(pubsParsed.meta);
       setDeliveries(dels);
-      setOutbox(box);
+      setOutbox(boxParsed.items);
+      setOutboxMeta(boxParsed.meta);
       setAudits(logs);
-      setMedia(files);
+      setMedia(mediaParsed.items);
+      setMediaMeta(mediaParsed.meta);
       setDestConnectionId((current) => (current && conns.some((row) => row.id === current) ? current : conns[0]?.id || ''));
       const nextDestId = selectedDestinationIdRef.current && dests.some((row) => row.id === selectedDestinationIdRef.current)
         ? selectedDestinationIdRef.current
@@ -385,7 +420,7 @@ export function AdminOmnichannel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pubsPage, outboxPage, mediaPage]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -643,12 +678,17 @@ export function AdminOmnichannel() {
     return publications.filter((pub) => failedPubIds.has(pub.id));
   }, [publications, deliveries, deliveryFilter]);
 
+  const ownerBlastOk = canRunOwnerBlast({
+    rbacEnabled: status?.rbacEnabled,
+    omnichannelRole: status?.omnichannelRole,
+  });
+
   const clearWaitingQueue = () => {
-    const pending = status?.outbox?.pending ?? 0;
-    if (pending <= 0) {
-      setNotice('صف انتظار از قبل خالی است');
+    if (!ownerBlastOk) {
+      setError('خالی کردن صف فقط برای Owner است');
       return;
     }
+    const pending = status?.outbox?.pending ?? 0;
     const channelOnly = outboxScope !== 'all';
     const visibleWaiting = filteredOutbox.filter(
       (row) => row.status === 'PENDING' || row.status === 'PROCESSING',
@@ -656,19 +696,18 @@ export function AdminOmnichannel() {
     const channelNames = [...configuredPublishChannels]
       .map((ch) => (ch === 'WHOLESALE' ? 'عمده' : 'تکی'))
       .join(' و ');
-    const promptText = channelOnly
-      ? `فقط رویدادهای ارسال کانال${channelNames ? ` (${channelNames})` : ''} لغو شود؟ پیامک و همکار فروش دست نخورده می‌مانند. در این فهرست حدود ${faNumber(visibleWaiting)} ردیف در انتظار دیده می‌شود (کل صف مشترک: ${faNumber(pending)}). حذف از دیتابیس نیست. دلیل را بنویسید:`
-      : `همه ${faNumber(pending)} رویداد صف مشترک (شامل پیامک/جستجو/همکار) لغو شود؟ حذف از دیتابیس نیست. دلیل را بنویسید:`;
-    const why = window.prompt(promptText, reason || 'پاک‌سازی صف انتظار');
-    if (why == null) return;
-    const trimmed = why.trim();
-    if (!trimmed) {
-      setError('دلیل خالی کردن صف الزامی است');
+    const confirmed = confirmClearWaiting({
+      pending,
+      channelOnly,
+      channelNames,
+      visibleWaiting,
+      reasonDefault: reason || 'پاک‌سازی صف انتظار',
+    });
+    if (!confirmed.ok) {
+      if (confirmed.error) setError(confirmed.error);
+      else if (pending <= 0) setNotice('صف انتظار از قبل خالی است');
       return;
     }
-    if (!window.confirm(channelOnly
-      ? `تأیید نهایی: فقط ارسال کانال${channelNames ? ` (${channelNames})` : ''} لغو شود؟`
-      : `تأیید نهایی: همه ${faNumber(pending)} رویداد صف مشترک لغو شود؟`)) return;
     void run(
       'clear-waiting',
       async () => {
@@ -677,7 +716,8 @@ export function AdminOmnichannel() {
           cancelledDeliveries: number;
         }>('/omnichannel/outbox/clear-waiting', {
           confirm: true,
-          reason: trimmed,
+          confirmPhrase: CLEAR_WAITING_CONFIRM_PHRASE,
+          reason: confirmed.reason,
           scope: channelOnly ? 'channel' : 'all',
           ...(channelOnly && configuredPublishChannels.size
             ? { channels: [...configuredPublishChannels] as Array<'RETAIL' | 'WHOLESALE'> }
@@ -699,7 +739,14 @@ export function AdminOmnichannel() {
     void run(
       'requeue-preview',
       async () => {
-        const result = await apiClient.post<{ matched: number; hasMore: boolean }>(
+        const result = await apiClient.post<{
+          matched: number;
+          hasMore: boolean;
+          dailyRoom?: number;
+          dailyCap?: number;
+          sentToday?: number;
+          minGapSeconds?: number;
+        }>(
           '/omnichannel/publications/requeue-by-category',
           {
             channel: requeueChannel,
@@ -707,12 +754,18 @@ export function AdminOmnichannel() {
             reason: reason || 'پیش‌نمایش ارسال دسته',
             dryRun: true,
             offset: requeueOffset,
+            destinationId: requeueTargetId || undefined,
           },
         );
         setRequeuePreview({ matched: result.matched, hasMore: result.hasMore });
+        setRequeueRoomPreview(result);
         setNotice(
           result.matched
-            ? `${faNumber(result.matched)} محصول از افست ${faNumber(requeueOffset)}${result.hasMore ? ' (ادامه دارد)' : ''}`
+            ? `${faNumber(result.matched)} محصول از افست ${faNumber(requeueOffset)}${result.hasMore ? ' (ادامه دارد)' : ''}${
+              result.dailyRoom != null
+                ? ` · باقی سقف امروز: ${faNumber(result.dailyRoom)} از ${faNumber(result.dailyCap ?? 0)}`
+                : ''
+            }`
             : 'در این دسته محصول واجد شرایطی پیدا نشد',
         );
       },
@@ -725,15 +778,21 @@ export function AdminOmnichannel() {
       setError('یک دسته انتخاب کنید');
       return;
     }
-    if (!connectorsOn) {
-      setError('ارسال از سرور خاموش است');
+    if (!ownerBlastOk) {
+      setError('شروع ارسال دسته فقط برای Owner است');
       return;
     }
     const catName = categoryOptions.find((c) => c.id === requeueCategoryId)?.name || 'دسته';
-    const countHint = requeuePreview?.matched != null ? faNumber(requeuePreview.matched) : '؟';
-    if (!window.confirm(
-      `ارسال مجدد تا ${countHint} محصول «${catName}» در کانال ${requeueChannel === 'WHOLESALE' ? 'عمده' : 'تکی'} شروع شود؟ پست‌ها با فاصلهٔ قواعد خودکار به صف می‌روند.`,
-    )) return;
+    const confirmed = confirmBlastStart({
+      catName,
+      channelLabel: requeueChannel === 'WHOLESALE' ? 'عمده' : 'تکی',
+      preview: requeueRoomPreview || requeuePreview,
+      connectorsOn,
+    });
+    if (!confirmed.ok) {
+      if (confirmed.error) setError(confirmed.error);
+      return;
+    }
     void run(
       'requeue-category',
       async () => {
@@ -741,6 +800,8 @@ export function AdminOmnichannel() {
           queued: number;
           matched: number;
           hasMore: boolean;
+          cappedToDailyRoom?: boolean;
+          dailyRoom?: number;
           skipped: Array<{ productId: string; reason: string }>;
           errors: Array<{ productId: string; error: string }>;
           nextOffset: number | null;
@@ -760,6 +821,7 @@ export function AdminOmnichannel() {
         const errN = result.errors?.length || 0;
         setNotice(
           `${faNumber(result.queued)} ارسال به صف رفت`
+          + (result.cappedToDailyRoom ? ` · محدود به سقف امروز (${faNumber(result.dailyRoom ?? 0)} باقی)` : '')
           + (skipN ? ` · ${faNumber(skipN)} رد شد` : '')
           + (errN ? ` · ${faNumber(errN)} خطا` : '')
           + (result.hasMore ? ' · هنوز محصول باقی است؛ دوباره بزنید' : ''),
@@ -1291,6 +1353,9 @@ export function AdminOmnichannel() {
                   </div>
                   <div className="flex flex-wrap gap-1 justify-end">
                     {dest.isCanary && <Badge tone="info">مقصد آزمایشی</Badge>}
+                    {dest.canaryIsLivePrimaryWarning && (
+                      <Badge tone="warn" title="شناسه canary مستند — بدون تغییر خودکار">هم‌زمان کانال زنده</Badge>
+                    )}
                     {ready ? <Badge tone="ok">آماده ارسال</Badge> : v && !v.ok ? <Badge tone="danger">دسترسی ندارد</Badge> : needsTestPost ? <Badge tone="warn">نیاز به پست آزمایشی</Badge> : v && v.ok ? <Badge tone="warn">اجازه ارسال ندارد</Badge> : <Badge tone="warn">تأییدنشده</Badge>}
                   </div>
                 </div>
@@ -1912,17 +1977,24 @@ export function AdminOmnichannel() {
               ))}
             </select>
           </label>
-          <button type="button" className="btn btn-secondary btn-sm" disabled={!requeueCategoryId || busy === 'requeue-preview'} onClick={previewRequeueByCategory}>شمارش محصولات</button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!requeueCategoryId || !connectorsOn || busy === 'requeue-category'} onClick={runRequeueByCategory} title={!connectorsOn ? 'ارسال از سرور خاموش است' : undefined}>شروع ارسال دسته</button>
-          <button type="button" className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50" disabled={busy === 'clear-waiting' || !(status?.outbox?.pending)} onClick={clearWaitingQueue}>خالی کردن صف انتظار</button>
+          <button type="button" className="btn btn-secondary btn-sm cursor-pointer" disabled={!requeueCategoryId || busy === 'requeue-preview'} onClick={previewRequeueByCategory}>شمارش محصولات</button>
+          <button type="button" className="btn btn-primary btn-sm cursor-pointer" disabled={!requeueCategoryId || !connectorsOn || !ownerBlastOk || busy === 'requeue-category'} onClick={runRequeueByCategory} title={!connectorsOn ? 'ارسال از سرور خاموش است' : !ownerBlastOk ? 'فقط Owner' : undefined}>شروع ارسال دسته</button>
+          <button type="button" className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 cursor-pointer" disabled={!ownerBlastOk || busy === 'clear-waiting' || !(status?.outbox?.pending)} onClick={clearWaitingQueue}>خالی کردن صف انتظار</button>
         </div>
+        <BlastOwnerGateHint allowed={ownerBlastOk} />
         {requeuePreview && (
           <p className="text-xs text-gray-600 mt-2">
             آخرین شمارش: {faNumber(requeuePreview.matched)} محصول{requeuePreview.hasMore ? ' (بیش از سقف ۱۰۰؛ برای ادامه دوباره بزنید)' : ''}
+            {requeueRoomPreview?.dailyRoom != null
+              ? ` · سقف امروز: ${faNumber(requeueRoomPreview.sentToday ?? 0)} از ${faNumber(requeueRoomPreview.dailyCap ?? 0)} · باقی ${faNumber(requeueRoomPreview.dailyRoom)}`
+              : ''}
+            {requeueRoomPreview?.minGapSeconds != null
+              ? ` · فاصله ${faNumber(requeueRoomPreview.minGapSeconds)}ث`
+              : ''}
           </p>
         )}
         <p className="text-xs text-amber-800 mt-2 leading-5">
-          خالی بودن مقصد = طبق قواعد خودکار همان کانال. محصولاتی که قبلاً از کانال برداشته شده‌اند دوباره ارسال نمی‌شوند. قبل از blast بزرگ، صف انتظار را خالی کنید.
+          خالی بودن مقصد = طبق قواعد خودکار همان کانال. محصولاتی که قبلاً از کانال برداشته شده‌اند دوباره ارسال نمی‌شوند. قبل از ارسال دسته‌ای بزرگ، صف انتظار را خالی کنید. هر اجرا بیش از باقی‌ماندهٔ سقف همان مقصد صف نمی‌کند.
         </p>
       </Section>
 
@@ -2144,7 +2216,7 @@ export function AdminOmnichannel() {
                                         ? 'text-gray-500'
                                         : 'text-red-700'
                                   }`}
-                                  title={row.lastError}
+                                  title={errorLabelWithCodeTitle(row.lastError).title || row.lastError || ''}
                                 >
                                   {photoWarning ? deliveryWarningLabel(row.lastError) : errorLabel(row.lastError)}
                                 </span>
@@ -2153,7 +2225,7 @@ export function AdminOmnichannel() {
                               <span className="flex-1" />
                               {(row.status === 'DEAD' || row.status === 'FAILED') && !intentional && (
                                 nonRetryable ? (
-                                  <span className="text-gray-500" title={errorLabel(row.lastError)}>اول تصویر را اصلاح کنید</span>
+                                  <span className="text-gray-500" title={errorLabelWithCodeTitle(row.lastError).title}>اول تصویر را اصلاح کنید</span>
                                 ) : (
                                   <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`retry-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/retry`, { reason }); }, 'خطا در تلاش مجدد', 'دوباره به صف رفت')}>تلاش دوباره</button>
                                 )
@@ -2182,6 +2254,12 @@ export function AdminOmnichannel() {
             </ul>
           </div>
         )}
+        <AdminOmnichannelPager
+          meta={pubsMeta}
+          disabled={Boolean(busy)}
+          label="صفحه‌بندی انتشارات"
+          onPage={(page) => setPubsPage(page)}
+        />
       </Section>
     </>
   );
@@ -2201,8 +2279,8 @@ export function AdminOmnichannel() {
             </div>
             <button
               type="button"
-              className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
-              disabled={busy === 'clear-waiting' || !(status?.outbox?.pending)}
+              className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 cursor-pointer"
+              disabled={!ownerBlastOk || busy === 'clear-waiting' || !(status?.outbox?.pending)}
               onClick={clearWaitingQueue}
             >
               خالی کردن صف انتظار
@@ -2249,7 +2327,7 @@ export function AdminOmnichannel() {
                     <td className="p-2"><Badge tone={intentional ? 'off' : st.tone}>{intentional ? 'عمدی' : deferred ? 'موکول‌شده' : st.label}</Badge></td>
                     <td className="p-2">{faNumber(row.attempts)}</td>
                     <td className="p-2 text-xs text-gray-500">{deferred ? relativeTime(row.availableAt) : relativeTime(row.createdAt)}</td>
-                    <td className={`p-2 text-xs max-w-[18rem] truncate ${intentional ? 'text-gray-500' : 'text-red-700'}`} title={row.lastError || ''}>{row.lastError ? errorLabel(row.lastError) : '—'}</td>
+                    <td className={`p-2 text-xs max-w-[18rem] truncate ${intentional ? 'text-gray-500' : 'text-red-700'}`} title={row.lastError ? errorLabelWithCodeTitle(row.lastError).title : ''}>{row.lastError ? errorLabel(row.lastError) : '—'}</td>
                   </tr>
                 );
               })}
@@ -2257,6 +2335,12 @@ export function AdminOmnichannel() {
             </tbody>
           </table>
         </div>
+        <AdminOmnichannelPager
+          meta={outboxMeta}
+          disabled={Boolean(busy)}
+          label="صفحه‌بندی صف"
+          onPage={(page) => setOutboxPage(page)}
+        />
       </Section>
 
       <Section title="متن جایگزین عکس‌ها (alt)" description="برای دسترس‌پذیری و سئو؛ روی پست پیام‌رسان‌ها اثری ندارد.">
@@ -2287,6 +2371,12 @@ export function AdminOmnichannel() {
             </tbody>
           </table>
         </div>
+        <AdminOmnichannelPager
+          meta={mediaMeta}
+          disabled={Boolean(busy)}
+          label="صفحه‌بندی رسانه"
+          onPage={(page) => setMediaPage(page)}
+        />
       </Section>
 
       <Section title="حسابرسی" description="هر تغییر تنظیمات یا ارسال با نام کاربر و دلیل ثبت می‌شود.">
@@ -2363,7 +2453,12 @@ export function AdminOmnichannel() {
 
       <AttentionStrip items={attentionItems} />
 
-      <AdminOmnichannelHealth health={health} loading={loading} error={healthError} />
+      <AdminOmnichannelHealth
+        health={health}
+        loading={loading}
+        error={healthError}
+        dualRoleCanaryWarning={destinations.some((d) => d.canaryIsLivePrimaryWarning)}
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric

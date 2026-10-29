@@ -3,11 +3,17 @@
 /**
  * PR-1 read-only health strip: provider cards + api/worker kill-switch mismatch banner.
  * Never greens on error/unknown. No HOLD/LIVE writes, no canary send.
+ * Panel-urgent: FA labels, stale lastError, per-dest cap (no max-as-sum).
  */
 import { Badge, Callout, PROVIDER_META, faNumber, type Provider } from './admin-omnichannel-ui';
+import { classifyErrorFreshness, errorLabelWithCodeTitle } from './admin-omnichannel-error-labels';
+import { countsTodayLineFa, modeLabelFa } from './admin-omnichannel-labels';
 
 export const HEALTH_MISMATCH_BANNER_FA =
   'ناهمخوانی kill-switch بین API و ورکر: تست موفق ولی ارسال واقعی ممکن است DEAD شود.';
+
+export const DUAL_ROLE_CANARY_BANNER_FA =
+  'این مقصد هم کانال زنده عمده و هم مقصد آزمایشی است (شناسه canary مستند). تا تصمیم مالک، تغییر خودکار اعمال نمی‌شود.';
 
 export type OmnichannelHealthPayload = {
   generatedAt: string;
@@ -31,8 +37,11 @@ export type OmnichannelHealthPayload = {
     killSwitchWorker: boolean | null;
     lastSuccessAt: string | null;
     lastError: string | null;
+    lastErrorAt?: string | null;
     countsToday: { retry: number; dead: number; hold: number; stalled: number };
     cap?: { sentToday: number; dailyCap: number; nextSlotHint?: string | null };
+    capAmbiguous?: boolean;
+    destinationCaps?: Array<{ destinationId?: string; dailyCap: number }>;
     quiet?: { startHour: number; endHour: number } | null;
     botRights?: {
       canPost?: boolean;
@@ -87,12 +96,6 @@ const TONE_CLASS: Record<HealthTone, string> = {
   unknown: 'border-gray-300 bg-gray-100',
 };
 
-function modeLabel(mode: string): string {
-  if (mode === 'LIVE') return 'LIVE';
-  if (mode === 'CANARY') return 'CANARY';
-  return 'OFF';
-}
-
 function relativeShort(iso: string | null): string {
   if (!iso) return '—';
   const t = Date.parse(iso);
@@ -108,10 +111,13 @@ export function AdminOmnichannelHealth({
   health,
   loading = false,
   error = false,
+  dualRoleCanaryWarning = false,
 }: {
   health: OmnichannelHealthPayload | null;
   loading?: boolean;
   error?: boolean;
+  /** Documented Bale 4858359991 dual-role — warn only; never auto-clear. */
+  dualRoleCanaryWarning?: boolean;
 }) {
   const stripTone = healthStripTone({ health, loading, error });
   const unknown = Boolean(error || (!loading && !health));
@@ -120,6 +126,11 @@ export function AdminOmnichannelHealth({
     <section className="space-y-3" aria-label="سلامت کانال‌های انتشار" data-omni-health-strip data-tone={stripTone}>
       {(error || (!loading && !health)) && (
         <Callout tone="warn">وضعیت نامعلوم — پاسخ سلامت دریافت نشد. هرگز وضعیت سبز فرض نشود.</Callout>
+      )}
+      {dualRoleCanaryWarning && (
+        <Callout tone="warn">
+          <span data-omni-dual-role-canary>{DUAL_ROLE_CANARY_BANNER_FA}</span>
+        </Callout>
       )}
       {health?.killSwitch.mismatch && (
         <Callout tone="danger">
@@ -151,6 +162,12 @@ export function AdminOmnichannelHealth({
               healthUnknown: unknown,
               workerStale: health.worker.stale,
             });
+            const freshness = classifyErrorFreshness({
+              lastError: row.lastError,
+              lastErrorAt: row.lastErrorAt,
+              lastSuccessAt: row.lastSuccessAt,
+            });
+            const errUi = row.lastError ? errorLabelWithCodeTitle(row.lastError) : null;
             return (
               <article
                 key={row.provider}
@@ -161,7 +178,7 @@ export function AdminOmnichannelHealth({
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <h3 className="text-sm font-semibold text-gray-900">{meta?.label || row.provider}</h3>
                   <Badge tone={tone === 'ok' ? 'ok' : tone === 'danger' ? 'danger' : tone === 'warn' ? 'warn' : 'off'}>
-                    {modeLabel(row.effectiveMode)}
+                    <span title={row.effectiveMode}>{modeLabelFa(row.effectiveMode)}</span>
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-600 leading-5">
@@ -173,20 +190,29 @@ export function AdminOmnichannelHealth({
                 <p className="text-xs text-gray-500 mt-1">
                   آخرین موفقیت: {relativeShort(row.lastSuccessAt)}
                 </p>
-                {row.lastError && (
-                  <p className="text-xs text-red-700 mt-1 line-clamp-2" title={row.lastError}>
-                    خطا: {row.lastError}
+                {freshness && (
+                  <p
+                    className={`text-xs mt-1 line-clamp-2 ${freshness.muted ? 'text-gray-500' : 'text-red-700'}`}
+                    title={errUi?.title || row.lastError || ''}
+                  >
+                    {freshness.displayFa}
                   </p>
                 )}
                 <p className="text-[11px] text-gray-500 mt-2">
-                  امروز: RETRY {faNumber(row.countsToday.retry)} · DEAD {faNumber(row.countsToday.dead)}
-                  {' '}· HOLD {faNumber(row.countsToday.hold)} · stalled {faNumber(row.countsToday.stalled)}
+                  امروز: {countsTodayLineFa(row.countsToday, faNumber)}
                 </p>
-                {row.cap && (
+                {row.capAmbiguous ? (
+                  <p className="text-[11px] text-amber-800">
+                    چند سقف — مقصد را انتخاب کنید
+                    {row.destinationCaps?.length
+                      ? ` (${row.destinationCaps.map((c) => faNumber(c.dailyCap)).join('، ')})`
+                      : ''}
+                  </p>
+                ) : row.cap ? (
                   <p className="text-[11px] text-gray-500">
                     سقف: {faNumber(row.cap.sentToday)} از {faNumber(row.cap.dailyCap)}
                   </p>
-                )}
+                ) : null}
               </article>
             );
           })}

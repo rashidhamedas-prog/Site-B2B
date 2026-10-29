@@ -3,10 +3,12 @@
  */
 import {
   assembleOmnichannelHealth,
+  assembleProviderHealth,
   computeKillSwitchMismatch,
   killSwitchFromEnv,
   parseHeartbeatFile,
   parseProviderGateSnapshot,
+  pickCapQuiet,
   redactHealthError,
   WORKER_HEARTBEAT_STALE_SEC,
 } from './omnichannel-health';
@@ -134,6 +136,106 @@ const now = new Date('2026-10-27T12:00:00.000Z');
     providerGatePath({ OMNICHANNEL_WORKER_PROVIDER_GATE: '/custom/gate.json' }) === '/custom/gate.json',
     'explicit gate path',
   );
+}
+
+/* --- per-destination cap: never max-as-sum --- */
+{
+  const ambiguous = pickCapQuiet(
+    {
+      provider: 'BALE',
+      connections: [],
+      destinations: [
+        {
+          id: 'd1',
+          enabled: true,
+          publishSettings: { seeded: true, autoDailyCap: 10 },
+          settings: null,
+          connectionStatus: 'ACTIVE',
+          connectionPublishSettings: {},
+          channel: 'WHOLESALE',
+        },
+        {
+          id: 'd2',
+          enabled: true,
+          publishSettings: { seeded: true, autoDailyCap: 40 },
+          settings: null,
+          connectionStatus: 'ACTIVE',
+          connectionPublishSettings: {},
+          channel: 'WHOLESALE',
+        },
+      ],
+      lastSuccessAt: null,
+      lastError: null,
+      countsToday: { retry: 0, dead: 0, hold: 0, stalled: 0 },
+      sentToday: 3,
+    },
+    {},
+  );
+  assert(ambiguous.capAmbiguous === true, 'distinct caps → ambiguous');
+  assert(ambiguous.cap == null, 'no single max() cap');
+  assert((ambiguous.destinationCaps?.length || 0) === 2, 'lists both caps');
+
+  const single = pickCapQuiet(
+    {
+      provider: 'TELEGRAM',
+      connections: [],
+      destinations: [
+        {
+          id: 'd1',
+          enabled: true,
+          publishSettings: { seeded: true, autoDailyCap: 12 },
+          settings: null,
+          connectionStatus: 'ACTIVE',
+          connectionPublishSettings: {},
+          channel: 'RETAIL',
+        },
+      ],
+      lastSuccessAt: null,
+      lastError: null,
+      lastErrorAt: '2026-10-20T00:00:00.000Z',
+      countsToday: { retry: 0, dead: 0, hold: 0, stalled: 0 },
+      sentToday: 2,
+    },
+    {},
+  );
+  assert(single.cap?.dailyCap === 12 && single.cap.sentToday === 2, 'single dest cap');
+
+  const assembled = assembleProviderHealth(
+    {
+      provider: 'TELEGRAM',
+      connections: [],
+      destinations: [
+        {
+          id: 'd1',
+          enabled: true,
+          publishSettings: { seeded: true, autoDailyCap: 5 },
+          settings: null,
+          connectionStatus: 'ACTIVE',
+          connectionPublishSettings: {},
+          channel: 'RETAIL',
+        },
+        {
+          id: 'd2',
+          enabled: true,
+          publishSettings: { seeded: true, autoDailyCap: 50 },
+          settings: null,
+          connectionStatus: 'ACTIVE',
+          connectionPublishSettings: {},
+          channel: 'RETAIL',
+        },
+      ],
+      lastSuccessAt: '2026-10-28T12:00:00.000Z',
+      lastError: 'old',
+      lastErrorAt: '2026-10-20T12:00:00.000Z',
+      countsToday: { retry: 0, dead: 0, hold: 0, stalled: 0 },
+      sentToday: 1,
+    },
+    { connectorsEnabled: true, disabledProviders: [] },
+    { connectorsEnabled: true, disabledProviders: [] },
+    {},
+  );
+  assert(assembled.capAmbiguous === true && !assembled.cap, 'assembled ambiguous');
+  assert(assembled.lastErrorAt === '2026-10-20T12:00:00.000Z', 'lastErrorAt passed');
 }
 
 console.log('omnichannel-health.spec.ts: ok');

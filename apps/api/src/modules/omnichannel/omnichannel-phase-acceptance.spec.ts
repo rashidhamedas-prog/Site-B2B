@@ -127,18 +127,18 @@ assert(omniAdmin.includes('outbox/revive-connector-disabled') && omniSvc.include
 assert(
   omniAdmin.includes('OmnichannelMinRole')
     && omniAdmin.includes('RequiresGoRef')
-    && omniAdmin.includes('OmnichannelOwnerWhenLive')
-    && omniAdmin.includes('OmnichannelRoleGuard'),
+    && omniAdmin.includes('OmnichannelRoleGuard')
+    && src('modules/omnichannel/decorators/omnichannel-role.decorator.ts').includes('OmnichannelOwnerWhenLive'),
   'PR-6 role decorators + OmnichannelRoleGuard on admin controller',
 );
 assert(
   omniAdmin.includes("requeue-by-category")
-    && omniAdmin.includes("OmnichannelOwnerWhenLive")
+    && omniAdmin.includes("roleMeetsMinimum")
     && omniAdmin.includes("Put('secrets')")
     && omniAdmin.includes('@RequiresGoRef()')
     && omniAdmin.includes("outbox/clear-waiting")
     && omniAdmin.includes('reapproveDelivery'),
-  'PR-6 Owner+goRef on requeue-live / secrets / clear-waiting / reapprove',
+  'Owner gate on live requeue / secrets / clear-waiting / reapprove',
 );
 assert(
   omniSvc.includes('assertGoRefPresent')

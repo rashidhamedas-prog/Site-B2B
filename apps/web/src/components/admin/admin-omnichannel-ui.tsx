@@ -176,6 +176,8 @@ export type Status = {
     deadChannel: number;
     deadOther: number;
   };
+  rbacEnabled?: boolean;
+  omnichannelRole?: 'VIEWER' | 'PUBLISHER' | 'OWNER' | string;
 };
 
 export type ConnectionPublishSettings = {
@@ -210,6 +212,8 @@ export type Destination = {
   displayName: string;
   enabled: boolean;
   isCanary?: boolean;
+  /** Documented Bale dual-role (4858359991) — UI warning only; never auto-clear. */
+  canaryIsLivePrimaryWarning?: boolean;
   verified?: Verification | null;
   publishSettings?: ConnectionPublishSettings;
 };
@@ -325,34 +329,14 @@ const ACTION_LABELS: Record<string, string> = {
   DELETE: 'حذف پست',
 };
 
-const ERROR_LABELS: Record<string, string> = {
-  invalid_credential: 'توکن ربات نامعتبر است، روی سرور تنظیم نشده یا ربات از کانال حذف شده',
-  rate_limited: 'پیام‌رسان محدودیت نرخ داد؛ خودکار دوباره تلاش می‌شود',
-  provider_unavailable: 'پیام‌رسان در دسترس نبود؛ دوباره تلاش می‌شود',
-  timeout: 'پاسخ پیام‌رسان دیر شد؛ دوباره تلاش می‌شود',
-  duplicate: 'قبلاً همین محتوا ارسال/ویرایش شده بود',
-  validate_failed: 'پیام‌رسان درخواست را رد کرد (شناسه یا محتوای پست را بررسی کنید)',
-  chat_not_found: 'چت پیدا نشد؛ ربات را به کانال اضافه کنید یا شناسه را درست وارد کنید',
-  permission_denied: 'ربات ادمین کانال نیست یا اجازهٔ ارسال ندارد — در تنظیمات کانال، ربات را ادمین کنید (ارسال / ویرایش / حذف پیام)',
-  destination_missing: 'شناسه مقصد خالی است',
-  provider_message_missing: 'شناسه پیام روی پیام‌رسان ثبت نشده بود',
-  webhook_active: 'روی این ربات وب‌هوک فعال است؛ getUpdates کار نمی‌کند. وب‌هوک را بردارید یا شناسه را دستی وارد کنید',
-  delete_window_expired: 'بله فقط پیام‌های کمتر از ۴۸ ساعت را حذف می‌کند؛ این پیام قدیمی‌تر بود',
-  unknown_provider: 'پلتفرم این اتصال پشتیبانی نمی‌شود',
-  cancelled_by_admin: 'با دستور ادمین از صف لغو شد (عمدی)',
-  publication_withdrawn: 'انتشار از کانال برداشته شده بود (عمدی)',
-  'connector is disabled': 'ارسال از سرور خاموش بود؛ با روشن‌بودن کانکتور می‌توان بازتلاش کرد',
-  superseded_duplicate: 'ارسال تکراری بود و کنار گذاشته شد (عمدی)',
-  stale_needs_reapproval: 'پست قدیمی است و قبل از ارسال باید دوباره تأیید شود',
-  uncertain_after_timeout: 'نتیجهٔ ارسال معلوم نیست (تایم‌اوت)؛ قبل از تلاش دوباره کانال را چک کنید',
-  send_unconfirmed: 'نتیجهٔ ارسال معلوم نیست؛ قبل از تلاش دوباره کانال را چک کنید',
-  daily_cap: 'سقف ارسال امروز پر است؛ به روز بعد موکول شد',
-  quiet_hours: 'ساعت سکوت؛ ارسال موکول شد',
-  emergency_hold: 'توقف اضطراری مقصد فعال است',
-  min_gap: 'فاصلهٔ حداقل بین ارسال‌ها رعایت نشده؛ کمی بعد دوباره تلاش می‌شود',
-  rate_limit: 'سقف نرخ ارسال پر است؛ یک دقیقه بعد دوباره تلاش می‌شود',
-  unsupported_media: 'تصویر خراب، ناقص یا بیش از حد بزرگ است — اول فایل را اصلاح کنید؛ تلاش دوباره بی‌فایده است',
-};
+export {
+  ERROR_LABELS,
+  errorLabel,
+  errorLabelWithCodeTitle,
+  errorTechnicalCode,
+  classifyErrorFreshness,
+} from './admin-omnichannel-error-labels';
+export { modeLabelFa, statusLabelFa, opsLabelFa } from './admin-omnichannel-labels';
 
 /** Delivery/outbox errors that are intentional ops outcomes, not broken sends. */
 const INTENTIONAL_ERROR_KEYS = new Set(['cancelled_by_admin', 'publication_withdrawn', 'superseded_duplicate']);
@@ -530,16 +514,6 @@ export function outboxStatus(status: string) {
 
 export function actionLabel(action: string) {
   return ACTION_LABELS[action] || action;
-}
-
-export function errorLabel(error?: string | null) {
-  if (!error) return '';
-  const key = String(error).trim();
-  if (ERROR_LABELS[key]) return ERROR_LABELS[key];
-  for (const [code, label] of Object.entries(ERROR_LABELS)) {
-    if (key.includes(code)) return label;
-  }
-  return key;
 }
 
 export function deliveryFailureTone(error?: string | null): Tone {

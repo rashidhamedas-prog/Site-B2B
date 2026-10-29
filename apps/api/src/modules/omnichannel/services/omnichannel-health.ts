@@ -58,8 +58,14 @@ export type OmnichannelProviderHealth = {
   killSwitchWorker: boolean | null;
   lastSuccessAt: string | null;
   lastError: string | null;
+  /** ISO time of the lastError sample; used for stale-vs-current UI. */
+  lastErrorAt?: string | null;
   countsToday: { retry: number; dead: number; hold: number; stalled: number };
+  /** Per-destination room when a single cap applies; omit when ambiguous (do not max-as-sum). */
   cap?: { sentToday: number; dailyCap: number; nextSlotHint?: string | null };
+  /** True when enabled destinations disagree on dailyCap — UI must not show max(). */
+  capAmbiguous?: boolean;
+  destinationCaps?: Array<{ destinationId?: string; dailyCap: number }>;
   quiet?: { startHour: number; endHour: number } | null;
   botRights?: {
     canPost?: boolean;
@@ -95,6 +101,7 @@ export type ProviderHealthInput = {
     channel: 'RETAIL' | 'WHOLESALE';
   }>;
   destinations: Array<{
+    id?: string;
     enabled: boolean;
     publishSettings: unknown;
     settings: Record<string, unknown> | null;
@@ -104,6 +111,7 @@ export type ProviderHealthInput = {
   }>;
   lastSuccessAt: string | null;
   lastError: string | null;
+  lastErrorAt?: string | null;
   countsToday: { retry: number; dead: number; hold: number; stalled: number };
   sentToday: number;
 };
@@ -265,11 +273,15 @@ function pickBotRights(
   return best;
 }
 
-function pickCapQuiet(
+/**
+ * Cap is per destination — never max() across destinations as if it were a shared sum.
+ * When multiple distinct positive caps exist, mark ambiguous and omit a single `cap`.
+ */
+export function pickCapQuiet(
   input: ProviderHealthInput,
   globalFallback: StoredOmnichannelSettings,
-): Pick<OmnichannelProviderHealth, 'cap' | 'quiet'> {
-  let dailyCap = 0;
+): Pick<OmnichannelProviderHealth, 'cap' | 'quiet' | 'capAmbiguous' | 'destinationCaps'> {
+  const destinationCaps: NonNullable<OmnichannelProviderHealth['destinationCaps']> = [];
   let quiet: OmnichannelProviderHealth['quiet'] = null;
   for (const dest of input.destinations) {
     if (!dest.enabled && dest.connectionStatus !== 'ACTIVE') continue;
@@ -279,7 +291,13 @@ function pickCapQuiet(
       globalFallback,
       dest.channel,
     );
-    if (resolved.automation.dailyCap > dailyCap) dailyCap = resolved.automation.dailyCap;
+    const dailyCap = Math.max(0, Math.floor(Number(resolved.automation.dailyCap) || 0));
+    if (dailyCap > 0) {
+      destinationCaps.push({
+        ...(dest.id ? { destinationId: dest.id } : {}),
+        dailyCap,
+      });
+    }
     if (
       resolved.automation.quietStartHour != null
       && resolved.automation.quietEndHour != null
@@ -291,10 +309,19 @@ function pickCapQuiet(
       };
     }
   }
-  if (dailyCap <= 0) return { quiet };
+  if (!destinationCaps.length) return { quiet: quiet ?? null };
+  const unique = [...new Set(destinationCaps.map((row) => row.dailyCap))];
+  if (unique.length > 1) {
+    return {
+      quiet: quiet ?? null,
+      capAmbiguous: true,
+      destinationCaps,
+    };
+  }
   return {
-    cap: { sentToday: input.sentToday, dailyCap, nextSlotHint: null },
-    quiet,
+    cap: { sentToday: input.sentToday, dailyCap: unique[0], nextSlotHint: null },
+    quiet: quiet ?? null,
+    destinationCaps,
   };
 }
 
@@ -314,7 +341,7 @@ export function assembleProviderHealth(
     globalFallback,
     providerEnabled,
   );
-  const { cap, quiet } = pickCapQuiet(input, globalFallback);
+  const { cap, quiet, capAmbiguous, destinationCaps } = pickCapQuiet(input, globalFallback);
   const emergencyHold = input.destinations.some((dest) => readEmergencyHold(dest.publishSettings));
   return {
     provider: input.provider,
@@ -325,8 +352,11 @@ export function assembleProviderHealth(
     killSwitchWorker,
     lastSuccessAt: input.lastSuccessAt,
     lastError: redactHealthError(input.lastError),
+    lastErrorAt: input.lastErrorAt ?? null,
     countsToday: input.countsToday,
     ...(cap ? { cap } : {}),
+    ...(capAmbiguous ? { capAmbiguous: true } : {}),
+    ...(destinationCaps?.length ? { destinationCaps } : {}),
     quiet: quiet ?? null,
     botRights: pickBotRights(input.destinations),
   };
@@ -365,6 +395,7 @@ export function assembleOmnichannelHealth(input: {
         destinations: [],
         lastSuccessAt: null,
         lastError: null,
+        lastErrorAt: null,
         countsToday: { retry: 0, dead: 0, hold: 0, stalled: 0 },
         sentToday: 0,
       };
@@ -429,6 +460,7 @@ export class OmnichannelHealthService {
           const conn = connById.get(dest.connectionId);
           if (!conn || conn.provider !== provider) return null;
           return {
+            id: dest.id,
             enabled: dest.enabled,
             publishSettings: dest.publishSettings,
             settings: (dest.settings || null) as Record<string, unknown> | null,
@@ -449,6 +481,7 @@ export class OmnichannelHealthService {
         destinations: providerDests,
         lastSuccessAt: facts?.lastSuccessAt ?? null,
         lastError: facts?.lastError ?? null,
+        lastErrorAt: facts?.lastErrorAt ?? null,
         countsToday: facts?.countsToday ?? { retry: 0, dead: 0, hold: 0, stalled: 0 },
         sentToday: facts?.sentToday ?? 0,
       };
@@ -478,12 +511,14 @@ export class OmnichannelHealthService {
   private async loadDeliveryFacts(now: Date): Promise<Record<OmnichannelProvider, {
     lastSuccessAt: string | null;
     lastError: string | null;
+    lastErrorAt: string | null;
     countsToday: { retry: number; dead: number; hold: number; stalled: number };
     sentToday: number;
   }>> {
     const empty = () => ({
       lastSuccessAt: null as string | null,
       lastError: null as string | null,
+      lastErrorAt: null as string | null,
       countsToday: { retry: 0, dead: 0, hold: 0, stalled: 0 },
       sentToday: 0,
     });
@@ -527,6 +562,7 @@ export class OmnichannelHealthService {
         }
         if (row.lastError && !bucket.lastError && status !== 'SUCCEEDED') {
           bucket.lastError = row.lastError;
+          bucket.lastErrorAt = updatedAt ? updatedAt.toISOString() : (createdAt ? createdAt.toISOString() : null);
         }
         const inToday = Boolean(
           (updatedAt && updatedAt >= dayStart)

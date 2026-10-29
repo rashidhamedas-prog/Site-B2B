@@ -428,7 +428,7 @@ export class PatchConnectionPublishSettingsDto extends GoRefDto {
   reason?: string;
 }
 
-export class PatchDestinationDto {
+export class PatchDestinationDto extends GoRefDto {
   @IsOptional()
   @IsString()
   @MaxLength(160)
@@ -441,6 +441,11 @@ export class PatchDestinationDto {
   @IsOptional()
   @IsBoolean()
   isCanary?: boolean;
+
+  /** Owner ack to mark a live-primary destination as canary (never for Rubika wholesale live). */
+  @IsOptional()
+  @IsBoolean()
+  forceCanaryOnLive?: boolean;
 }
 
 export class CreateDestinationDto extends GoRefDto {
@@ -697,6 +702,12 @@ export class ClearWaitingOutboxDto extends GoRefDto {
   @ArrayUnique()
   @IsIn(OMNICHANNEL_CHANNELS, { each: true })
   channels?: Array<(typeof OMNICHANNEL_CHANNELS)[number]>;
+
+  /** Second confirm from UI — must equal «خالی» when provided. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  confirmPhrase?: string;
 }
 
 /** Enqueue CREATE/UPDATE for every visible product in a category (batched). */
