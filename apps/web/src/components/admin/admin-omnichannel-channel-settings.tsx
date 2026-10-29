@@ -135,12 +135,8 @@ export function AdminOmnichannelChannelSettings({
     .toUpperCase() as Provider;
   const meta = PROVIDER_META[provider];
 
-  async function save() {
+  async function saveContent() {
     if (!destinationId) return;
-    if (!goRef.trim()) {
-      onError('برای ذخیرهٔ تنظیمات کانال، goRef مالک لازم است');
-      return;
-    }
     setLoading(true);
     try {
       const saved = await apiClient.patch<ChannelSettingsPayload>(
@@ -157,6 +153,33 @@ export function AdminOmnichannelChannelSettings({
           ctaText: form.ctaText || '',
           utmSource: form.utmSource || '',
           utmCampaign: form.utmCampaign || '',
+          reason: reason || undefined,
+        },
+      );
+      if (saved?.warnings?.length) {
+        onNotice(`محتوا ذخیره شد — هشدار: ${saved.warnings.join('؛ ')}`);
+      } else {
+        onNotice('محتوای کانال ذخیره شد (بدون سیاست Owner)');
+      }
+      await load(destinationId);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'ذخیره محتوا ناموفق');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function savePolicy() {
+    if (!destinationId) return;
+    if (!goRef.trim()) {
+      onError('برای ذخیرهٔ سیاست کانال (ownerChatId / قیمت / …)، goRef مالک لازم است');
+      return;
+    }
+    setLoading(true);
+    try {
+      const saved = await apiClient.patch<ChannelSettingsPayload>(
+        `/v1/omnichannel/destinations/${destinationId}/channel-settings`,
+        {
           showPriceDefault: form.showPriceDefault === true || form.showPrice === true,
           ownerChatId: form.ownerChatId || '',
           reason: reason || undefined,
@@ -164,13 +187,13 @@ export function AdminOmnichannelChannelSettings({
         },
       );
       if (saved?.warnings?.length) {
-        onNotice(`ذخیره شد — هشدار: ${saved.warnings.join('؛ ')}`);
+        onNotice(`سیاست ذخیره شد — هشدار: ${saved.warnings.join('؛ ')}`);
       } else {
-        onNotice('تنظیمات کانال ذخیره شد');
+        onNotice('سیاست کانال ذخیره شد');
       }
       await load(destinationId);
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'ذخیره ناموفق');
+      onError(err instanceof Error ? err.message : 'ذخیره سیاست ناموفق');
     } finally {
       setLoading(false);
     }
@@ -282,7 +305,6 @@ export function AdminOmnichannelChannelSettings({
           ['ctaText', 'CTA'],
           ['utmSource', 'utm_source'],
           ['utmCampaign', 'utm_campaign'],
-          ['ownerChatId', 'آی‌دی مقصد هدایت پیام‌ها'],
         ] as Array<[keyof ChannelSettingsPayload, string]>).map(([key, label]) => (
           <label key={key} className="block text-sm">
             <span className="text-gray-700">{label}</span>
@@ -297,68 +319,84 @@ export function AdminOmnichannelChannelSettings({
         ))}
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={form.showPriceDefault === true || form.showPrice === true}
-          onChange={(e) => setForm((prev) => ({
-            ...prev,
-            showPriceDefault: e.target.checked,
-            showPrice: e.target.checked,
-          }))}
-        />
-        نمایش قیمت (پیش‌فرض خاموش)
-      </label>
-
-      <button
-        type="button"
-        className="btn btn-secondary btn-sm opacity-60 cursor-not-allowed"
-        disabled
-        title="تست آی‌دی مقصد هدایت پیام‌ها در PR-14"
-      >
-        تست آی‌دی مقصد هدایت پیام‌ها (PR-14)
-      </button>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="block text-sm">
-          <span className="text-gray-700">goRef (الزامی برای ذخیره / توقف)</span>
-          <input
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
-            value={goRef}
-            onChange={(e) => setGoRef(e.target.value)}
-            placeholder="GO حامد …"
-          />
-        </label>
-        <label className="block text-sm">
-          <span className="text-gray-700">دلیل (اختیاری)</span>
-          <input
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-        </label>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="btn btn-primary btn-sm" disabled={loading} onClick={() => void saveContent()}>
+          ذخیره محتوا (ناشر)
+        </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn btn-primary btn-sm" disabled={loading} onClick={() => void save()}>
-          ذخیره تنظیمات
-        </button>
+      <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/40 p-3">
+        <p className="text-xs text-amber-900">سیاست Owner — نیاز به goRef</p>
+        <label className="block text-sm">
+          <span className="text-gray-700">آی‌دی مقصد هدایت پیام‌ها</span>
+          <input
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+            placeholder={EMPTY_HINT}
+            value={String(form.ownerChatId ?? '')}
+            onChange={(e) => setForm((prev) => ({ ...prev, ownerChatId: e.target.value }))}
+            autoComplete="off"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={form.showPriceDefault === true || form.showPrice === true}
+            onChange={(e) => setForm((prev) => ({
+              ...prev,
+              showPriceDefault: e.target.checked,
+              showPrice: e.target.checked,
+            }))}
+          />
+          نمایش قیمت (پیش‌فرض خاموش)
+        </label>
         <button
           type="button"
-          className="btn btn-secondary btn-sm"
-          disabled={loading || form.emergencyHold === true}
-          onClick={() => void toggleHold(true)}
+          className="btn btn-secondary btn-sm opacity-60 cursor-not-allowed"
+          disabled
+          title="تست آی‌دی مقصد هدایت پیام‌ها در PR-14"
         >
-          توقف اضطراری
+          تست آی‌دی مقصد هدایت پیام‌ها (PR-14)
         </button>
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          disabled={loading || form.emergencyHold !== true}
-          onClick={() => void toggleHold(false)}
-        >
-          رفع توقف
-        </button>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="block text-sm">
+            <span className="text-gray-700">goRef (الزامی برای سیاست / توقف / کپی)</span>
+            <input
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+              value={goRef}
+              onChange={(e) => setGoRef(e.target.value)}
+              placeholder="GO حامد …"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="text-gray-700">دلیل (اختیاری)</span>
+            <input
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="btn btn-primary btn-sm" disabled={loading} onClick={() => void savePolicy()}>
+            ذخیره سیاست (Owner)
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            disabled={loading || form.emergencyHold === true}
+            onClick={() => void toggleHold(true)}
+          >
+            توقف اضطراری
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            disabled={loading || form.emergencyHold !== true}
+            onClick={() => void toggleHold(false)}
+          >
+            رفع توقف
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-2 border-t border-gray-100 pt-3">
