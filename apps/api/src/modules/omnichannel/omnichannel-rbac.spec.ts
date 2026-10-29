@@ -58,6 +58,9 @@ assert(roleMeetsMinimum('PUBLISHER', 'OWNER') === false, 'publisher cannot oop r
 assert(roleMeetsMinimum('OWNER', 'OWNER') === true, 'owner can oop reconcile');
 assert(roleMeetsMinimum('PUBLISHER', 'PUBLISHER') === true, 'composer/plan → PUBLISHER');
 assert(roleMeetsMinimum('VIEWER', 'PUBLISHER') === false, 'viewer cannot composer/plan');
+assert(roleMeetsMinimum('PUBLISHER', 'PUBLISHER') === true, 'media validate/scan → PUBLISHER');
+assert(roleMeetsMinimum('VIEWER', 'PUBLISHER') === false, 'viewer cannot media scan');
+assert(roleMeetsMinimum('VIEWER', 'VIEWER') === true, 'media health GET → VIEWER');
 assert(
   actionRequiresGoRef('publications_requeue_by_category_live') === true,
   'composer bulk requeue live → OWNER+goRef',

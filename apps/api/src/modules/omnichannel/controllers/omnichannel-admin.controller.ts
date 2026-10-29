@@ -18,6 +18,7 @@ import { OmnichannelHealthService } from '../services/omnichannel-health';
 import { OmnichannelCoverageService } from '../services/omnichannel-coverage.service';
 import { OmnichannelComposerService } from '../services/omnichannel-composer.service';
 import { OmnichannelSettingsService } from '../services/omnichannel-settings.service';
+import { OmnichannelMediaService } from '../services/omnichannel-media.service';
 import {
   ActorReasonDto,
   ClearWaitingOutboxDto,
@@ -53,6 +54,11 @@ import {
   CoverageAbsenceReasonDto,
   OutOfPanelIngestDto,
 } from '../dto/omnichannel-coverage.dto';
+import {
+  MarkMediaNeedsReplaceDto,
+  ScanMediaDto,
+  ValidateMediaDto,
+} from '../dto/omnichannel-media.dto';
 import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import { isVaultStrictMessengers } from '../omnichannel-token-vault';
 import {
@@ -63,6 +69,7 @@ import {
   isOmnichannelCoverageUiEnabled,
   isOmnichannelFreePostEnabled,
   isOmnichannelTemplatesUiEnabled,
+  isOmnichannelMediaHealthUiEnabled,
 } from '../omnichannel.constants';
 import { providerReadiness } from '../provider-capabilities';
 import {
@@ -90,6 +97,7 @@ export class OmnichannelAdminController {
     private readonly coverage: OmnichannelCoverageService,
     private readonly composer: OmnichannelComposerService,
     private readonly channelSettings: OmnichannelSettingsService,
+    private readonly media: OmnichannelMediaService,
   ) {}
 
   @Get('health')
@@ -100,7 +108,10 @@ export class OmnichannelAdminController {
 
   @Get('status')
   @ApiOperation({ summary: 'وضعیت پرچم Omnichannel' })
-  async status(@Query('destinationId') destinationId?: string, @Req() req?: Authed) {
+  async status(
+    @Query('destinationId') destinationId?: string,
+    @Req() req?: Authed,
+  ) {
     await this.svc.ensureProductTemplates();
     const [settings, outbox, diagnosis] = await Promise.all([
       this.svc.getSettings(),
@@ -122,7 +133,9 @@ export class OmnichannelAdminController {
       channelSettingsUi: isOmnichannelChannelSettingsUiEnabled(),
       /** PR-10 templates editor tab. Default false until validated. */
       templatesUi: isOmnichannelTemplatesUiEnabled(),
-      phase: 10,
+      /** PR-11 media health tab. Default false until staging validate. */
+      mediaHealthUi: isOmnichannelMediaHealthUiEnabled(),
+      phase: 11,
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
       outbox,
@@ -134,6 +147,7 @@ export class OmnichannelAdminController {
       outboxDeadByEventType: diagnosis.outboxDeadByEventType,
       scopedDestinationId: destinationId || null,
       rbacEnabled,
+      /** Resolved omnichannel role for UI gates (scan button). Never secrets. */
       omnichannelRole: req?.omnichannelActor?.omnichannelRole || (rbacEnabled ? 'PUBLISHER' : 'OWNER'),
       /** Per-platform capability matrix + boolean readiness (enabled flag, token present). Never token values. */
       providers: providerReadiness(),
@@ -659,9 +673,44 @@ export class OmnichannelAdminController {
     return this.svc.assertMediaDeletable(String(body?.url || ''));
   }
 
+  @Post('media/validate')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'اعتبارسنجی تصویر کانال (EOI/decode/size) — بدون adapter' })
+  validateMedia(@Body() body: ValidateMediaDto) {
+    assertNoPlaintextSecrets(body);
+    return this.media.validate(body);
+  }
+
+  @Post('media/scan')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'اسکن تکه‌ای سلامت رسانه رجیستری — بدون ارسال زنده' })
+  scanMedia(@Body() body: ScanMediaDto, @Req() req: Authed) {
+    assertNoPlaintextSecrets(body);
+    return this.media.scan(body || {}, req.omnichannelActor);
+  }
+
+  @Get('media/health')
+  @OmnichannelMinRole('VIEWER')
+  @ApiOperation({ summary: 'خلاصه آخرین اسکن سلامت رسانه' })
+  mediaHealth() {
+    return this.media.health();
+  }
+
+  @Post('media/:id/mark-needs-replace')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'علامت نیاز به جایگزینی تصویر (بدون حذف خودکار)' })
+  markMediaNeedsReplace(
+    @Param('id') id: string,
+    @Body() body: MarkMediaNeedsReplaceDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets(body);
+    return this.media.markNeedsReplace(id, req.omnichannelActor, body?.reason);
+  }
+
   @Get('media')
   listMedia(@Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.svc.listMedia({ page, limit });
+    return this.media.listMedia({ page, limit });
   }
 
   @Patch('media/:id')

@@ -24,6 +24,17 @@ export class OmnichannelMediaAssetEntity {
   @Column({ type: 'uuid', nullable: true })
   createdBy: string | null;
 
+  /** PR-11: unknown | ok | truncated | undecodable | oversized | needs_replace */
+  @Column({ type: 'varchar', nullable: true })
+  healthStatus: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  healthCheckedAt: Date | null;
+
+  /** Short issue code only — never tokens / vault / MinIO credentials. */
+  @Column({ type: 'varchar', nullable: true })
+  healthDetail: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

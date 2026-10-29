@@ -103,6 +103,11 @@ export function isOmnichannelSettingsStrictDestination(): boolean {
   return isOmnichannelChannelSettingsUiEnabled() || isOmnichannelTemplatesUiEnabled();
 }
 
+/** PR-11 media health tab («رسانه»). Default off until staging validate. */
+export function isOmnichannelMediaHealthUiEnabled(): boolean {
+  return process.env.OMNICHANNEL_MEDIA_HEALTH_UI === 'true';
+}
+
 /**
  * When true, live createPublication requires explicit destinationIds[] (no implicit all-targets).
  * Default true while COMPOSER_UI is on; set OMNICHANNEL_COMPOSER_STRICT_DESTINATIONS=false to relax.
