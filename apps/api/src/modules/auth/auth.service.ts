@@ -304,6 +304,10 @@ export class AuthService {
         await this.ensureShopperCustomer(user);
         user = await this.userRepo.findOneOrFail({ where: { id: user.id } });
       } else {
+        if (purpose === 'retail' && !user.customerId) {
+          await this.ensureShopperCustomer(user);
+          user = await this.userRepo.findOneOrFail({ where: { id: user.id } });
+        }
         const customer = user.customerId
           ? await this.customerRepo.findOne({ where: { id: user.customerId } })
           : null;

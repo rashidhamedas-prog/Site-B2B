@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { resolveShopperLoginUrl } from '@/lib/shopper-auth-redirect';
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { apiClient } from '@/lib/api';
 import { clearToken, getToken } from '@/lib/auth';
@@ -91,6 +93,7 @@ function readAff(): string | undefined {
 }
 
 export default function RetailCheckoutPage() {
+  const router = useRouter();
   const items = useRetailCart((s) => s.items);
   const clear = useRetailCart((s) => s.clear);
   const [cartReady, setCartReady] = useState(false);
@@ -127,6 +130,9 @@ export default function RetailCheckoutPage() {
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [needsLogin, setNeedsLogin] = useState(false);
+  const [needsCompleteAccount, setNeedsCompleteAccount] = useState(false);
+  const [accountLoginHref, setAccountLoginHref] = useState('/account?redirect=%2Fcheckout');
   const [done, setDone] = useState<string | null>(null);
   const [doneMeta, setDoneMeta] = useState<{
     amount: number;
@@ -143,6 +149,13 @@ export default function RetailCheckoutPage() {
   const [address, setAddress] = useState<AddressForm>(emptyShippingAddress());
   const [showAddressErrors, setShowAddressErrors] = useState(false);
   const addressDirty = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setAccountLoginHref(
+      resolveShopperLoginUrl(window.location.pathname, window.location.hostname, window.location.search),
+    );
+  }, []);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -193,10 +206,12 @@ export default function RetailCheckoutPage() {
         phone?: string;
         ownerName?: string;
         businessName?: string;
+        customerId?: string;
         addresses?: Array<RetailAddress & { isDefault?: boolean }>;
-      }>('/auth/me/profile')
+      }>('/auth/me/profile', { authRedirect: false })
       .then((me) => {
         setWalletBalance(Number(me?.balance) || 0);
+        if (getToken() && !me?.customerId) setNeedsCompleteAccount(true);
         const book = Array.isArray(me?.addresses) ? me.addresses : [];
         if (book.length) {
           const hydrated = book.map((row) => ({ ...hydrateShippingAddress(row), isDefault: Boolean(row.isDefault), id: row.id }));
@@ -212,7 +227,9 @@ export default function RetailCheckoutPage() {
           mobile: a.mobile || me?.phone || '',
         }));
       })
-      .catch(() => undefined);
+      .catch((err: { status?: number }) => {
+        if (err?.status === 401) setNeedsLogin(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -282,29 +299,37 @@ export default function RetailCheckoutPage() {
     setPendingPayOrderId(null);
   };
 
-  /** Incomplete / missing retail account → account page; keep cart and avoid wiping a valid token unless auth failed. */
+  /** Soft navigation to account/login; keep cart; only clear token when session is truly invalid. */
   const goOpenAccount = (opts?: { clearSession?: boolean }) => {
     if (opts?.clearSession) clearToken();
-    window.location.href = '/account?redirect=/checkout';
+    router.push('/account?redirect=/checkout');
   };
 
   const ensureRetailAccount = async (): Promise<boolean> => {
     if (!getToken()) {
+      setNeedsLogin(true);
       setError('برای ثبت سفارش اول وارد شوید یا حساب باز کنید. سبد شما حفظ می‌شود.');
-      goOpenAccount();
       return false;
     }
     try {
-      const me = await apiClient.get<{ customerId?: string }>('/auth/me/profile');
+      const me = await apiClient.get<{ customerId?: string }>('/auth/me/profile', { authRedirect: false });
       if (!me?.customerId) {
-        setError('حساب تکی شما کامل نیست. چند لحظه برای تکمیل حساب.');
-        goOpenAccount();
+        setNeedsCompleteAccount(true);
+        setError('حساب تکی شما کامل نیست. نام و شهر را در حساب تکمیل کنید یا یک بار دوباره وارد شوید.');
         return false;
       }
+      setNeedsCompleteAccount(false);
+      setNeedsLogin(false);
       return true;
-    } catch {
-      setError('نشست شما منقضی شده. دوباره وارد شوید؛ سبد حفظ می‌شود.');
-      goOpenAccount({ clearSession: true });
+    } catch (err: unknown) {
+      const status = (err as { status?: number })?.status;
+      if (status === 401) {
+        clearToken();
+        setNeedsLogin(true);
+        setError('نشست شما منقضی شده. دوباره وارد شوید؛ سبد حفظ می‌شود.');
+        return false;
+      }
+      setError('بررسی حساب ناموفق بود. دوباره تلاش کنید.');
       return false;
     }
   };
@@ -455,7 +480,13 @@ export default function RetailCheckoutPage() {
         msg.includes('حساب مشتری') ||
         msg.includes('وارد شوید');
       if (needsAccount) {
-        goOpenAccount();
+        if (getToken()) {
+          setNeedsCompleteAccount(true);
+          setError(msg || 'حساب مشتری برای پرداخت کامل نیست.');
+        } else {
+          setNeedsLogin(true);
+          setError(msg || 'برای ثبت سفارش وارد حساب شوید.');
+        }
         return;
       }
       setError(msg || 'خطا در ثبت سفارش');
@@ -497,6 +528,42 @@ export default function RetailCheckoutPage() {
           <p className="mt-1 text-sm text-[var(--retail-muted)]">خرید تکی — بدون حداقل سفارش عمده</p>
           <CheckoutStepRail appearance="retail" />
         </header>
+
+        {needsLogin ? (
+          <div
+            className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950"
+            role="status"
+          >
+            <p className="font-bold">برای پرداخت وارد حساب شوید</p>
+            <p className="mt-1 text-amber-900/90">سبد خرید شما حفظ می‌شود.</p>
+            <Link
+              href={accountLoginHref}
+              className="mt-3 inline-block font-bold text-[var(--retail-primary)] underline underline-offset-2"
+            >
+              ورود یا باز کردن حساب
+            </Link>
+          </div>
+        ) : null}
+
+        {needsCompleteAccount ? (
+          <div
+            className="mb-6 rounded-2xl border border-[var(--retail-border)] bg-white px-4 py-4 text-sm"
+            role="status"
+          >
+            <p className="font-bold text-[var(--retail-ink)]">تکمیل حساب خریدار</p>
+            <p className="mt-1 text-[var(--retail-muted)]">
+              برای ثبت سفارش و پرداخت، حساب تکی باید به مشتری B2C وصل باشد. از صفحه حساب با OTP یا ورود مجدد
+              تکمیل کنید — سبد اینجا می‌ماند.
+            </p>
+            <button
+              type="button"
+              className="mt-3 font-bold text-[var(--retail-primary)] underline underline-offset-2"
+              onClick={() => router.push('/account?redirect=/checkout')}
+            >
+              رفتن به حساب من
+            </button>
+          </div>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-start">
           <div className="space-y-5">

@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, CheckCircle, Eye, EyeOff, Lock, Phone, Store } from 'lucide-react';
-import { AuthShell, fireSideCanons, type ConfettiRef } from '@/components/auth/AuthShell';
+import { AuthShell } from '@/components/auth/AuthShell';
 import { BlurFade } from '@/components/auth/BlurFade';
 import { GlassInput } from '@/components/auth/GlassInput';
 import { GlassButton } from '@/components/ui/glass-button';
@@ -89,8 +88,6 @@ export function PortalRegisterAuth() {
   const [localError, setLocalError] = useState('');
   const [done, setDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const confettiRef = useRef<ConfettiRef>(null);
-
   useEffect(() => {
     const ref = new URLSearchParams(window.location.search).get('ref') || '';
     if (/^[a-z0-9]{8}$/.test(ref)) setReferralCode(ref);
@@ -175,13 +172,12 @@ export function PortalRegisterAuth() {
         referral: referralCode ? 'yes' : 'no',
       });
       setDone(true);
-      fireSideCanons(confettiRef.current?.fire);
     }
   };
 
   if (done) {
     return (
-      <AuthShell brandName="همکاری با ترنم" confettiRef={confettiRef}>
+      <AuthShell brandName="همکاری با ترنم">
         <div className="w-full max-w-[320px] text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
             <CheckCircle className="h-8 w-8 text-emerald-600" aria-hidden />
@@ -205,7 +201,6 @@ export function PortalRegisterAuth() {
   return (
     <AuthShell
       brandName="همکاری با ترنم"
-      confettiRef={confettiRef}
       footer={
         <p className="text-center text-sm text-[var(--brand-muted)]">
           قبلاً ثبت‌نام کرده‌اید؟{' '}
@@ -247,15 +242,7 @@ export function PortalRegisterAuth() {
           </p>
         )}
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -12 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-3"
-          >
+        <div key={step} className="auth-fade-in space-y-3">
             {step === 0 && (
               <>
                 <GlassInput icon={<Store className="h-5 w-5" aria-hidden />}>
@@ -296,7 +283,7 @@ export function PortalRegisterAuth() {
                 </GlassInput>
                 <GlassInput>
                   <select
-                    className="auth-glass-select"
+                    className="auth-select"
                     value={form.businessType}
                     onChange={(e) => set('businessType', e.target.value)}
                     aria-label="نوع کسب‌وکار"
@@ -314,7 +301,7 @@ export function PortalRegisterAuth() {
               <>
                 <GlassInput>
                   <select
-                    className="auth-glass-select"
+                    className="auth-select"
                     value={form.province}
                     onChange={(e) => set('province', e.target.value)}
                     aria-label="استان"
@@ -381,8 +368,7 @@ export function PortalRegisterAuth() {
                 </GlassInput>
               </>
             )}
-          </motion.div>
-        </AnimatePresence>
+        </div>
 
         <div className="flex items-center gap-3 pt-2">
           {step > 0 ? (

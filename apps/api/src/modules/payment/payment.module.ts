@@ -17,6 +17,7 @@ import { InstallmentController } from './installment.controller';
 import { InstallmentOverdueJob } from './installment-overdue.job';
 import { PaymentMetrics } from './payment-metrics';
 import { AuthModule } from '../auth/auth.module';
+import { UserEntity } from '../auth/entities/user.entity';
 import { AffiliateModule } from '../affiliate/affiliate.module';
 import { OrderEntity } from '../order/entities/order.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
@@ -45,6 +46,7 @@ import { Ga4PurchaseService } from './ga4-purchase.service';
       InvoiceEntity,
       CustomerEntity,
       AnalyticsEventLogEntity,
+      UserEntity,
     ]),
     AuthModule,
     AffiliateModule,

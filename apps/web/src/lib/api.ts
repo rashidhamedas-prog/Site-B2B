@@ -1,5 +1,11 @@
 import { getToken } from './auth';
+import {
+  resolveShopperLoginUrl,
+  shouldSkipAuthRedirect,
+} from './shopper-auth-redirect';
 import { UPLOAD_FETCH_TIMEOUT_MS, UPLOAD_TIMEOUT_MESSAGE } from './upload-image';
+
+export type ApiRequestOptions = RequestInit & { authRedirect?: boolean };
 
 function resolveApiBase(): string {
   // Browser on production hosts: same-origin /api (avoids CORS between .ir ↔ .com)
@@ -26,15 +32,16 @@ class ApiClient {
     return resolveApiBase();
   }
 
-  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
+    const { authRedirect = true, ...fetchOptions } = options;
     const token = getToken();
     const res = await fetch(`${this.baseUrl}${path}`, {
       cache: 'no-store',
-      ...options,
+      ...fetchOptions,
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options.headers,
+        ...fetchOptions.headers,
       },
     });
 
@@ -78,27 +85,19 @@ class ApiClient {
         const n = Number(retryRaw);
         if (Number.isFinite(n) && n > 0) err.retryAfter = Math.ceil(n);
       }
-      // Only auto-redirect on 401 if this is NOT a login/OTP-verify attempt (wrong OTP must stay on form)
-      const skipAuthRedirect =
-        path.includes('/auth/login') ||
-        path.includes('/auth/retail') ||
-        path.includes('/otp/verify') ||
-        path.includes('/sales-partner-applications/verify');
-      if (res.status === 401 && typeof window !== 'undefined' && !skipAuthRedirect) {
+      if (
+        res.status === 401 &&
+        typeof window !== 'undefined' &&
+        authRedirect !== false &&
+        !shouldSkipAuthRedirect(path)
+      ) {
         const { clearToken } = await import('./auth');
         clearToken();
-        const pathName = window.location.pathname;
-        if (pathName.startsWith('/admin')) {
-          window.location.href = '/admin/login';
-        } else if (pathName.startsWith('/partners')) {
-          window.location.href = '/partners/login';
-        } else if (pathName === '/sales-partners' || pathName.startsWith('/sales-partners/')) {
-          window.location.href = '/sales-partners/login';
-        } else if (pathName.startsWith('/retail') || pathName.startsWith('/account')) {
-          window.location.href = `/account?redirect=${encodeURIComponent(pathName)}`;
-        } else {
-          window.location.href = '/portal/login';
-        }
+        window.location.href = resolveShopperLoginUrl(
+          window.location.pathname,
+          window.location.hostname,
+          window.location.search,
+        );
       }
       throw err;
     }
@@ -106,23 +105,23 @@ class ApiClient {
     return data as T;
   }
 
-  get<T>(path: string, init?: RequestInit) {
+  get<T>(path: string, init?: ApiRequestOptions) {
     return this.request<T>(path, { ...init, method: 'GET' });
   }
 
-  post<T>(path: string, body: unknown, init?: RequestInit) {
+  post<T>(path: string, body: unknown, init?: ApiRequestOptions) {
     return this.request<T>(path, { ...init, method: 'POST', body: JSON.stringify(body) });
   }
 
-  put<T>(path: string, body: unknown, init?: RequestInit) {
+  put<T>(path: string, body: unknown, init?: ApiRequestOptions) {
     return this.request<T>(path, { ...init, method: 'PUT', body: JSON.stringify(body) });
   }
 
-  patch<T>(path: string, body: unknown, init?: RequestInit) {
+  patch<T>(path: string, body: unknown, init?: ApiRequestOptions) {
     return this.request<T>(path, { ...init, method: 'PATCH', body: JSON.stringify(body) });
   }
 
-  delete<T>(path: string, body?: unknown, init?: RequestInit) {
+  delete<T>(path: string, body?: unknown, init?: ApiRequestOptions) {
     return this.request<T>(path, {
       ...init,
       method: 'DELETE',
@@ -271,20 +270,31 @@ class ApiClient {
     };
   }
 
-  async download(path: string, fallbackName: string): Promise<void> {
+  async download(
+    path: string,
+    fallbackName: string,
+    opts?: Pick<ApiRequestOptions, 'authRedirect'>,
+  ): Promise<void> {
+    const authRedirect = opts?.authRedirect ?? true;
     const token = getToken();
     const res = await fetch(`${this.baseUrl}${path}`, {
       method: 'GET',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
-    if (res.status === 401 && typeof window !== 'undefined' && !path.includes('/auth/login')) {
+    if (
+      res.status === 401 &&
+      typeof window !== 'undefined' &&
+      authRedirect !== false &&
+      !shouldSkipAuthRedirect(path)
+    ) {
       const { clearToken } = await import('./auth');
       clearToken();
-      const pathName = window.location.pathname;
-      if (pathName.startsWith('/admin')) window.location.href = '/admin/login';
-      else if (pathName.startsWith('/partners')) window.location.href = '/partners/login';
-      else if (pathName === '/sales-partners' || pathName.startsWith('/sales-partners/')) window.location.href = '/sales-partners/login';
+      window.location.href = resolveShopperLoginUrl(
+        window.location.pathname,
+        window.location.hostname,
+        window.location.search,
+      );
       throw new Error('نشست شما منقضی شده است');
     }
 

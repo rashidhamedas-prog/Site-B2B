@@ -240,6 +240,7 @@ export class PaymentService {
     const cfg = await this.settings.payment();
     const isRetail = channel === 'RETAIL';
     const requestedCode = String(requested || '').toUpperCase();
+    // Retail return URLs must stay on the .ir storefront (NEXT_PUBLIC_RETAIL_URL), not wholesale PAYMENT_CALLBACK_URL (.com).
     const retailBase = (process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(
       /\/$/,
       '',
@@ -275,12 +276,19 @@ export class PaymentService {
     const useTorobpay = wantTorobpay && torobpayReady;
     const useDigipay = wantDigipay && digipayReady;
     const merchantId = (isRetail ? cfg.retailMerchantId : cfg.merchantId) || '';
+    const isProd = this.config.get('NODE_ENV') === 'production';
+    const isRetailZarinpal = isRetail && !useDigipay && !useTorobpay;
+    if (isProd && isRetailZarinpal && !merchantId && !cfg.retailSandbox) {
+      throw new BadRequestException(
+        'درگاه پرداخت تکی (زرین‌پال) پیکربندی نشده است. شناسه پذیرنده retail را در تنظیمات پرداخت وارد کنید یا sandbox آزمایشی را صریحاً فعال کنید.',
+      );
+    }
     const sandbox = useTorobpay
       ? this.torobpay.isSandbox(torobpayCreds)
       : useDigipay
         ? this.digipay.isSandbox(digipayCreds)
         : isRetail
-          ? cfg.retailSandbox || !merchantId
+          ? !!cfg.retailSandbox || (!isProd && !merchantId)
           : cfg.sandbox || !merchantId;
     const enabled = isRetail
       ? !!cfg.retailEnabled &&

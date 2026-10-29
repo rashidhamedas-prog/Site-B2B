@@ -1,4 +1,5 @@
 import { hostLooksRetail } from './channel';
+import { safeScopedRedirect } from './safe-redirect';
 
 export const RETAIL_CANONICAL_ORIGIN = 'https://www.poshaktaranom.ir';
 export const WHOLESALE_CANONICAL_ORIGIN = 'https://poshaktaranom.com';
@@ -36,7 +37,13 @@ export function publicAccountPath(pathname: string): string {
   return pathname;
 }
 
-/** Production-only: keep /portal on .com and /account on .ir. Localhost is unchanged. */
+function appendSearch(pathname: string, search: string): string {
+  if (!search) return pathname;
+  const q = search.startsWith('?') ? search : `?${search}`;
+  return `${pathname}${q}`;
+}
+
+/** Production-only: /portal on .ir → .com; wholesale /account* → .com /portal/login. Localhost unchanged. */
 export function panelHostLockRedirect(args: {
   host: string | null | undefined;
   pathname: string;
@@ -48,10 +55,15 @@ export function panelHostLockRedirect(args: {
     return { origin: WHOLESALE_CANONICAL_ORIGIN, pathname: args.pathname, search };
   }
   if (hostLooksWholesale(args.host) && isRetailAccountPath(args.pathname)) {
+    const attempted = appendSearch(publicAccountPath(args.pathname), search);
+    const redirect = safeScopedRedirect(attempted, '/portal/dashboard', [
+      '/portal',
+      '/checkout',
+    ] as const);
     return {
-      origin: RETAIL_CANONICAL_ORIGIN,
-      pathname: publicAccountPath(args.pathname),
-      search,
+      origin: WHOLESALE_CANONICAL_ORIGIN,
+      pathname: '/portal/login',
+      search: `?redirect=${encodeURIComponent(redirect)}`,
     };
   }
   return null;

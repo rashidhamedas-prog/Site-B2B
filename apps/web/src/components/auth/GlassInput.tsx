@@ -6,21 +6,32 @@ type GlassInputProps = {
   icon?: React.ReactNode;
   trailing?: React.ReactNode;
   className?: string;
+  label?: string;
+  htmlFor?: string;
+  error?: string;
   children: React.ReactNode;
 };
 
-export function GlassInput({ icon, trailing, className, children }: GlassInputProps) {
+export function GlassInput({ icon, trailing, className, label, htmlFor, error, children }: GlassInputProps) {
   return (
-    <div className={cn('auth-glass-input-wrap', className)}>
-      <div className="auth-glass-input">
-        {icon ? (
-          <div className="relative z-10 flex w-10 flex-shrink-0 items-center justify-center pl-1 text-[color-mix(in_srgb,var(--brand-ink)_70%,transparent)]">
-            {icon}
-          </div>
-        ) : null}
-        {children}
-        {trailing ? <div className="relative z-10 flex flex-shrink-0 items-center pr-1">{trailing}</div> : null}
+    <div className={cn('auth-field-group', className)}>
+      {label ? (
+        <label htmlFor={htmlFor} className="auth-label">
+          {label}
+        </label>
+      ) : null}
+      <div className="auth-field-wrap">
+        <div className={cn('auth-field', error ? 'auth-field--error' : undefined)}>
+          {icon ? <div className="auth-field-icon">{icon}</div> : null}
+          {children}
+          {trailing ? <div className="auth-field-trailing">{trailing}</div> : null}
+        </div>
       </div>
+      {error ? (
+        <p id={htmlFor ? `${htmlFor}-error` : undefined} className="auth-field-error" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -35,6 +35,7 @@ import {
   validateShippingAddress,
   type ShippingAddress,
 } from '@/lib/shipping-address';
+import { resolveShopperLoginUrl } from '@/lib/shopper-auth-redirect';
 
 function toman(n: number) { return Math.round(n / 10).toLocaleString('fa-IR'); }
 
@@ -116,22 +117,22 @@ function pickInstallmentRule(
   };
 }
 
-const LOGIN_REDIRECT = '/portal/login?redirect=/checkout';
+function checkoutLoginHref(): string {
+  if (typeof window === 'undefined') return '/portal/login?redirect=%2Fcheckout';
+  return resolveShopperLoginUrl(
+    window.location.pathname,
+    window.location.hostname,
+    window.location.search,
+  );
+}
 
 /** Same markup on server and first client render; replaces the old blank `return null`. */
-function CheckoutStatusCard({ guest }: { guest: boolean }) {
+function CheckoutStatusCard() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="card p-10 max-w-sm w-full text-center space-y-4" role="status" aria-live="polite" aria-busy="true">
         <ShoppingCart className="h-12 w-12 text-gray-200 mx-auto" />
-        {guest ? (
-          <>
-            <p className="text-lg font-bold text-gray-900">در حال انتقال به صفحه ورود…</p>
-            <Link href={LOGIN_REDIRECT} className="btn btn-primary btn-md block">ورود به حساب</Link>
-          </>
-        ) : (
-          <p className="text-lg font-bold text-gray-900">در حال بارگذاری…</p>
-        )}
+        <p className="text-lg font-bold text-gray-900">در حال بارگذاری…</p>
       </div>
     </div>
   );
@@ -172,17 +173,12 @@ export default function CheckoutPage() {
   } | null>(null);
   const [freeThreshold, setFreeThreshold] = useState(50_000_000);
   const [shippingBaseFee, setShippingBaseFee] = useState(1_500_000);
+  const [loginHref, setLoginHref] = useState('/portal/login?redirect=%2Fcheckout');
 
   useEffect(() => {
-    if (getToken()) {
-      setAuth('authed');
-      return;
-    }
-    setAuth('guest');
-    // Let the layout's GA boundary (client-rendered after hydration) mount and record the landing page first.
-    const t = window.setTimeout(() => router.replace(LOGIN_REDIRECT), 300);
-    return () => window.clearTimeout(t);
-  }, [router]);
+    setLoginHref(checkoutLoginHref());
+    setAuth(getToken() ? 'authed' : 'guest');
+  }, []);
 
   useEffect(() => {
     if (!getToken() || items.length === 0) return;
@@ -392,7 +388,7 @@ export default function CheckoutPage() {
   const ctaHint = checkoutCtaHint(paymentMethod);
 
   const handleSubmit = async () => {
-    if (!getToken()) { router.push(LOGIN_REDIRECT); return; }
+    if (!getToken()) { router.push(loginHref); return; }
     if (items.length === 0) { setError('سبد خرید خالی است'); return; }
     if (!shippingMethod) { setError('لطفاً روش ارسال را انتخاب کنید'); return; }
     const addressError = firstAddressError(validateShippingAddress(address, 'standard'));
@@ -503,7 +499,70 @@ export default function CheckoutPage() {
     } finally { setLoading(false); }
   };
 
-  if (auth !== 'authed' || !hydrated) return <CheckoutStatusCard guest={auth === 'guest'} />;
+  if (auth === 'pending' || !hydrated) return <CheckoutStatusCard />;
+
+  if (auth === 'guest') {
+    if (items.length === 0) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="card p-10 max-w-sm w-full text-center space-y-4">
+            <ShoppingCart className="h-12 w-12 text-gray-200 mx-auto" />
+            <h2 className="text-lg font-bold text-gray-900">سبد خرید خالی است</h2>
+            <Link href="/products" className="btn btn-primary btn-md block">مشاهده محصولات</Link>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="relative isolate min-h-screen bg-[var(--brand-ivory,#F6F1E8)] pb-12">
+        <div className="pointer-events-none absolute inset-0 bg-atmosphere" aria-hidden />
+        <div className="relative border-b border-black/5 bg-white">
+          <div className="container-site flex items-center gap-3 py-3">
+            <Link href="/products" className="text-gray-400 hover:text-primary" aria-label="بازگشت به محصولات">
+              <ArrowRight className="h-5 w-5" />
+            </Link>
+            <div>
+              <p className="text-[11px] font-semibold tracking-[0.22em] text-secondary">CHECKOUT</p>
+              <h1 className="text-lg font-extrabold text-gray-900">تسویه حساب</h1>
+            </div>
+          </div>
+        </div>
+        <div className="container-site relative py-8 max-w-2xl">
+          <CheckoutPanel appearance="wholesale" id="checkout-cart" index="۰۱" title="اقلام سبد خرید">
+            <div className="-mx-1 divide-y divide-black/5">
+              {items.map((item) => {
+                const lineKey = cartLineKey(item);
+                const pieces = cartItemPieces(item);
+                return (
+                  <div key={lineKey} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
+                    <div className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-primary-50">
+                      <ProductImage src={item.imageUrl} alt={item.productName} sizes="48px" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-1 text-sm font-semibold text-gray-900">{item.productName}</p>
+                      <p className="font-mono text-xs text-gray-400">{item.sku}</p>
+                      <p className="mt-1 text-sm text-gray-600">تعداد: {item.quantity.toLocaleString('fa-IR')}</p>
+                    </div>
+                    <p className="text-sm font-bold text-gray-900">{toman(item.unitPrice * pieces)} ت</p>
+                  </div>
+                );
+              })}
+            </div>
+          </CheckoutPanel>
+          <div className="mt-6 rounded-[1.6rem] bg-white p-5 shadow-[0_8px_28px_rgba(27,92,74,0.06)] ring-1 ring-black/5 space-y-4">
+            <div className="flex justify-between text-base font-bold">
+              <span>مجموع</span>
+              <span className="text-primary">{toman(total)} تومان</span>
+            </div>
+            <Link href={loginHref} className="btn btn-primary btn-md w-full block text-center">
+              ورود برای ثبت سفارش
+            </Link>
+            <p className="text-center text-xs text-gray-500">برای تکمیل آدرس و پرداخت باید وارد حساب شوید.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (done) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

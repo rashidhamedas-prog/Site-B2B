@@ -56,7 +56,8 @@ function writeCookie(name: string, value: string, maxAge: number) {
 }
 
 function clearCookie(name: string) {
-  document.cookie = `${name}=; path=/; max-age=0`;
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax${secure}`;
 }
 
 function currentShopperScope(): ShopperCookieScope {

@@ -139,30 +139,22 @@ export function SalesPartnerLoginForm() {
         </BlurFade>
       </div>
 
-      <div
-        className="grid w-full max-w-[320px] grid-cols-2 gap-1 rounded-full bg-white/50 p-1 backdrop-blur-sm"
-        role="group"
-        aria-label="روش ورود"
-      >
+      <div className="auth-tablist w-full max-w-[320px]" role="tablist" aria-label="روش ورود">
         <button
           type="button"
-          className={cn(
-            'rounded-full py-2 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]',
-            mode === 'otp' ? 'bg-white text-[var(--color-primary)] shadow-sm' : 'text-[var(--brand-muted)]',
-          )}
+          role="tab"
+          aria-selected={mode === 'otp'}
+          className={cn('auth-tab', mode === 'otp' && 'auth-tab--active')}
           onClick={() => setMode('otp')}
-          aria-pressed={mode === 'otp'}
         >
           پیامک
         </button>
         <button
           type="button"
-          className={cn(
-            'rounded-full py-2 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]',
-            mode === 'password' ? 'bg-white text-[var(--color-primary)] shadow-sm' : 'text-[var(--brand-muted)]',
-          )}
+          role="tab"
+          aria-selected={mode === 'password'}
+          className={cn('auth-tab', mode === 'password' && 'auth-tab--active')}
           onClick={() => setMode('password')}
-          aria-pressed={mode === 'password'}
         >
           رمز
         </button>
@@ -204,16 +196,20 @@ export function SalesPartnerLoginForm() {
             </p>
           ) : null}
           {validityLeft > 0 || otpPending ? <OtpDeliveryNote secondsLeft={validityLeft} pending={otpPending} /> : null}
-          <GlassInput icon={<MessageSquare className="h-5 w-5" aria-hidden />}>
+          <GlassInput label="کد تأیید" htmlFor="code" icon={<MessageSquare className="h-5 w-5" aria-hidden />}>
             <input
               id="code"
               inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]*"
+              maxLength={6}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               required
               dir="ltr"
               aria-label="کد تأیید"
               className="text-center tracking-widest"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
             />
           </GlassInput>
           <GlassButton type="submit" size="full" disabled={busy}>

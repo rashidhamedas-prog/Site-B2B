@@ -1,5 +1,4 @@
 import {
-  RETAIL_CANONICAL_ORIGIN,
   WHOLESALE_CANONICAL_ORIGIN,
   isLocalDevHost,
   isPortalPath,
@@ -35,8 +34,19 @@ const comAccount = panelHostLockRedirect({
   host: 'poshaktaranom.com',
   pathname: '/retail/account/orders',
 });
-assert(comAccount?.origin === RETAIL_CANONICAL_ORIGIN, 'com account → .ir');
-assert(comAccount?.pathname === '/account/orders', 'public account path');
+assert(comAccount?.origin === WHOLESALE_CANONICAL_ORIGIN, 'com account stays on .com');
+assert(comAccount?.pathname === '/portal/login', 'wholesale account → portal login');
+assert(
+  comAccount?.search === '?redirect=%2Fportal%2Fdashboard',
+  'account path falls back to portal dashboard redirect',
+);
+
+const comAccountRoot = panelHostLockRedirect({
+  host: 'poshaktaranom.com',
+  pathname: '/account',
+});
+assert(comAccountRoot?.origin === WHOLESALE_CANONICAL_ORIGIN, 'com /account stays on .com');
+assert(comAccountRoot?.pathname === '/portal/login', 'com /account → portal login');
 
 assert(
   panelHostLockRedirect({ host: 'localhost:3000', pathname: '/portal/login' }) === null,

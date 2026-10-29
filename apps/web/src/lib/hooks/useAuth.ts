@@ -7,6 +7,7 @@ import { setToken, clearToken, getToken, getRole } from '../auth';
 import { cookieScopeFromPurpose } from '../admin-session';
 import { isStaffRole } from '../staff-access';
 import { normalizePhone } from '../phone';
+import { resolveShopperLoginUrl } from '../shopper-auth-redirect';
 import { safeScopedRedirect } from '../safe-redirect';
 
 interface LoginPayload { phone: string; password: string; purpose?: 'admin' | 'portal' | 'retail' | 'wholesale' | 'vendor' | 'sales_partner' }
@@ -89,7 +90,17 @@ export function useAuth() {
     clearToken();
     setIsLoggedIn(false);
     setRole(null);
-    router.push('/portal/login');
+    if (typeof window !== 'undefined') {
+      router.push(
+        resolveShopperLoginUrl(
+          window.location.pathname,
+          window.location.hostname,
+          window.location.search,
+        ),
+      );
+    } else {
+      router.push('/portal/login');
+    }
   }, [router]);
 
   return { isLoggedIn, role, loading, error, login, register, logout };

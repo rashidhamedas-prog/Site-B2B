@@ -1,3 +1,8 @@
+## 2026-10-29 — CURSOR-FIX checkout auth / payment / login UI (GO حامد)
+
+- برنچ `fix/checkout-auth-redirects`: ۴۰۱ host-aware، حذف auto-login عمده، `/account` روی `.com` → portal، لینک customerId پرداخت، UI ورود جامد.
+- گزارش: `docs/reports/2026-10-29-checkout-auth-cursor-fix.md`. GO حامد 2026-10-29 → master + deploy ایران.
+
 ## 2026-10-29 — Omnichannel panel urgent §1 (بدون merge/deploy)
 
 - HARD STOP: Bale `4858359991` = کانال عمده بله — بدون clear/remap canary؛ فقط هشدار dual-role. Rubika `@Toliditaranom_omde` canary → 400.

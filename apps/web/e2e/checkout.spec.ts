@@ -60,19 +60,25 @@ test.describe('direct /checkout load', () => {
     await context.close();
   });
 
-  test('guest (empty storage) sees a visible message and is sent to login', async ({ page }) => {
+  test('guest with empty cart stays on /checkout (no auto login redirect)', async ({ page }) => {
     const { hits, errors } = await setup(page);
-    await page.addInitScript(() => {
-      const w = window as unknown as { __e2eSawGuest?: boolean };
-      const check = () => {
-        if (document.body?.innerText.includes('در حال انتقال به صفحه ورود')) w.__e2eSawGuest = true;
-      };
-      new MutationObserver(check).observe(document, { childList: true, subtree: true, characterData: true });
-    });
     await page.goto('/checkout');
-    await expect(page).toHaveURL(/\/portal\/login\?redirect=(%2F|\/)checkout/, { timeout: 30_000 });
-    const sawGuest = await page.evaluate(() => (window as unknown as { __e2eSawGuest?: boolean }).__e2eSawGuest === true);
-    expect(sawGuest, 'guest message was rendered before redirect').toBe(true);
+    await expect(page).toHaveURL(/\/checkout$/, { timeout: 30_000 });
+    await expect(page.getByRole('heading', { name: 'سبد خرید خالی است' })).toBeVisible();
+    expect(hydrationErrors(errors), 'no hydration error').toEqual([]);
+    await assertSinglePageView(page, hits);
+  });
+
+  test('guest with cart sees items and login CTA on same host', async ({ page }) => {
+    const { hits, errors } = await setup(page);
+    await seedStorage(page, { cart: [CART_ITEM] });
+    await page.goto('/checkout');
+    await expect(page).toHaveURL(/\/checkout$/);
+    await expect(page.getByText(CART_ITEM.productName).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'ورود برای ثبت سفارش' })).toHaveAttribute(
+      'href',
+      /\/portal\/login\?redirect=/,
+    );
     expect(hydrationErrors(errors), 'no hydration error').toEqual([]);
     await assertSinglePageView(page, hits);
   });

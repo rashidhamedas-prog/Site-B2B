@@ -193,6 +193,8 @@ export function ForgotPasswordFlow({
               id="forgot-code"
               inputMode="numeric"
               autoComplete="one-time-code"
+              pattern="[0-9]*"
+              maxLength={6}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               required

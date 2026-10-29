@@ -27,7 +27,7 @@ export function AdminLoginForm() {
         <p className="text-gray-400 text-sm">ورود اختصاصی مدیران سیستم</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-gray-800/60 backdrop-blur-xl rounded-3xl p-8 space-y-5 shadow-2xl border border-white/5">
+      <form onSubmit={handleSubmit} className="rounded-3xl border border-gray-700 bg-gray-800 p-8 space-y-5 shadow-lg">
         {/* Error */}
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 flex items-center gap-2">
@@ -47,7 +47,7 @@ export function AdminLoginForm() {
               placeholder="09152424624"
               required
               dir="ltr"
-              className="w-full bg-gray-700/50 border border-gray-600 rounded-2xl px-4 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-left"
+              className="w-full rounded-2xl border border-gray-600 bg-gray-700 px-4 py-3.5 text-left text-white placeholder-gray-500 transition-[border-color,background-color] duration-150 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             <Phone className="absolute left-4 top-4 h-4 w-4 text-gray-500" />
           </div>
@@ -66,13 +66,14 @@ export function AdminLoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="w-full bg-gray-700/50 border border-gray-600 rounded-2xl px-4 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full rounded-2xl border border-gray-600 bg-gray-700 px-4 py-3.5 text-white placeholder-gray-500 transition-[border-color,background-color] duration-150 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
             <Lock className="absolute right-4 top-4 h-4 w-4 text-gray-500" />
             <button
               type="button"
+              aria-label={showPass ? 'پنهان کردن رمز' : 'نمایش رمز'}
               onClick={() => setShowPass(!showPass)}
-              className="absolute left-4 top-4 text-gray-500 hover:text-gray-300 transition-colors"
+              className="absolute left-4 top-4 min-h-[44px] min-w-[44px] text-gray-500 transition-colors hover:text-gray-300"
             >
               {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>

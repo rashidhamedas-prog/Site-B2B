@@ -18,6 +18,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AdminOnly } from '../auth/decorators/admin-only.decorator';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UserEntity } from '../auth/entities/user.entity';
 import {
   StartPaymentDto,
   VerifyPaymentDto,
@@ -51,10 +54,16 @@ export class PaymentController {
     private readonly digipay: DigiPayAdapter,
     private readonly torobpay: TorobPayAdapter,
     private readonly settings: SettingsService,
+    @InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>,
   ) {}
 
   private isStaff(role: string) {
     return role === 'ADMIN' || role === 'STAFF' || role === 'SUPER_ADMIN';
+  }
+
+  private async resolveOwnCustomerId(user: JwtUser): Promise<string | undefined> {
+    if (user.customerId) return user.customerId;
+    return (await this.userRepo.findOne({ where: { id: user.sub } }))?.customerId ?? undefined;
   }
 
   private pickOverride(raw: unknown, fallback: string): string {
@@ -172,13 +181,13 @@ export class PaymentController {
   @Post('start')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  start(
+  async start(
     @Request() req: Express.Request & { user: JwtUser },
     @Body() body: StartPaymentDto,
   ) {
     const customerId = this.isStaff(req.user.role)
       ? body.customerId || req.user.customerId
-      : req.user.customerId;
+      : await this.resolveOwnCustomerId(req.user);
     if (!customerId && !this.isStaff(req.user.role)) {
       throw new ForbiddenException('حساب مشتری یافت نشد');
     }
