@@ -28,7 +28,9 @@ const rendered = renderPublicationLayout(defaultWholesaleLayout(), SAMPLE_WHOLES
 assert(rendered.text.includes('مانتو جلوباز کتان مدل کیان'), 'title');
 assert(rendered.text.includes('کتان ۴۳۰ گرم کجراه'), 'fabric');
 assert(rendered.text.includes('1/207/000'), 'price');
-assert(rendered.text.includes('@Taranomrashid'), 'order handle');
+assert(!rendered.text.includes('@Taranomrashid'), 'no invented order handle');
+assert(!rendered.text.includes('09152424624'), 'no invented phone');
+assert(!/ضد\s*آب|ضدآب/.test(JSON.stringify(defaultWholesaleLayout())), 'defaults scrub ضدآب');
 assert(!rendered.text.includes('{name}'), 'tokens resolved');
 
 assert(isLegacyProductTemplate('{name} — {price} تومان\n{url}'), 'old admin default is legacy');

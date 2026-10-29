@@ -77,6 +77,10 @@ export const GO_REF_REQUIRED_ACTIONS = [
   'connection_create',
   'destination_create',
   'coverage_out_of_panel_ingest',
+  'channel_settings_patch',
+  'channel_settings_copy_from',
+  'template_activate',
+  'destination_emergency_hold',
 ] as const;
 
 export type GoRefRequiredAction = (typeof GO_REF_REQUIRED_ACTIONS)[number];

@@ -86,6 +86,23 @@ export function isOmnichannelComposerUiEnabled(): boolean {
   return process.env.OMNICHANNEL_COMPOSER_UI === 'true';
 }
 
+/** PR-10 channel settings tab. Default off until validated. */
+export function isOmnichannelChannelSettingsUiEnabled(): boolean {
+  return process.env.OMNICHANNEL_CHANNEL_SETTINGS_UI === 'true';
+}
+
+/** PR-10 templates editor tab. Default off until validated. */
+export function isOmnichannelTemplatesUiEnabled(): boolean {
+  return process.env.OMNICHANNEL_TEMPLATES_UI === 'true';
+}
+
+/** When true, product templates require destinationId (PR-10 strict). Default true with settings UI. */
+export function isOmnichannelSettingsStrictDestination(): boolean {
+  if (process.env.OMNICHANNEL_SETTINGS_STRICT_DESTINATION === 'false') return false;
+  if (process.env.OMNICHANNEL_SETTINGS_STRICT_DESTINATION === 'true') return true;
+  return isOmnichannelChannelSettingsUiEnabled() || isOmnichannelTemplatesUiEnabled();
+}
+
 /**
  * When true, live createPublication requires explicit destinationIds[] (no implicit all-targets).
  * Default true while COMPOSER_UI is on; set OMNICHANNEL_COMPOSER_STRICT_DESTINATIONS=false to relax.

@@ -9,6 +9,8 @@ import {
 } from './admin-omnichannel-health';
 import { AdminOmnichannelCoverage } from './admin-omnichannel-coverage';
 import { AdminOmnichannelComposer } from './admin-omnichannel-composer';
+import { AdminOmnichannelChannelSettings } from './admin-omnichannel-channel-settings';
+import { AdminOmnichannelTemplates } from './admin-omnichannel-templates';
 import {
   AttentionStrip,
   Badge,
@@ -76,7 +78,7 @@ import {
   type WithdrawAction,
 } from './admin-omnichannel-ui';
 
-type View = 'status' | 'publish' | 'composer' | 'settings' | 'ops' | 'coverage';
+type View = 'status' | 'publish' | 'composer' | 'settings' | 'ops' | 'coverage' | 'channelSettings' | 'templates';
 type Step = 'bot' | 'channels' | 'template' | 'rules' | 'activate';
 type SourceType = 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE' | 'FREE_POST';
 type OutboxScope = 'channel' | 'all';
@@ -2408,6 +2410,10 @@ export function AdminOmnichannel() {
           ...(status?.composerUi ? [['composer', 'انتشار جدید'] as [View, string]] : []),
           ['publish', status?.composerUi ? 'انتشار (قدیمی)' : 'انتشار'],
           ...(status?.coverageUi ? [['coverage', 'پوشش و تکرار'] as [View, string]] : []),
+          ...(status?.channelSettingsUi ? [['channelSettings', 'تنظیمات هر کانال'] as [View, string]] : []),
+          ...(status?.templatesUi || status?.channelSettingsUi
+            ? [['templates', 'قالب‌ها'] as [View, string]]
+            : []),
           ['settings', 'تنظیمات'],
           ['ops', 'صف و حسابرسی'],
         ] as Array<[View, string]>).map(([id, label]) => (
@@ -2498,6 +2504,39 @@ export function AdminOmnichannel() {
             setNotice('انتشار کامل جادویی در PR-9؛ فعلاً شناسه محصول در فرم انتشار پر شد.');
           }}
           onOpenDeletePlan={(deliveryId) => void openDeletePlan(deliveryId)}
+        />
+      )}
+      {view === 'channelSettings' && status?.channelSettingsUi && (
+        <AdminOmnichannelChannelSettings
+          apiClient={apiClient}
+          enabled={Boolean(status?.channelSettingsUi)}
+          destinations={destinations.map((d) => {
+            const conn = connections.find((c) => c.id === d.connectionId);
+            return {
+              id: d.id,
+              displayName: d.displayName,
+              provider: conn?.provider,
+              channel: conn?.channel,
+            };
+          })}
+          onNotice={setNotice}
+          onError={setError}
+        />
+      )}
+      {view === 'templates' && (status?.templatesUi || status?.channelSettingsUi) && (
+        <AdminOmnichannelTemplates
+          apiClient={apiClient}
+          enabled={Boolean(status?.templatesUi || status?.channelSettingsUi)}
+          destinations={destinations.map((d) => {
+            const conn = connections.find((c) => c.id === d.connectionId);
+            return {
+              id: d.id,
+              displayName: d.displayName,
+              provider: conn?.provider,
+            };
+          })}
+          onNotice={setNotice}
+          onError={setError}
         />
       )}
       {view === 'ops' && opsView}

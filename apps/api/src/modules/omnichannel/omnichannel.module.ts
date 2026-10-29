@@ -17,6 +17,7 @@ import { OmnichannelEditService } from './services/omnichannel-edit.service';
 import { OmnichannelHealthService } from './services/omnichannel-health';
 import { OmnichannelCoverageService } from './services/omnichannel-coverage.service';
 import { OmnichannelComposerService } from './services/omnichannel-composer.service';
+import { OmnichannelSettingsService } from './services/omnichannel-settings.service';
 import { OutboxService } from './services/outbox.service';
 import { ChannelProjectionService } from './services/channel-projection.service';
 import { TelegramAdapter } from './adapters/telegram.adapter';
@@ -70,6 +71,7 @@ import { StorageService } from '../upload/storage.service';
     OmnichannelHealthService,
     OmnichannelCoverageService,
     OmnichannelComposerService,
+    OmnichannelSettingsService,
     OutboxService,
     ChannelProjectionService,
     {

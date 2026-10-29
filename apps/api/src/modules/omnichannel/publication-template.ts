@@ -12,6 +12,12 @@ export const TEMPLATE_TOKENS = [
   'packQty',
   'packPrice',
   'url',
+  /** PR-10: product.minOrderQty only (REQ-C1). */
+  'minOrder',
+  /** PR-10: per-destination contactId (REQ-C10). */
+  'contactId',
+  /** PR-10: per-destination footerText from channelSettings. */
+  'footerText',
 ] as const;
 
 export type TemplateToken = (typeof TEMPLATE_TOKENS)[number];
@@ -173,11 +179,10 @@ export function defaultWholesaleLayout(): TemplateLayout {
       { id: 'x1', type: 'text', enabled: true, text: '📦 فروش به صورت عمده' },
       { id: 'x2', type: 'text', enabled: true, text: '🚚 ارسال به سراسر ایران' },
       { id: 'x3', type: 'text', enabled: true, text: '📩 ثبت سفارش و استعلام قیمت همکاری:' },
-      { id: 'x4', type: 'text', enabled: true, text: '@Taranomrashid' },
-      { id: 'x5', type: 'text', enabled: true, text: '☎️ تماس:09152424624' },
-      { id: 'x6', type: 'text', enabled: true, text: '📢 کانال تولیدی ترنم:' },
-      { id: 'x7', type: 'text', enabled: true, text: '@toliditaranom' },
-      { id: 'x8', type: 'text', enabled: true, text: '#تولیدی_ترنم #فروش_عمده #پوشاک_زنانه' },
+      /** PR-10: no invented handles/phones — owner fills channelSettings.contactId / footer. */
+      { id: 'x4', type: 'text', enabled: true, text: '{contactId}' },
+      { id: 'x5', type: 'text', enabled: true, text: '{footerText}' },
+      { id: 'x6', type: 'text', enabled: true, text: '#تولیدی_ترنم #فروش_عمده #پوشاک_زنانه' },
     ],
   };
 }
@@ -470,6 +475,9 @@ export function emptyPublicationVars(): PublicationVars {
     packQty: '',
     packPrice: '',
     url: '',
+    minOrder: '',
+    contactId: '',
+    footerText: '',
     images: [],
   };
 }
@@ -486,5 +494,8 @@ export const SAMPLE_WHOLESALE_VARS: PublicationVars = {
   packQty: '۵ عدد',
   packPrice: '6/035/000',
   url: 'https://poshaktaranom.com/products/kian',
+  minOrder: '6',
+  contactId: '',
+  footerText: '',
   images: [],
 };

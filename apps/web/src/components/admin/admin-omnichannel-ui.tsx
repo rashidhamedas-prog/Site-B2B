@@ -1,12 +1,14 @@
 'use client';
 
 import { Fragment, type ReactNode } from 'react';
+import { omnichannelReasonLabel } from './admin-omnichannel-reason-labels';
 export {
   channelLabel,
   isChannelPublishEventType,
   isOutboxRowForConfiguredChannels,
   outboxChannelCellLabel,
 } from './admin-omnichannel-outbox';
+export { omnichannelReasonLabel } from './admin-omnichannel-reason-labels';
 
 /* ---------- shared types (mirror the admin API) ---------- */
 
@@ -126,6 +128,10 @@ export type Status = {
   coverageUi?: boolean;
   /** OMNICHANNEL_COMPOSER_UI. Composer wizard tab when true. */
   composerUi?: boolean;
+  /** OMNICHANNEL_CHANNEL_SETTINGS_UI. Channel settings tab when true. */
+  channelSettingsUi?: boolean;
+  /** OMNICHANNEL_TEMPLATES_UI. Templates editor tab when true. */
+  templatesUi?: boolean;
   phase: number;
   retailCanaryLimit: number;
   wholesaleCanaryLimit: number;
@@ -341,6 +347,8 @@ const ERROR_LABELS: Record<string, string> = {
   uncertain_after_timeout: 'نتیجهٔ ارسال معلوم نیست (تایم‌اوت)؛ قبل از تلاش دوباره کانال را چک کنید',
   send_unconfirmed: 'نتیجهٔ ارسال معلوم نیست؛ قبل از تلاش دوباره کانال را چک کنید',
   daily_cap: 'سقف ارسال امروز پر است؛ به روز بعد موکول شد',
+  quiet_hours: 'ساعت سکوت؛ ارسال موکول شد',
+  emergency_hold: 'توقف اضطراری مقصد فعال است',
   min_gap: 'فاصلهٔ حداقل بین ارسال‌ها رعایت نشده؛ کمی بعد دوباره تلاش می‌شود',
   rate_limit: 'سقف نرخ ارسال پر است؛ یک دقیقه بعد دوباره تلاش می‌شود',
   unsupported_media: 'تصویر خراب، ناقص یا بیش از حد بزرگ است — اول فایل را اصلاح کنید؛ تلاش دوباره بی‌فایده است',
@@ -383,8 +391,10 @@ export function gateBlockReasonLabel(reason?: GateBlockReason | null) {
       return 'الان ساعت سکوت است؛ ارسال‌ها موکول می‌شوند';
     case 'none':
       return '';
-    default:
-      return '';
+    default: {
+      const labeled = omnichannelReasonLabel(reason);
+      return labeled === String(reason || '') ? '' : labeled;
+    }
   }
 }
 
