@@ -4,6 +4,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, IsNull, Repository } from 'typeorm';
 import { OmnichannelDeleteService } from './omnichannel-delete.service';
+import { OmnichannelSettingsService } from './omnichannel-settings.service';
 import type { DeleteEditActor } from '../omnichannel-delete-edit-rbac';
 import { ChannelProjectionService } from './channel-projection.service';
 import { canaryExceeded, canaryLimitFor } from '../../product/channel-projection';
@@ -18,6 +19,10 @@ import {
   PatchDestinationDto,
   PatchConnectionPublishSettingsDto,
   PatchDestinationPublishSettingsDto,
+  PatchChannelSettingsDto,
+  CopyChannelSettingsDto,
+  ActivateTemplateDto,
+  EmergencyHoldDto,
   PatchOmnichannelSettingsDto,
   PutSecretDto,
   RequeueByCategoryDto,
@@ -53,6 +58,7 @@ import {
   isOmnichannelComposerStrictDestinations,
   isOmnichannelProvider,
   isOmnichannelProviderEnabled,
+  isOmnichannelSettingsStrictDestination,
   OUTBOX_EVENT_TYPES,
 } from '../omnichannel.constants';
 import {
@@ -159,9 +165,20 @@ import {
   mergeDestinationPublishSettingsPatch,
   parseDestinationPublishSettings,
   publicDestinationPublishSettings,
+  resolveDestinationContentSettings,
   resolveDestinationPublishSettings,
   seedDestinationPublishFromConnection,
 } from '../destination-publish-settings';
+import {
+  appendUtmToUrl,
+  applyShowPriceToVars,
+  assertNoForbiddenProductClaims,
+  emptyChannelContentSettings,
+  formatMinOrderQty,
+  readEmergencyHold,
+  type ChannelContentSettings,
+} from '../channel-settings';
+import { assertTemplateBodyClaims } from '../template-claim-guard';
 import { CANARY_PING_TEXT } from '../canary-ping';
 import { normalizeBulkPublicationIds } from '../bulk-publication-ids';
 import {
@@ -295,6 +312,7 @@ export class OmnichannelService {
     private readonly tokenVault: OmnichannelTokenVaultService,
     @Inject(forwardRef(() => OmnichannelDeleteService))
     private readonly deleteService: OmnichannelDeleteService,
+    private readonly channelSettingsSvc: OmnichannelSettingsService,
   ) {}
 
   private requireActor(actor?: Actor) {
@@ -965,6 +983,9 @@ export class OmnichannelService {
       oosChosen: resolved.oosChosen,
       autoPublishCategoryCount: resolved.categoryIds.length,
       eventsChosen: resolved.eventsChosen,
+      showPriceDefault: resolved.content.showPriceDefault,
+      hasContactId: Boolean(resolved.content.contactId),
+      hasUtm: Boolean(resolved.content.utmSource || resolved.content.utmCampaign),
     }, { goRef: dto.goRef });
     return {
       destinationId: saved.id,
@@ -974,6 +995,26 @@ export class OmnichannelService {
       displayName: saved.displayName,
       ...publicDestinationPublishSettings(resolved),
     };
+  }
+
+  async getChannelSettings(destinationId: string) {
+    return this.channelSettingsSvc.getChannelSettings(destinationId);
+  }
+
+  async patchChannelSettings(destinationId: string, dto: PatchChannelSettingsDto, actor?: Actor) {
+    return this.channelSettingsSvc.patchChannelSettings(destinationId, dto, actor);
+  }
+
+  async patchEmergencyHold(destinationId: string, dto: EmergencyHoldDto, actor?: Actor) {
+    return this.channelSettingsSvc.patchEmergencyHold(destinationId, dto, actor);
+  }
+
+  async copyChannelSettingsFrom(
+    destinationId: string,
+    dto: CopyChannelSettingsDto,
+    actor?: Actor,
+  ) {
+    return this.channelSettingsSvc.copyChannelSettingsFrom(destinationId, dto, actor);
   }
 
   async listTemplates(destinationId?: string) {
@@ -1022,11 +1063,19 @@ export class OmnichannelService {
   async createTemplate(dto: CreateTemplateDto, actor?: Actor) {
     const who = this.requireActor(actor);
     assertNoPlaintextSecrets(dto);
+    try {
+      assertTemplateBodyClaims(String(dto.body || ''));
+    } catch (err) {
+      throw new BadRequestException(err instanceof Error ? err.message : 'قالب نامعتبر');
+    }
     const version = dto.version ?? 1;
     const productEvent = dto.eventType === 'product.published';
     let destinationId = dto.destinationId || null;
     let connectionId = dto.connectionId || null;
     if (productEvent && !destinationId) {
+      throw new BadRequestException('برای قالب محصول destinationId لازم است');
+    }
+    if (productEvent && isOmnichannelSettingsStrictDestination() && !destinationId) {
       throw new BadRequestException('برای قالب محصول destinationId لازم است');
     }
     if (destinationId) {
@@ -1093,6 +1142,13 @@ export class OmnichannelService {
     assertNoPlaintextSecrets(dto);
     const row = await this.templates.findOne({ where: { id } });
     if (!row) throw new NotFoundException('قالب یافت نشد');
+    if (dto.body !== undefined) {
+      try {
+        assertTemplateBodyClaims(String(dto.body || ''));
+      } catch (err) {
+        throw new BadRequestException(err instanceof Error ? err.message : 'قالب نامعتبر');
+      }
+    }
     const before = { enabled: row.enabled, bodyLen: String(row.body || '').length };
     if (dto.body !== undefined) {
       row.body = row.eventType === 'product.published'
@@ -1105,6 +1161,42 @@ export class OmnichannelService {
       before,
       after: { enabled: saved.enabled, bodyLen: String(saved.body || '').length },
     });
+    return saved;
+  }
+
+  async activateTemplate(id: string, dto: ActivateTemplateDto, actor?: Actor) {
+    const who = this.requireActor(actor);
+    assertNoPlaintextSecrets(dto);
+    const row = await this.templates.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('قالب یافت نشد');
+    try {
+      assertNoForbiddenProductClaims(String(row.body || ''));
+    } catch (err) {
+      throw new BadRequestException(err instanceof Error ? err.message : 'قالب نامعتبر');
+    }
+    if (!row.destinationId) {
+      throw new BadRequestException('فعال‌سازی فقط برای قالب مقصد پشتیبانی می‌شود');
+    }
+    await this.channelSettingsSvc.assertTemplateActivationClean(row.destinationId, String(row.body || ''));
+    const siblings = await this.templates.find({
+      where: { destinationId: row.destinationId, eventType: row.eventType },
+    });
+    const disabledIds: string[] = [];
+    for (const sibling of siblings) {
+      if (sibling.id === row.id) continue;
+      if (sibling.enabled) {
+        sibling.enabled = false;
+        await this.templates.save(sibling);
+        disabledIds.push(sibling.id);
+      }
+    }
+    row.enabled = true;
+    const saved = await this.templates.save(row);
+    await this.audit(who, 'template_activate', 'TEMPLATE', saved.id, saved.channel, dto.reason || null, {
+      destinationId: saved.destinationId,
+      version: saved.version,
+      disabledIds,
+    }, { goRef: dto.goRef });
     return saved;
   }
 
@@ -1688,6 +1780,18 @@ export class OmnichannelService {
       assertFreePostReason(dto.reason);
     }
     const dryRun = dto.dryRun !== false;
+    if (!dryRun) {
+      try {
+        if (dto.preview?.caption) assertNoForbiddenProductClaims(dto.preview.caption);
+        if (dto.captionOverrides) {
+          for (const text of Object.values(dto.captionOverrides)) {
+            assertNoForbiddenProductClaims(String(text || ''));
+          }
+        }
+      } catch (err) {
+        throw new BadRequestException(err instanceof Error ? err.message : 'کپشن نامعتبر');
+      }
+    }
     const { projection } = await this.preview(dto.preview);
     if (!projection.publishable) {
       throw new BadRequestException(projection.rejectReason || 'این منبع برای این کانال قابل انتشار نیست');
@@ -2845,6 +2949,10 @@ export class OmnichannelService {
         input.channel,
       );
       const { automation } = resolved;
+      if (readEmergencyHold(dest.publishSettings)) {
+        results.push('emergency_hold');
+        continue;
+      }
       if (automation.mode === 'OFF') {
         results.push('mode_off');
         continue;
@@ -3195,7 +3303,13 @@ export class OmnichannelService {
     destinationId?: string,
   ): Promise<RenderedPublication> {
     if (String(projection.sourceType || '').toUpperCase() === FREE_POST_SOURCE_TYPE) {
-      return renderFreePost(projection);
+      const rendered = renderFreePost(projection);
+      try {
+        assertNoForbiddenProductClaims(rendered.text || '');
+      } catch (err) {
+        throw new BadRequestException(err instanceof Error ? err.message : 'کپشن نامعتبر');
+      }
+      return rendered;
     }
     const eventType = projection.sourceType === 'BLOG_POST'
       ? 'blog.published'
@@ -3244,22 +3358,58 @@ export class OmnichannelService {
         })).find((row) => !row.connectionId && !row.destinationId)?.body;
     }
     const layout = parseTemplateLayout(body, channel);
-    return renderPublicationLayout(layout, await this.publicationVarsFor(projection), channel);
+    let content: ChannelContentSettings = emptyChannelContentSettings();
+    if (destinationId) {
+      const dest = await this.destinations.findOne({ where: { id: destinationId } });
+      if (dest) content = resolveDestinationContentSettings(dest.publishSettings);
+    }
+    const vars = await this.publicationVarsFor(projection, content);
+    const rendered = renderPublicationLayout(layout, vars, channel);
+    try {
+      assertNoForbiddenProductClaims(rendered.text || '');
+    } catch (err) {
+      throw new BadRequestException(err instanceof Error ? err.message : 'کپشن نامعتبر');
+    }
+    return rendered;
   }
 
-  private async publicationVarsFor(projection: Record<string, unknown>): Promise<PublicationVars> {
+  private async publicationVarsFor(
+    projection: Record<string, unknown>,
+    content: ChannelContentSettings = emptyChannelContentSettings(),
+  ): Promise<PublicationVars> {
     const payable = Number(projection.payable ?? projection.listPrice ?? projection.price ?? 0);
     const vars = emptyPublicationVars();
     vars.name = String(projection.name || projection.title || '').trim();
     vars.sku = String(projection.sku || '').trim();
     vars.price = formatChannelToman(payable);
-    vars.url = String(projection.url || '').trim();
-    if (projection.sourceType !== 'PRODUCT' || !projection.sourceId) return vars;
+    vars.url = appendUtmToUrl(String(projection.url || '').trim(), {
+      utmSource: content.utmSource,
+      utmCampaign: content.utmCampaign,
+    });
+    vars.contactId = content.contactId || '';
+    vars.footerText = content.footerText || '';
+    if (projection.sourceType !== 'PRODUCT' || !projection.sourceId) {
+      const priced = applyShowPriceToVars(
+        { price: vars.price, packPrice: vars.packPrice },
+        content.showPriceDefault,
+      );
+      vars.price = priced.price;
+      vars.packPrice = priced.packPrice;
+      return vars;
+    }
     const product = await this.products.findOne({
       where: { id: String(projection.sourceId) },
       relations: ['variants'],
     });
-    if (!product) return vars;
+    if (!product) {
+      const priced = applyShowPriceToVars(
+        { price: vars.price, packPrice: vars.packPrice },
+        content.showPriceDefault,
+      );
+      vars.price = priced.price;
+      vars.packPrice = priced.packPrice;
+      return vars;
+    }
     const specs = (product.specs || {}) as ProductSpecs;
     vars.fabric = String(specs.fabricType || product.fabric || '').trim();
     vars.length = String(specs.length || '').trim();
@@ -3270,7 +3420,14 @@ export class OmnichannelService {
     const pack = Number(specs.packQty || product.minOrderQty || 0);
     vars.packQty = pack > 0 ? `${pack} عدد` : String(specs.packQty || '').trim();
     if (pack > 0 && payable > 0) vars.packPrice = formatChannelToman(payable * pack);
+    vars.minOrder = formatMinOrderQty(product.minOrderQty);
     vars.images = imageCandidates(product.images);
+    const priced = applyShowPriceToVars(
+      { price: vars.price, packPrice: vars.packPrice },
+      content.showPriceDefault,
+    );
+    vars.price = priced.price;
+    vars.packPrice = priced.packPrice;
     return vars;
   }
 

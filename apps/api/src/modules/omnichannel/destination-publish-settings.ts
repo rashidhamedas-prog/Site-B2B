@@ -1,14 +1,22 @@
 /**
  * Per-destination publish settings (primary operator scope).
- * Resolution: destination.publishSettings → connection.publishSettings (compat) → global seed.
- * Connection remains bot credentials + fallback seed only.
+ * Automation resolution: destination.publishSettings → connection.publishSettings (compat) → global seed.
+ * Content (PR-10): destination only — never connection/global fallback (REQ-C10).
+ * Connection remains bot credentials + automation fallback seed only.
  */
+import {
+  emptyChannelContentSettings,
+  publicChannelContentSettings,
+  readEmergencyHold,
+  type ChannelContentSettings,
+} from './channel-settings';
 import {
   assertConnectionPublishSettingsInput,
   hasConnectionPublishPatch,
   mergeConnectionPublishSettingsPatch,
   parseConnectionPublishSettings,
   publicConnectionPublishSettings,
+  publicContentFromPublishSettings,
   resolveConnectionPublishSettings,
   type ConnectionPublishPatch,
   type ConnectionPublishSettings,
@@ -21,6 +29,8 @@ export type DestinationPublishPatch = ConnectionPublishPatch;
 
 export type ResolvedDestinationPublish = Omit<ResolvedConnectionPublish, 'source'> & {
   source: 'destination' | 'connection' | 'global_fallback';
+  content: ChannelContentSettings;
+  emergencyHold: boolean;
 };
 
 export const assertDestinationPublishSettingsInput = assertConnectionPublishSettingsInput;
@@ -34,6 +44,9 @@ export function resolveDestinationPublishSettings(
   globalFallback: StoredOmnichannelSettings,
   channel: 'RETAIL' | 'WHOLESALE',
 ): ResolvedDestinationPublish {
+  /** Content never inherits from connection/global (REQ-C10). */
+  const content = publicContentFromPublishSettings(storedOnDest);
+  const emergencyHold = readEmergencyHold(storedOnDest);
   const local = parseConnectionPublishSettings(storedOnDest);
   const useLocal = local.seeded === true
     || local.autoPublishMode != null
@@ -42,12 +55,14 @@ export function resolveDestinationPublishSettings(
     || Array.isArray(local.autoPublishCategoryIds);
   if (useLocal) {
     const resolved = resolveConnectionPublishSettings(local, globalFallback, channel);
-    return { ...resolved, source: 'destination' };
+    return { ...resolved, source: 'destination', content, emergencyHold };
   }
   const fromConn = resolveConnectionPublishSettings(storedOnConn, globalFallback, channel);
   return {
     ...fromConn,
     source: fromConn.source === 'connection' ? 'connection' : 'global_fallback',
+    content,
+    emergencyHold,
   };
 }
 
@@ -56,7 +71,17 @@ export function publicDestinationPublishSettings(resolved: ResolvedDestinationPu
     ...resolved,
     source: resolved.source === 'global_fallback' ? 'global_fallback' : 'connection',
   });
-  return { ...base, settingsSource: resolved.source };
+  return {
+    ...base,
+    settingsSource: resolved.source,
+    emergencyHold: resolved.emergencyHold === true,
+    ...publicChannelContentSettings(resolved.content || emptyChannelContentSettings()),
+  };
+}
+
+/** Destination-only content read (ignores connection blob entirely). */
+export function resolveDestinationContentSettings(storedOnDest: unknown): ChannelContentSettings {
+  return publicContentFromPublishSettings(storedOnDest);
 }
 
 /** Seed a new destination from its parent connection blob (or global via connection resolve). */

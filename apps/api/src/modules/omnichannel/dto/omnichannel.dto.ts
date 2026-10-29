@@ -256,6 +256,111 @@ export class PatchDestinationPublishSettingsDto extends GoRefDto {
   @IsUUID('4', { each: true })
   autoPublishCategoryIds?: string[];
 
+  /** PR-10 content fields (destination-only; empty = owner must fill LIVE values). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  captionIntro?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  footerText?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  contactId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  orderBotId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  orderBotUsername?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  botUsername?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  channelLink?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  hashtags?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  ctaText?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  utmSource?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  utmCampaign?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  showPrice?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  showPriceDefault?: boolean;
+
+  /** «آی‌دی مقصد هدایت پیام‌ها» — empty until Hamed fills; never invent. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  ownerChatId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  reason?: string;
+}
+
+/** PATCH /omnichannel/destinations/:id/channel-settings — content (+ optional automation). */
+export class PatchChannelSettingsDto extends PatchDestinationPublishSettingsDto {}
+
+export class CopyChannelSettingsDto extends GoRefDto {
+  @IsUUID('4')
+  sourceDestinationId: string;
+
+  @IsOptional()
+  @IsBoolean()
+  includeAutomation?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  reason?: string;
+}
+
+export class ActivateTemplateDto extends GoRefDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  reason?: string;
+}
+
+/** PATCH /omnichannel/destinations/:id/emergency-hold */
+export class EmergencyHoldDto extends GoRefDto {
+  @IsBoolean()
+  hold: boolean;
+
   @IsOptional()
   @IsString()
   @MaxLength(240)

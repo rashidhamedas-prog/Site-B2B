@@ -1,3 +1,9 @@
+## 2026-10-29 — Omnichannel PR-10 Channel settings + templates (بدون merge/deploy)
+
+- تنظیمات کاملاً جدای هر مقصد (۳×۲): کپشن/فوتر/تماس/ربات سفارش/UTM/`ownerChatId` خالی؛ گارد «ضدآب»؛ هشدار آلودگی بین کانال‌ها.
+- API `channel-settings` + activate template؛ UI پشت `OMNICHANNEL_CHANNEL_SETTINGS_UI` / `OMNICHANNEL_TEMPLATES_UI` (پیش‌فرض خاموش).
+- شاخه `feat/omnichannel-pr10-settings-templates`. طرح: `docs/design/omnichannel-redesign/pr10-settings-templates-plan.md`؛ گزارش: `docs/reports/2026-10-29-omnichannel-pr10-settings.md`. بدون FORCE/egress/SMS؛ merge/deploy با GO حامد ۲۹ اکتبر ۲۰۲۶ بعد از CI.
+
 ## 2026-10-28 — Omnichannel PR-9 Composer (بدون merge/deploy)
 
 - ویزارد ۷مرحله‌ای «انتشار جدید» پشت `OMNICHANNEL_COMPOSER_UI` (پیش‌فرض خاموش)؛ `POST composer/plan` همیشه dry و برای dedupe `liveRemote` می‌خواند بدون adapter.

@@ -18,6 +18,7 @@ import { OmnichannelEditService } from '../services/omnichannel-edit.service';
 import { OmnichannelHealthService } from '../services/omnichannel-health';
 import { OmnichannelCoverageService } from '../services/omnichannel-coverage.service';
 import { OmnichannelComposerService } from '../services/omnichannel-composer.service';
+import { OmnichannelSettingsService } from '../services/omnichannel-settings.service';
 import {
   ActorReasonDto,
   ClearWaitingOutboxDto,
@@ -33,6 +34,10 @@ import {
   PatchMediaAltDto,
   PatchConnectionPublishSettingsDto,
   PatchDestinationPublishSettingsDto,
+  PatchChannelSettingsDto,
+  CopyChannelSettingsDto,
+  ActivateTemplateDto,
+  EmergencyHoldDto,
   PatchOmnichannelSettingsDto,
   PatchTemplateDto,
   PreviewDto,
@@ -53,9 +58,11 @@ import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import {
   areOmnichannelConnectorsEnabled,
   isOmnichannelAutoPublishEnabled,
+  isOmnichannelChannelSettingsUiEnabled,
   isOmnichannelComposerUiEnabled,
   isOmnichannelCoverageUiEnabled,
   isOmnichannelFreePostEnabled,
+  isOmnichannelTemplatesUiEnabled,
 } from '../omnichannel.constants';
 import { providerReadiness } from '../provider-capabilities';
 import type { OmnichannelRole } from '../omnichannel-rbac';
@@ -78,6 +85,7 @@ export class OmnichannelAdminController {
     private readonly health: OmnichannelHealthService,
     private readonly coverage: OmnichannelCoverageService,
     private readonly composer: OmnichannelComposerService,
+    private readonly channelSettings: OmnichannelSettingsService,
   ) {}
 
   @Get('health')
@@ -105,7 +113,11 @@ export class OmnichannelAdminController {
       coverageUi: isOmnichannelCoverageUiEnabled(),
       /** PR-9 composer wizard tab. Default false until validated. */
       composerUi: isOmnichannelComposerUiEnabled(),
-      phase: 9,
+      /** PR-10 channel settings tab. Default false until validated. */
+      channelSettingsUi: isOmnichannelChannelSettingsUiEnabled(),
+      /** PR-10 templates editor tab. Default false until validated. */
+      templatesUi: isOmnichannelTemplatesUiEnabled(),
+      phase: 10,
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
       outbox,
@@ -279,6 +291,55 @@ export class OmnichannelAdminController {
     return this.svc.patchDestinationPublishSettings(id, body, req.omnichannelActor);
   }
 
+  @Get('destinations/:id/channel-settings')
+  @OmnichannelMinRole('VIEWER')
+  @ApiOperation({ summary: 'تنظیمات محتوای این مقصد (جدا؛ بدون fallback سراسری)' })
+  getChannelSettings(@Param('id') id: string) {
+    assertNoPlaintextSecrets({ id });
+    return this.channelSettings.getChannelSettings(id);
+  }
+
+  @Patch('destinations/:id/channel-settings')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({
+    summary:
+      'ذخیره تنظیمات کانال — محتوای Publisher بدون goRef؛ سیاست (سقف/سکوت/ownerChatId/قیمت) Owner+goRef در سرویس',
+  })
+  patchChannelSettings(
+    @Param('id') id: string,
+    @Body() body: PatchChannelSettingsDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets({ id, ...body });
+    return this.channelSettings.patchChannelSettings(id, body, req.omnichannelActor);
+  }
+
+  @Post('destinations/:id/channel-settings/copy-from')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
+  @ApiOperation({ summary: 'کپی مقدار از مقصد دیگر (بدون پیوند مشترک)' })
+  copyChannelSettings(
+    @Param('id') id: string,
+    @Body() body: CopyChannelSettingsDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets({ id, ...body });
+    return this.channelSettings.copyChannelSettingsFrom(id, body, req.omnichannelActor);
+  }
+
+  @Patch('destinations/:id/emergency-hold')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
+  @ApiOperation({ summary: 'توقف اضطراری اتوماسیون این مقصد (Owner+goRef)' })
+  patchEmergencyHold(
+    @Param('id') id: string,
+    @Body() body: EmergencyHoldDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets({ id, ...body });
+    return this.channelSettings.patchEmergencyHold(id, body, req.omnichannelActor);
+  }
+
   @Patch('destinations/:id')
   @OmnichannelMinRole('PUBLISHER')
   patchDestination(@Param('id') id: string, @Body() body: PatchDestinationDto, @Req() req: Authed) {
@@ -335,6 +396,19 @@ export class OmnichannelAdminController {
   @OmnichannelMinRole('PUBLISHER')
   patchTemplate(@Param('id') id: string, @Body() body: PatchTemplateDto, @Req() req: Authed) {
     return this.svc.patchTemplate(id, body, req.omnichannelActor);
+  }
+
+  @Post('templates/:id/activate')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
+  @ApiOperation({ summary: 'فعال‌سازی نسخه قالب این مقصد (Owner+goRef)' })
+  activateTemplate(
+    @Param('id') id: string,
+    @Body() body: ActivateTemplateDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets({ id, ...body });
+    return this.svc.activateTemplate(id, body, req.omnichannelActor);
   }
 
   @Post('preview')

@@ -1,4 +1,12 @@
-﻿## 2026-10-28T17:45:00Z — PR-9 Composer (implement + PR open)
+﻿## 2026-10-29T19:30:00Z — PR-10 Channel settings + templates (implement + PR open)
+
+- Branch `feat/omnichannel-pr10-settings-templates` worktree `D:/proje/Site-B2B-pr10` from `origin/master` @ d2bf03fb (PR-9).
+- Delivered: nested `channelSettings`, ضدآب guard, cross-channel contamination warn/activate-fail, `OmnichannelSettingsService`, scrubbed wholesale defaults (no invented handles), UI tabs default off, composer reads `showPriceDefault`.
+- PR https://github.com/rashidhamedas-prog/Site-B2B/pull/142 — no merge/deploy (parent after CI).
+- Hard stops held: no FORCE/SKIP_DRAIN, no connector enable, no egress/SMS/PR-14 inbound, no invented chat IDs.
+- Next: CI green → parent merge with same GO → optional staging UI/strict flags; Hamed fills ownerChatId/contact/order-bot.
+
+## 2026-10-28T17:45:00Z — PR-9 Composer (implement + PR open)
 
 - Branch `feat/omnichannel-pr9-composer` worktree `D:/proje/Site-B2B-pr9` from `origin/master` @ 9e0db80d (PR-8 #138).
 - Delivered: `composer-plan` + composer service/routes, createPublication plan/dedupe on dry-run, wizard UI behind `OMNICHANNEL_COMPOSER_UI=false`, coverage deep-link, plan doc committed, no migration.

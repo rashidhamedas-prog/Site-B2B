@@ -17,6 +17,7 @@ import {
   type OmnichannelProvider,
 } from '../omnichannel.constants';
 import { resolveDestinationPublishSettings } from '../destination-publish-settings';
+import { readEmergencyHold } from '../channel-settings';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
 import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
@@ -52,7 +53,7 @@ export type OmnichannelProviderHealth = {
   provider: OmnichannelProvider;
   effectiveMode: AutoPublishMode;
   modeSource: 'destination' | 'connection' | 'app_settings' | 'none';
-  emergencyHold: false;
+  emergencyHold: boolean;
   killSwitchApi: boolean;
   killSwitchWorker: boolean | null;
   lastSuccessAt: string | null;
@@ -314,11 +315,12 @@ export function assembleProviderHealth(
     providerEnabled,
   );
   const { cap, quiet } = pickCapQuiet(input, globalFallback);
+  const emergencyHold = input.destinations.some((dest) => readEmergencyHold(dest.publishSettings));
   return {
     provider: input.provider,
     effectiveMode,
     modeSource,
-    emergencyHold: false,
+    emergencyHold,
     killSwitchApi,
     killSwitchWorker,
     lastSuccessAt: input.lastSuccessAt,

@@ -33,6 +33,16 @@ import {
   type StoredOmnichannelSettings,
 } from './oos-policy';
 import { assertNoPlaintextSecrets } from './omnichannel-secrets';
+import {
+  assertChannelContentInput,
+  CHANNEL_CONTENT_KEYS,
+  channelSettingsBlob,
+  emptyChannelContentSettings,
+  mergeChannelContentSettingsPatch,
+  parseChannelContentSettings,
+  type ChannelContentPatch,
+  type ChannelContentSettings,
+} from './channel-settings';
 
 export type ConnectionPublishSettings = {
   oosPolicy?: OosPolicy;
@@ -48,6 +58,24 @@ export type ConnectionPublishSettings = {
   autoPublishCategoryIds?: string[];
   /** Set when admin saved this connection's publish rules at least once. */
   seeded?: boolean;
+  /** PR-10 nested content bag (D-1). Flat keys still parsed for compat. */
+  channelSettings?: Record<string, unknown>;
+  contactId?: string;
+  botUsername?: string;
+  channelLink?: string;
+  hashtags?: string;
+  ctaText?: string;
+  captionIntro?: string;
+  footerText?: string;
+  orderBotId?: string;
+  orderBotUsername?: string;
+  utmSource?: string;
+  utmCampaign?: string;
+  showPrice?: boolean;
+  showPriceDefault?: boolean;
+  ownerChatId?: string;
+  /** PR-10 emergency stop — blocks automation without changing mode enum. */
+  emergencyHold?: boolean;
 };
 
 export type ResolvedConnectionPublish = {
@@ -71,6 +99,11 @@ const PUBLISH_INPUT_KEYS = new Set([
   'withdrawAction',
   'autoPublishCategoryIds',
   'reason',
+  'goRef',
+  'emergencyHold',
+  'channelSettings',
+  'showPrice',
+  ...CHANNEL_CONTENT_KEYS,
 ]);
 
 function parseHourOrNull(value: unknown): number | null | undefined {
@@ -105,6 +138,24 @@ export function parseConnectionPublishSettings(value: unknown): ConnectionPublis
   const cats = parseAutoPublishCategoryIds(raw.autoPublishCategoryIds);
   if (cats) out.autoPublishCategoryIds = cats;
   if (raw.seeded === true) out.seeded = true;
+  const content = parseChannelContentSettings(raw);
+  out.channelSettings = channelSettingsBlob(content);
+  if (content.contactId) out.contactId = content.contactId;
+  if (content.botUsername) out.botUsername = content.botUsername;
+  if (content.channelLink) out.channelLink = content.channelLink;
+  if (content.hashtags) out.hashtags = content.hashtags;
+  if (content.ctaText) out.ctaText = content.ctaText;
+  if (content.captionIntro) out.captionIntro = content.captionIntro;
+  if (content.footerText) out.footerText = content.footerText;
+  if (content.orderBotId) out.orderBotId = content.orderBotId;
+  if (content.orderBotUsername) out.orderBotUsername = content.orderBotUsername;
+  if (content.utmSource) out.utmSource = content.utmSource;
+  if (content.utmCampaign) out.utmCampaign = content.utmCampaign;
+  if (content.ownerChatId) out.ownerChatId = content.ownerChatId;
+  out.showPriceDefault = content.showPriceDefault === true;
+  out.showPrice = content.showPriceDefault === true;
+  if (raw.emergencyHold === true) out.emergencyHold = true;
+  if (raw.emergencyHold === false) out.emergencyHold = false;
   return out;
 }
 
@@ -145,6 +196,16 @@ export function assertConnectionPublishSettingsInput(input: unknown): void {
   if (raw.autoPublishCategoryIds !== undefined && parseAutoPublishCategoryIds(raw.autoPublishCategoryIds) == null) {
     throw new Error('invalid_categories');
   }
+  if (raw.emergencyHold !== undefined && raw.emergencyHold !== true && raw.emergencyHold !== false) {
+    throw new Error('invalid_emergency_hold');
+  }
+  if (raw.channelLink !== undefined && raw.channelLink !== null && String(raw.channelLink).trim()) {
+    try {
+      assertChannelContentInput({ channelLink: raw.channelLink });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'invalid_channel_link') throw err;
+    }
+  }
 }
 
 export type ConnectionPublishPatch = {
@@ -157,7 +218,8 @@ export type ConnectionPublishPatch = {
   quietEndHour?: number | null;
   withdrawAction?: string;
   autoPublishCategoryIds?: string[];
-};
+  emergencyHold?: boolean;
+} & ChannelContentPatch;
 
 export function hasConnectionPublishPatch(patch: ConnectionPublishPatch): boolean {
   return patch.oosPolicy !== undefined
@@ -168,7 +230,9 @@ export function hasConnectionPublishPatch(patch: ConnectionPublishPatch): boolea
     || patch.quietStartHour !== undefined
     || patch.quietEndHour !== undefined
     || patch.withdrawAction !== undefined
-    || patch.autoPublishCategoryIds !== undefined;
+    || patch.autoPublishCategoryIds !== undefined
+    || patch.emergencyHold !== undefined
+    || CHANNEL_CONTENT_KEYS.some((key) => patch[key] !== undefined);
 }
 
 export function mergeConnectionPublishSettingsPatch(
@@ -199,7 +263,22 @@ export function mergeConnectionPublishSettingsPatch(
   if (isWithdrawAction(patch.withdrawAction)) next.withdrawAction = patch.withdrawAction;
   const cats = parseAutoPublishCategoryIds(patch.autoPublishCategoryIds);
   if (cats) next.autoPublishCategoryIds = cats;
+  const contentPrev = parseChannelContentSettings(previous);
+  const contentNext = mergeChannelContentSettingsPatch(contentPrev, patch);
+  const blob = channelSettingsBlob(contentNext);
+  next.channelSettings = blob;
+  for (const key of CHANNEL_CONTENT_KEYS) {
+    delete (next as Record<string, unknown>)[key];
+  }
+  delete next.showPrice;
+  if (patch.emergencyHold === true) next.emergencyHold = true;
+  if (patch.emergencyHold === false) next.emergencyHold = false;
   return parseConnectionPublishSettings(next);
+}
+
+/** Content fields for public destination responses (never from connection fallback). */
+export function publicContentFromPublishSettings(stored: unknown): ChannelContentSettings {
+  return parseChannelContentSettings(stored ?? emptyChannelContentSettings());
 }
 
 /** Copy legacy global automation/OOS into a new connection row (one-time seed). */

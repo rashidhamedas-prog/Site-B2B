@@ -70,7 +70,7 @@ const now = new Date('2026-10-27T12:00:00.000Z');
   assert(withNullWorker.killSwitch.mismatch === false, 'no mismatch when worker unknown');
   assert(withNullWorker.telegramEgress?.host === 'telegram-egress.example.com', 'hostname only');
   assert(withNullWorker.telegramEgress?.pingP95Ms === null, 'ping reserved');
-  assert(withNullWorker.providers.every((p) => p.emergencyHold === false), 'emergencyHold always false');
+  assert(withNullWorker.providers.every((p) => p.emergencyHold === false), 'emergencyHold false when no dests');
 
   const workerSnap = parseProviderGateSnapshot(JSON.stringify({
     at: now.toISOString(),
@@ -92,6 +92,35 @@ const now = new Date('2026-10-27T12:00:00.000Z');
   const bale = mismatched.providers.find((p) => p.provider === 'BALE');
   assert(bale?.killSwitchApi === true, 'BALE kill on api');
   assert(bale?.killSwitchWorker === false, 'BALE not kill on worker');
+}
+
+/* --- emergencyHold from destination publishSettings --- */
+{
+  const held = assembleOmnichannelHealth({
+    now,
+    api: { connectorsEnabled: true, disabledProviders: [] },
+    workerKillSwitch: null,
+    heartbeatRaw: String(now.getTime()),
+    drain: false,
+    providers: [{
+      provider: 'BALE',
+      connections: [],
+      destinations: [{
+        enabled: true,
+        publishSettings: { emergencyHold: true, seeded: true, autoPublishMode: 'LIVE' },
+        settings: null,
+        connectionStatus: 'ACTIVE',
+        connectionPublishSettings: {},
+        channel: 'RETAIL',
+      }],
+      lastSuccessAt: null,
+      lastError: null,
+      countsToday: { retry: 0, dead: 0, hold: 0, stalled: 0 },
+      sentToday: 0,
+    }],
+  });
+  const bale = held.providers.find((p) => p.provider === 'BALE');
+  assert(bale?.emergencyHold === true, 'emergencyHold true when destination flagged');
 }
 
 /* --- provider-gate path sibling --- */
