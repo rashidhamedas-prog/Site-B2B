@@ -4,6 +4,7 @@
  */
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -26,6 +27,7 @@ import {
   copyChannelContent,
   hasChannelContentPatch,
   parseChannelContentSettings,
+  patchTouchesOwnerPolicy,
   readEmergencyHold,
   withEmergencyHold,
   writeChannelSettingsIntoPublish,
@@ -47,8 +49,10 @@ import {
 import { parseStoredOmnichannelSettings } from '../oos-policy';
 import {
   assertGoRefPresent,
+  GO_REF_REQUIRED_MESSAGE,
   isOmnichannelRbacEnabled,
   normalizeGoRef,
+  roleMeetsMinimum,
   type OmnichannelRole,
 } from '../omnichannel-rbac';
 
@@ -86,7 +90,9 @@ export class OmnichannelSettingsService {
     const hits = findCrossChannelContamination(text, destinationId, siblings);
     const warnings = [
       ...contaminationWarnings(hits),
-      ...(resolved.content.ownerChatId ? [] : ['ownerChatId خالی است — مالک باید پر کند (PR-14)')],
+      ...(resolved.content.ownerChatId
+        ? []
+        : ['آی‌دی مقصد هدایت پیام‌ها خالی است؛ مالک باید پر کند (PR-14)']),
     ];
     return {
       destinationId: dest.id,
@@ -110,8 +116,27 @@ export class OmnichannelSettingsService {
     if (!hasDestinationPublishPatch(dto) && !hasChannelContentPatch(dto)) {
       throw new BadRequestException('حداقل یک فیلد تنظیمات لازم است');
     }
+    // emergencyHold has a dedicated Owner+goRef route — reject here to avoid Publisher bypass.
+    if (typeof (dto as { emergencyHold?: boolean }).emergencyHold === 'boolean') {
+      throw new BadRequestException(
+        'برای توقف اضطراری از PATCH …/emergency-hold استفاده کنید (Owner+goRef)',
+      );
+    }
+    const policyTouch = patchTouchesOwnerPolicy(dto as unknown as Record<string, unknown>);
     if (isOmnichannelRbacEnabled()) {
-      assertGoRefPresent(dto.goRef);
+      if (policyTouch) {
+        if (!roleMeetsMinimum(who.omnichannelRole || 'PUBLISHER', 'OWNER')) {
+          throw new ForbiddenException(
+            'تغییر سیاست کانال (سقف/سکوت/ownerChatId/قیمت پیش‌فرض) فقط برای Owner است',
+          );
+        }
+        try {
+          assertGoRefPresent(dto.goRef);
+        } catch {
+          throw new BadRequestException(GO_REF_REQUIRED_MESSAGE);
+        }
+      }
+      // Content-only Publisher drafts: no goRef required.
     }
     const dest = await this.destinations.findOne({ where: { id: destinationId } });
     if (!dest) throw new NotFoundException('مقصد یافت نشد');
@@ -130,9 +155,6 @@ export class OmnichannelSettingsService {
       channelSettings: stored.channelSettings,
       seeded: true,
     };
-    if (typeof (dto as { emergencyHold?: boolean }).emergencyHold === 'boolean') {
-      stored = withEmergencyHold(stored, (dto as { emergencyHold?: boolean }).emergencyHold === true);
-    }
     dest.publishSettings = stored;
     const saved = await this.destinations.save(dest);
     const resolved = resolveDestinationPublishSettings(
@@ -147,11 +169,13 @@ export class OmnichannelSettingsService {
       destinationId,
       siblings,
     );
-    await this.audit(who, 'channel_settings_content_patch', 'DESTINATION', saved.id, channel, dto.reason || null, {
+    const auditAction = policyTouch ? 'channel_settings_policy_patch' : 'channel_settings_content_patch';
+    await this.audit(who, auditAction, 'DESTINATION', saved.id, channel, dto.reason || null, {
       showPriceDefault: resolved.content.showPriceDefault,
       hasContactId: Boolean(resolved.content.contactId),
       hasUtm: Boolean(resolved.content.utmSource || resolved.content.utmCampaign),
       contaminationHits: hits.length,
+      policyTouch,
     }, { goRef: dto.goRef });
     return {
       destinationId: saved.id,

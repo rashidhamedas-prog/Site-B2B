@@ -301,8 +301,10 @@ export class OmnichannelAdminController {
 
   @Patch('destinations/:id/channel-settings')
   @OmnichannelMinRole('PUBLISHER')
-  @RequiresGoRef()
-  @ApiOperation({ summary: 'ذخیره محتوای کانال (آیدی/UTM/قیمت/…)؛ سیاست Owner+goRef' })
+  @ApiOperation({
+    summary:
+      'ذخیره تنظیمات کانال — محتوای Publisher بدون goRef؛ سیاست (سقف/سکوت/ownerChatId/قیمت) Owner+goRef در سرویس',
+  })
   patchChannelSettings(
     @Param('id') id: string,
     @Body() body: PatchChannelSettingsDto,

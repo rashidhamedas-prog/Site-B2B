@@ -314,7 +314,7 @@ export function AdminOmnichannelChannelSettings({
         type="button"
         className="btn btn-secondary btn-sm opacity-60 cursor-not-allowed"
         disabled
-        title="تست owner_chat_id در PR-14"
+        title="تست آی‌دی مقصد هدایت پیام‌ها در PR-14"
       >
         تست آی‌دی مقصد هدایت پیام‌ها (PR-14)
       </button>
