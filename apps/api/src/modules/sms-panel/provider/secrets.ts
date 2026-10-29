@@ -10,6 +10,29 @@ export interface ResolvedSmsSecrets {
   providerMode: 'mock' | 'smsir' | 'disabled';
 }
 
+/**
+ * Only a positive integer string is a valid sms.ir verify template id.
+ * Settings often store Number(0) when unset — treat 0/"0"/NaN/empty as missing
+ * so OTP falls back to /send/bulk instead of calling /send/verify with "0".
+ */
+export function normalizeOtpTemplateId(
+  envValue?: string | number | null,
+  dbValue?: string | number | null,
+): string {
+  const candidates = [envValue, dbValue];
+  for (const raw of candidates) {
+    if (raw === null || raw === undefined) continue;
+    const s = String(raw).trim();
+    if (!s || s === '0') continue;
+    const n = Number(s);
+    if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) continue;
+    // Keep canonical digit string (reject "12.0", "1e3", etc. via integer check above).
+    if (!/^\d+$/.test(s)) continue;
+    return s;
+  }
+  return '';
+}
+
 export function resolveSmsSecrets(
   env: NodeJS.ProcessEnv = process.env,
   db?: {
@@ -31,9 +54,10 @@ export function resolveSmsSecrets(
     String(env.SMS_SENDER || '').trim();
   // Never fall back promo→service (or vice versa); missing line fails at send time.
   const linePromo = String(env.SMSIR_LINE_PROMO || '').trim();
-  const otpTemplateId =
-    String(env.SMSIR_OTP_TEMPLATE_ID || '').trim() ||
-    String(db?.otpTemplateId ?? '').trim();
+  const otpTemplateId = normalizeOtpTemplateId(
+    env.SMSIR_OTP_TEMPLATE_ID,
+    db?.otpTemplateId,
+  );
   const egressBaseUrl =
     String(env.SMS_EGRESS_BASE_URL || '').trim() ||
     String(db?.egressBaseUrl || '').trim();

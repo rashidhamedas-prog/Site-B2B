@@ -41,6 +41,50 @@ const envWins = resolveSmsSecrets(
 assert.strictEqual(envWins.apiKey, 'FROM_ENV');
 assert.strictEqual(envWins.providerMode, 'smsir');
 
+// otpTemplateId: unset Number(0) / "0" must NOT become truthy "0"
+assert.strictEqual(
+  resolveSmsSecrets({} as NodeJS.ProcessEnv, { otpTemplateId: 0 }).otpTemplateId,
+  '',
+);
+assert.strictEqual(
+  resolveSmsSecrets({} as NodeJS.ProcessEnv, { otpTemplateId: '0' }).otpTemplateId,
+  '',
+);
+assert.strictEqual(
+  resolveSmsSecrets({} as NodeJS.ProcessEnv, { otpTemplateId: '' }).otpTemplateId,
+  '',
+);
+assert.strictEqual(
+  resolveSmsSecrets({} as NodeJS.ProcessEnv, { otpTemplateId: undefined }).otpTemplateId,
+  '',
+);
+assert.strictEqual(
+  resolveSmsSecrets({} as NodeJS.ProcessEnv, { otpTemplateId: 123456 }).otpTemplateId,
+  '123456',
+);
+assert.strictEqual(
+  resolveSmsSecrets(
+    { SMSIR_OTP_TEMPLATE_ID: '999001' } as NodeJS.ProcessEnv,
+    { otpTemplateId: 0 },
+  ).otpTemplateId,
+  '999001',
+);
+assert.strictEqual(
+  resolveSmsSecrets(
+    { SMSIR_OTP_TEMPLATE_ID: '0' } as NodeJS.ProcessEnv,
+    { otpTemplateId: 123456 },
+  ).otpTemplateId,
+  '123456',
+);
+assert.strictEqual(
+  resolveSmsSecrets({} as NodeJS.ProcessEnv, { otpTemplateId: NaN }).otpTemplateId,
+  '',
+);
+assert.strictEqual(
+  resolveSmsSecrets({} as NodeJS.ProcessEnv, { otpTemplateId: -5 }).otpTemplateId,
+  '',
+);
+
 const promoNoLine = lineForMessageClass('PROMO', { linePromo: '', lineService: '9982007567' });
 assert.ok('error' in promoNoLine && promoNoLine.error === 'LINE_NOT_CONFIGURED');
 const promoLine = lineForMessageClass('PROMO', {
