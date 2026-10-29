@@ -323,4 +323,21 @@ assert(db.includes('OmnichannelMediaAssetEntity'), 'media registry on runtime Ty
   assert(!composerPlan.includes('TELEGRAM_API_URL') && !composerSvc.includes('TELEGRAM_API_URL'), 'no PR-12 egress in composer');
 }
 
+/* --- PR-11 media validation (scan/health behind flag; no adapter I/O) --- */
+{
+  const mediaVal = src('modules/omnichannel/media-validation.ts');
+  const mediaSvc = src('modules/omnichannel/services/omnichannel-media.service.ts');
+  const constants = src('modules/omnichannel/omnichannel.constants.ts');
+  const mediaEntity = src('modules/omnichannel/entities/omnichannel-media-asset.entity.ts');
+  assert(omniAdmin.includes("Post('media/validate')") && omniAdmin.includes("Post('media/scan')"), 'media validate + scan routes');
+  assert(omniAdmin.includes("Get('media/health')") && omniAdmin.includes("Post('media/:id/mark-needs-replace')"), 'media health + mark-replace');
+  assert(omniAdmin.includes('mediaHealthUi') && constants.includes('OMNICHANNEL_MEDIA_HEALTH_UI'), 'media UI flag default-gated');
+  assert(mediaVal.includes('CHANNEL_PHOTO_MAX_BYTES') && mediaVal.includes('assertChannelPhotoReady'), 'pure validation reuses 1.8 MiB');
+  assert(mediaSvc.includes('validateImageBuffer') && !mediaSvc.includes('TELEGRAM_API_URL'), 'scan without egress');
+  assert(mediaEntity.includes('healthStatus') && mediaEntity.includes('healthCheckedAt'), 'health columns on media assets');
+  assert(omniSvc.includes('assertPublicationPhotosReady'), 'live publish media gate');
+  assert(adminOmni.includes('AdminOmnichannelMediaHealth') || adminOmni.includes('media-health'), 'admin media-health tab mount');
+  assert(!mediaSvc.includes("OMNICHANNEL_CONNECTORS_ENABLED = 'true'"), 'no connector enable');
+}
+
 console.log('omnichannel-phase-acceptance.spec.ts: ok');

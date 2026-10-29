@@ -7,6 +7,14 @@
 - Evidence: unit specs (ts-node) + api/web `tsc --noEmit` green.
 - Next: parent review/merge GO; ops SQL for PR7 leftover + Rubika canary unmark if needed.
 
+## 2026-10-29T19:30:00Z — PR-11 Media validation (implement + PR open)
+
+- Branch `feat/omnichannel-pr11-media-validation` worktree `D:/proje/Site-B2B-pr11` from `origin/master` @ d2bf03fb (PR-9).
+- Delivered: `media-validation` + `OmnichannelMediaService`, scan/validate/health/mark-replace routes, additive health columns migration, UI tab behind `OMNICHANNEL_MEDIA_HEALTH_UI=false`, publish gate `assertPublicationPhotosReady`, WORKLOG+report+plan.
+- Soft-reclaimed shared controller/module/omni.service/AdminOmnichannel from merged PR-9.
+- Hard stops: no connector enable, no Telegram egress, no FORCE, no merge/deploy.
+- Next: push PR; parent merges after GO; Iran backup before migrate; staging UI flag only.
+
 ## 2026-10-29T19:30:00Z — PR-10 Channel settings + templates (implement + PR open)
 
 - Branch `feat/omnichannel-pr10-settings-templates` worktree `D:/proje/Site-B2B-pr10` from `origin/master` @ d2bf03fb (PR-9).

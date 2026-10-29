@@ -9,6 +9,13 @@
 - Guard + pagination + FA errors/labels + blast Owner×۲confirm + per-dest cap (بدون max-as-sum) + health stale error.
 - شاخه `fix/omnichannel-panel-urgent-20261029`. طرح: `docs/design/omnichannel-redesign/pr-panel-urgent-20261029-plan.md`؛ گزارش: `docs/reports/2026-10-29-omnichannel-panel-urgent.md`. Held 5047/K-00006/Telegram HOLD دست‌نخورده. Merge/deploy فقط با GO جدا.
 
+## 2026-10-29 — Omnichannel PR-11 Media validation (بدون merge/deploy)
+
+- Pure `media-validation` (EOI/decode/۱٫۸MiB) + `OmnichannelMediaService` (validate/scan/health/mark-needs-replace) بدون adapter.
+- Routes `POST media/validate|scan`, `GET media/health`, `POST media/:id/mark-needs-replace`؛ gate زنده قبل از enqueue با `unsupported_media`.
+- Migration additive `healthStatus`/`healthCheckedAt`/`healthDetail`؛ تب «رسانه» پشت `OMNICHANNEL_MEDIA_HEALTH_UI=false`.
+- شاخه `feat/omnichannel-pr11-media-validation`. طرح: `docs/design/omnichannel-redesign/pr11-media-validation-plan.md`؛ گزارش: `docs/reports/2026-10-29-omnichannel-pr11-media.md`. GO حامد ۲۹ اکتبر ۲۰۲۶ برای implement+PR — merge/deploy جدا.
+
 ## 2026-10-29 — Omnichannel PR-10 Channel settings + templates (بدون merge/deploy)
 
 - تنظیمات کاملاً جدای هر مقصد (۳×۲): کپشن/فوتر/تماس/ربات سفارش/UTM/`ownerChatId` خالی؛ گارد «ضدآب»؛ هشدار آلودگی بین کانال‌ها.

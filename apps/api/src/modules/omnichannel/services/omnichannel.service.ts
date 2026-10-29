@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, IsNull, Repository } from 'typeorm';
 import { OmnichannelDeleteService } from './omnichannel-delete.service';
 import { OmnichannelSettingsService } from './omnichannel-settings.service';
+import { OmnichannelMediaService } from './omnichannel-media.service';
 import type { DeleteEditActor } from '../omnichannel-delete-edit-rbac';
 import { ChannelProjectionService } from './channel-projection.service';
 import { canaryExceeded, canaryLimitFor } from '../../product/channel-projection';
@@ -319,6 +320,7 @@ export class OmnichannelService {
     @Inject(forwardRef(() => OmnichannelDeleteService))
     private readonly deleteService: OmnichannelDeleteService,
     private readonly channelSettingsSvc: OmnichannelSettingsService,
+    private readonly mediaService: OmnichannelMediaService,
   ) {}
 
   private requireActor(actor?: Actor) {
@@ -2088,6 +2090,8 @@ export class OmnichannelService {
             if (typeof override === 'string' && override.trim()) {
               rendered = { ...rendered, text: override.trim().slice(0, 4096) };
             }
+            // PR-11 D-1: pre-queue gate — corrupt/oversized photos → unsupported_media (non-retryable).
+            await this.mediaService.assertPublicationPhotosReady(rendered.photoUrls);
             await this.enqueueDeliveries(manager, {
               publicationId: row.id,
               channel: projection.channel,
@@ -2493,7 +2497,7 @@ export class OmnichannelService {
     if (!row) throw new NotFoundException('تحویل یافت نشد');
     if (isNonRetryableProviderError(new Error(String(row.lastError || '')))) {
       throw new BadRequestException(
-        'unsupported_media: تصویر را اصلاح کنید؛ تلاش دوباره با همان فایل بی‌فایده است',
+        'unsupported_media: اول تصویر را اصلاح کنید؛ تلاش دوباره با همان فایل بی‌فایده است',
       );
     }
     return this.reactivateDelivery(row, who, reason, 'retry');
@@ -3378,17 +3382,7 @@ export class OmnichannelService {
   }
 
   async listMedia(opts?: { page?: number | string; limit?: number | string }) {
-    try {
-      const rows = await this.mediaAssets.find({
-        order: { createdAt: 'DESC' },
-        take: 300,
-        select: ['id', 'publicUrl', 'storageKey', 'altText', 'ownerType', 'ownerId', 'createdAt'],
-      });
-      return paginateItems(rows, opts?.page, opts?.limit);
-    } catch (err) {
-      if (isMissingRelationError(err)) return paginateItems([], opts?.page, opts?.limit);
-      throw err;
-    }
+    return this.mediaService.listMedia(opts);
   }
 
   async patchMediaAlt(id: string, altText: string, actor?: Actor) {

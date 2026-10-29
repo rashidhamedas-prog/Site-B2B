@@ -132,6 +132,10 @@ export type Status = {
   channelSettingsUi?: boolean;
   /** OMNICHANNEL_TEMPLATES_UI. Templates editor tab when true. */
   templatesUi?: boolean;
+  /** OMNICHANNEL_MEDIA_HEALTH_UI. Media health tab when true. */
+  mediaHealthUi?: boolean;
+  /** Resolved Viewer/Publisher/Owner for UI gates (scan). */
+  omnichannelRole?: 'VIEWER' | 'PUBLISHER' | 'OWNER' | null;
   phase: number;
   retailCanaryLimit: number;
   wholesaleCanaryLimit: number;
