@@ -16,6 +16,7 @@ import { createSmsProvider } from '../sms-panel/provider/factory';
 import { resolveSmsSecrets } from '../sms-panel/provider/secrets';
 import type { SmsProvider } from '../sms-panel/provider/types';
 import type { ResolvedSmsSecrets } from '../sms-panel/provider/secrets';
+import { chooseOtpSendPath } from './otp-send-path';
 
 // SMS provider: sms.ir (REST API v1, auth via x-api-key header).
 // API key, line number, per-event toggles, message templates and the master
@@ -197,8 +198,23 @@ export class NotificationService {
       this.logger.log(`[SMS off] OTP to=${receptor}`);
       return { ok: false, errorCode: 'DISABLED', errorMessage: 'disabled', via: 'direct', durationMs: 0 };
     }
-    // Normalized empty (incl. settings Number 0 → "") → bulk + lineService.
-    if (!secrets.otpTemplateId) {
+    const route = chooseOtpSendPath({
+      otpTemplateId: secrets.otpTemplateId,
+      lineService: secrets.lineService,
+    });
+    if (route.mode === 'unavailable') {
+      this.logger.warn(`[OTP] ${route.errorMessage}`);
+      return {
+        ok: false,
+        errorCode: 'PROVIDER',
+        errorMessage: route.errorMessage,
+        via: secrets.egressBaseUrl ? 'egress' : 'direct',
+        durationMs: 0,
+      };
+    }
+    if (route.mode === 'service_line_fallback') {
+      // Normalized empty template (incl. "0") → service-line bulk only when line exists.
+      this.logger.warn(`[OTP] ${route.warning}`);
       return this.sendOtpBulkFallback(receptor, token, secrets.apiKey, secrets, cfg);
     }
     const verify = await this.postResult(
@@ -206,7 +222,7 @@ export class NotificationService {
       '/send/verify',
       {
         mobile: receptor,
-        templateId: secrets.otpTemplateId,
+        templateId: route.templateId,
         parameters: [{ name: 'CODE', value: token }],
       },
       cfg,
@@ -216,6 +232,7 @@ export class NotificationService {
     if (verify.errorCode === 'TIMEOUT' || verify.errorCode === 'NETWORK' || verify.errorCode === 'DISABLED') {
       return verify;
     }
+    if (!secrets.lineService) return verify;
     this.logger.warn(
       `OTP /send/verify failed (code=${verify.errorCode || 'PROVIDER'} msg=${verify.errorMessage || ''}); falling back to /send/bulk once`,
     );

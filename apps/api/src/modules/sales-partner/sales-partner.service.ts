@@ -59,6 +59,7 @@ import {
   canSalesPartnerLogin,
   canTransitionProfile,
   humanApplicationStatus,
+  maskPhone,
   normalizeIban,
   parseReviewReason,
   salesPartnerReapplyBlocked,
@@ -78,6 +79,14 @@ import {
   welcomeSmsCooldownActive,
   WELCOME_SMS_COOLDOWN_MS,
 } from './sales-partner-welcome-sms';
+import type { SmsTransportResult } from '../notification/sms-transport';
+import {
+  auditPayloadForSmsAttempt,
+  buildCredentialsSmsAttempt,
+  buildLastSmsAttempt,
+  formatLastSmsAttemptFa,
+  pendingOtpDryRunPreview,
+} from './sales-partner-sms-attempt';
 
 @Injectable()
 export class SalesPartnerService {
@@ -196,8 +205,12 @@ export class SalesPartnerService {
       application.pendingRevision = revision;
     }
     await this.applications.save(application);
-    const issued = await this.issueOtp(phone, displayName, 'sales_partner_apply');
-    await this.audit(null, 'application.otp_requested', 'application', application.id, { phoneMasked: phone.slice(0, 4) });
+    const issued = await this.issueOtp(phone, displayName, 'sales_partner_apply', application.id, null);
+    if (issued.delivery !== 'failed') {
+      await this.audit(null, 'application.otp_requested', 'application', application.id, {
+        phoneMasked: maskPhone(phone),
+      });
+    }
     return {
       applicationId: application.id,
       status: application.status,
@@ -386,6 +399,7 @@ export class SalesPartnerService {
       ...toPublicSalesPartner(profile),
       canSetPasswordWithoutCurrent: canSetWithoutCurrent,
       applicationAnswers: profile.applicationAnswers,
+      mustChangePassword: Boolean(profile.mustChangePassword),
     };
   }
 
@@ -425,6 +439,10 @@ export class SalesPartnerService {
     user.passwordHash = await bcrypt.hash(password, 12);
     user.passwordChangedAt = new Date();
     await this.users.save(user);
+    if (profile.mustChangePassword) {
+      profile.mustChangePassword = false;
+      await this.profiles.save(profile);
+    }
     await this.audit(user.id, 'profile.password_updated', 'profile', profile.id, {});
     return {
       message: currentPassword ? 'رمز عبور تغییر کرد' : 'رمز عبور ذخیره شد',
@@ -572,9 +590,11 @@ export class SalesPartnerService {
       return {
         id: row.id,
         displayName: row.displayName,
-        phoneMasked: `${row.phone.slice(0, 4)}***${row.phone.slice(-2)}`,
+        phoneMasked: maskPhone(row.phone),
         status: row.status,
         statusLabel: humanApplicationStatus(row.status),
+        lastSmsAttempt: row.lastSmsAttempt ?? null,
+        lastSmsAttemptLabel: formatLastSmsAttemptFa(row.lastSmsAttempt),
         socialHandles: row.socialHandles,
         nationalIdMasked: maskNationalId(nationalId),
         city: typeof row.answers?.city === 'string' ? row.answers.city : null,
@@ -596,7 +616,7 @@ export class SalesPartnerService {
       id: application.id,
       displayName: application.displayName,
       phone: application.phone,
-      phoneMasked: `${application.phone.slice(0, 4)}***${application.phone.slice(-2)}`,
+      phoneMasked: maskPhone(application.phone),
       status: application.status,
       statusLabel: humanApplicationStatus(application.status),
       socialHandles: application.socialHandles,
@@ -607,6 +627,228 @@ export class SalesPartnerService {
       userId: application.userId,
       createdAt: application.createdAt,
       updatedAt: application.updatedAt,
+      lastSmsAttempt: application.lastSmsAttempt ?? null,
+      lastSmsAttemptLabel: formatLastSmsAttemptFa(application.lastSmsAttempt),
+    };
+  }
+
+  async pendingOtpDryRun() {
+    const rows = await this.applications.find({
+      where: { status: 'PENDING_OTP' },
+      order: { createdAt: 'ASC' },
+    });
+    return pendingOtpDryRunPreview(rows);
+  }
+
+  async resendApplicationOtp(applicationId: string, actorUserId: string) {
+    const application = await this.applications.findOne({ where: { id: applicationId } });
+    if (!application) throw new NotFoundException('درخواست پیدا نشد');
+    if (application.status !== 'PENDING_OTP') {
+      throw new BadRequestException('ارسال مجدد کد فقط برای درخواست‌های منتظر OTP مجاز است');
+    }
+    const issued = await this.issueOtp(
+      application.phone,
+      application.displayName,
+      'sales_partner_apply',
+      application.id,
+      actorUserId,
+    );
+    await this.audit(actorUserId, 'application.otp_resend', 'application', application.id, {
+      phoneMasked: maskPhone(application.phone),
+      delivery: issued.delivery,
+    });
+    return {
+      applicationId: application.id,
+      delivery: issued.delivery,
+      cooldownSeconds: this.otp.cooldownSeconds('sales_partner_apply'),
+      expiresInSeconds: issued.expiresInSeconds,
+      lastSmsAttemptLabel: formatLastSmsAttemptFa(
+        (await this.applications.findOne({ where: { id: applicationId } }))?.lastSmsAttempt,
+      ),
+    };
+  }
+
+  async manualVerifyApplicationCredentials(applicationId: string, actorUserId: string) {
+    const application = await this.applications.findOne({ where: { id: applicationId } });
+    if (!application) throw new NotFoundException('درخواست پیدا نشد');
+    if (application.status !== 'PENDING_OTP') {
+      throw new BadRequestException('تأیید دستی فقط برای درخواست‌های منتظر OTP مجاز است');
+    }
+    const loginUrl = salesPartnerLoginUrl(this.config.get('NEXT_PUBLIC_RETAIL_URL'));
+    const displayName = application.displayName;
+
+    const phone = normalizePhone(application.phone);
+    let result: {
+      app: SalesPartnerApplicationEntity;
+      profile: SalesPartnerProfileEntity;
+      userId: string;
+    };
+    try {
+      result = await this.users.manager.transaction(async (manager) => {
+      const app = await manager.findOne(SalesPartnerApplicationEntity, {
+        where: { id: applicationId, status: 'PENDING_OTP' },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!app) throw new NotFoundException('درخواست پیدا نشد');
+
+      let user = await manager.findOne(UserEntity, { where: { phone }, withDeleted: true });
+      if (!user) {
+        user = manager.create(UserEntity, {
+          phone,
+          passwordHash: await bcrypt.hash(randomBytes(16).toString('hex'), 12),
+          role: 'CUSTOMER',
+          isActive: true,
+        });
+        await manager.save(user);
+      } else if (user.deletedAt || !user.isActive) {
+        throw new ConflictException('این شماره برای ثبت‌نام همکاری در دسترس نیست');
+      }
+      if (isStaffRole(user.role) || vendorRole(user.role)) {
+        throw new ConflictException('این شماره برای همکاری بازاریاب قابل استفاده نیست');
+      }
+
+      const verified = applicationFieldsAfterOtp(app);
+      app.userId = user.id;
+      app.displayName = verified.displayName;
+      app.socialHandles = verified.socialHandles;
+      app.answers = verified.answers;
+      app.pendingRevision = null;
+      app.status = verified.status;
+
+      let profile = app.profileId
+        ? await manager.findOne(SalesPartnerProfileEntity, { where: { id: app.profileId } })
+        : await manager.findOne(SalesPartnerProfileEntity, { where: { userId: user.id } });
+
+      if (!profile) {
+        profile = manager.create(SalesPartnerProfileEntity, {
+          userId: user.id,
+          phone,
+          displayName: app.displayName,
+          status: 'PENDING_REVIEW',
+          publicCode: salesPartnerPublicCode(randomBytes(8)),
+          applicationAnswers: app.answers,
+          smsPromoConsent: true,
+          smsPromoConsentSource: 'OWNER_DEFAULT_POLICY',
+          smsPromoConsentAt: new Date(),
+          mustChangePassword: true,
+        });
+      } else if (profile.status === 'REJECTED' || profile.status === 'NEEDS_INFORMATION') {
+        profile.status = 'PENDING_REVIEW';
+        profile.displayName = app.displayName;
+        profile.statusReason = null;
+        profile.applicationAnswers = app.answers;
+        profile.mustChangePassword = true;
+      } else if (profile.status === 'PENDING_REVIEW') {
+        profile.displayName = app.displayName;
+        profile.applicationAnswers = app.answers;
+        profile.mustChangePassword = true;
+      } else {
+        profile.applicationAnswers = app.answers ?? profile.applicationAnswers;
+        profile.mustChangePassword = true;
+      }
+
+      const password = generateValidSalesPartnerTempPassword(phone);
+      const policyError = validateNewPassword(password, phone);
+      if (policyError) throw new BadRequestException(policyError);
+
+      const lockedUser = await manager.findOne(UserEntity, {
+        where: { id: user.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!lockedUser) throw new NotFoundException('کاربر پیدا نشد');
+      lockedUser.passwordHash = await bcrypt.hash(password, 12);
+      lockedUser.passwordChangedAt = new Date();
+      await manager.save(lockedUser);
+      await manager.save(profile);
+      app.profileId = profile.id;
+      await manager.save(app);
+
+      const sent = this.notifications
+        ? await this.notifications.salesPartnerWelcome({
+            phone,
+            password,
+            loginUrl,
+            displayName,
+          })
+        : false;
+
+      const credAttempt = buildCredentialsSmsAttempt(phone, Boolean(sent));
+      app.lastSmsAttempt = credAttempt;
+      await manager.save(app);
+
+      if (smsFailureBlocksSend(this.config.get('NODE_ENV'), sent)) {
+        throw new BadRequestException('ارسال پیامک ناموفق بود؛ وضعیت درخواست تغییر نکرد');
+      }
+
+      await manager.save(
+        manager.create(SalesPartnerAuditEventEntity, {
+          actorUserId,
+          action: 'application.credentials_sms',
+          targetType: 'application',
+          targetId: app.id,
+          payload: auditPayloadForSmsAttempt(credAttempt),
+        }),
+      );
+
+      return { app, profile, userId: user.id };
+    });
+    } catch (err) {
+      // Transaction rolled back — still record the failed credentials attempt for admin UI.
+      if (err instanceof BadRequestException) {
+        const failedAttempt = buildCredentialsSmsAttempt(phone, false);
+        await this.applications.update(applicationId, { lastSmsAttempt: failedAttempt });
+        await this.audit(actorUserId, 'application.credentials_sms', 'application', applicationId, {
+          ...auditPayloadForSmsAttempt(failedAttempt),
+        });
+      }
+      throw err;
+    }
+
+    await this.audit(actorUserId, 'application.manual_verify_credentials', 'application', applicationId, {
+      phoneMasked: maskPhone(application.phone),
+      status: 'PENDING_REVIEW',
+    });
+    await this.emit(SALES_PARTNER_EVENT.APPLICATION_SUBMITTED, applicationId, {
+      applicationId,
+      profileId: result.profile.id,
+      status: 'PENDING_REVIEW',
+    });
+
+    return {
+      applicationId,
+      status: 'PENDING_REVIEW',
+      statusLabel: 'درخواست ثبت شد و در انتظار بررسی است',
+      phoneMasked: maskPhone(application.phone),
+      lastSmsAttemptLabel: formatLastSmsAttemptFa(result.app.lastSmsAttempt),
+    };
+  }
+
+  async bulkManualVerifyApplicationCredentials(ids: string[], actorUserId: string) {
+    const unique = [...new Set(ids.map((id) => String(id || '').trim()).filter(Boolean))];
+    const results: Array<{ id: string; ok: boolean; error?: string; status?: string }> = [];
+    for (const id of unique) {
+      try {
+        const row = await this.manualVerifyApplicationCredentials(id, actorUserId);
+        results.push({ id, ok: true, status: row.status });
+      } catch (err) {
+        const message =
+          err instanceof BadRequestException ||
+          err instanceof NotFoundException ||
+          err instanceof ConflictException
+            ? String((err as { message?: string | string[] }).message || 'ناموفق')
+            : 'ناموفق';
+        results.push({
+          id,
+          ok: false,
+          error: Array.isArray(message) ? message.join(' ') : message,
+        });
+      }
+    }
+    return {
+      count: unique.length,
+      okCount: results.filter((r) => r.ok).length,
+      failCount: results.filter((r) => !r.ok).length,
+      results,
     };
   }
 
@@ -893,7 +1135,13 @@ export class SalesPartnerService {
     };
   }
 
-  private async issueOtp(phone: string, name: string, purpose: 'sales_partner' | 'sales_partner_apply') {
+  private async issueOtp(
+    phone: string,
+    name: string,
+    purpose: 'sales_partner' | 'sales_partner_apply',
+    applicationId?: string,
+    actorUserId: string | null = null,
+  ) {
     let issued: { code: string };
     try {
       issued = await this.otp.issue(phone, name, purpose);
@@ -909,15 +1157,43 @@ export class SalesPartnerService {
     }
     const expiresInSeconds = this.otp.ttlSeconds();
     if (!this.notifications) {
+      const attempt = buildLastSmsAttempt(
+        'otp',
+        phone,
+        'failed',
+        { errorCode: 'DISABLED', errorMessage: 'disabled', via: 'direct', durationMs: 0 },
+      );
+      await this.persistOtpAttempt(applicationId, actorUserId, attempt);
       return { code: issued.code, delivery: 'failed' as const, expiresInSeconds };
     }
-    const delivery = otpDispatchFromTransport(await this.notifications.sendOtpDetailed(phone, issued.code));
+    const transport: SmsTransportResult = await this.notifications.sendOtpDetailed(phone, issued.code);
+    const delivery = otpDispatchFromTransport(transport);
+    const attempt = buildLastSmsAttempt('otp', phone, delivery, transport);
+    await this.persistOtpAttempt(applicationId, actorUserId, attempt);
+    if (delivery === 'pending') {
+      this.logger.warn(
+        `OTP dispatch pending purpose=${purpose} phone=${maskPhone(phone)} code=${transport.errorCode || 'UNKNOWN'}`,
+      );
+    }
     if (delivery === 'failed' && this.config.get('NODE_ENV') === 'production') {
       await this.otp.clear(phone, purpose);
       await this.otp.clearCooldown(phone, purpose);
       throw new HttpException('ارسال پیامک ناموفق بود', 503);
     }
     return { code: issued.code, delivery, expiresInSeconds };
+  }
+
+  private async persistOtpAttempt(
+    applicationId: string | undefined,
+    actorUserId: string | null,
+    attempt: ReturnType<typeof buildLastSmsAttempt>,
+  ) {
+    if (applicationId) {
+      await this.applications.update(applicationId, { lastSmsAttempt: attempt });
+      await this.audit(actorUserId, 'application.otp_dispatch', 'application', applicationId, {
+        ...auditPayloadForSmsAttempt(attempt),
+      });
+    }
   }
 
   private async verifyOtp(phone: string, code: string, purpose: 'sales_partner' | 'sales_partner_apply') {

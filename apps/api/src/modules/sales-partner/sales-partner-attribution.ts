@@ -1,3 +1,5 @@
+import { randomInt } from 'crypto';
+
 export const SALES_SOURCES = ['DIRECT', 'SALES_PARTNER'] as const;
 export type SalesSource = (typeof SALES_SOURCES)[number];
 
@@ -15,10 +17,30 @@ export function partnerOrderAttribution(input: {
 
 const PUBLIC_CODE_ALPHABET = '23456789abcdefghjkmnpqrstuvwxyz';
 
-export function salesPartnerPublicCode(bytes: Uint8Array): string {
+/**
+ * Deterministic mapper with rejection sampling (no modulo bias).
+ * Returns null when the byte pool cannot yield 8 unbiased symbols.
+ */
+export function salesPartnerPublicCodeFromBytes(bytes: Uint8Array): string | null {
+  const n = PUBLIC_CODE_ALPHABET.length;
+  const limit = 256 - (256 % n);
+  let out = '';
+  for (let i = 0; i < bytes.length && out.length < 8; i += 1) {
+    const b = bytes[i]!;
+    if (b >= limit) continue;
+    out += PUBLIC_CODE_ALPHABET[b % n]!;
+  }
+  return out.length === 8 ? out : null;
+}
+
+/**
+ * 8-char public share code via unbiased CSPRNG (`crypto.randomInt`).
+ * Optional bytes arg kept for call-site compatibility; ignored in favor of randomInt.
+ */
+export function salesPartnerPublicCode(_bytes?: Uint8Array): string {
   let out = '';
   for (let i = 0; i < 8; i += 1) {
-    out += PUBLIC_CODE_ALPHABET[bytes[i] % PUBLIC_CODE_ALPHABET.length];
+    out += PUBLIC_CODE_ALPHABET[randomInt(PUBLIC_CODE_ALPHABET.length)]!;
   }
   return out;
 }
