@@ -3,7 +3,7 @@
 - `provider-egress`: `BALE_API_URL` / `RUBIKA_API_URL`؛ TELEGRAM فقط delegate به `telegramApiBase` (بدون تغییر Worker/TELEGRAM_API_URL).
 - `OMNICHANNEL_VAULT_STRICT_MESSENGERS` (پیش‌فرض false): BALE/RUBIKA بدون vault → null؛ تلگرام env-only همچنان کار می‌کند.
 - Scrubber `/v3/{token}/`؛ status `strictMessengers` + `envIgnored`؛ یادداشت فاز تلگرام در پنل secrets.
-- شاخه `feat/omnichannel-pr12-vault-egress-bale-rubika`. طرح: `docs/design/omnichannel-redesign/pr12-vault-egress-plan.md`؛ گزارش: `docs/reports/2026-10-29-omnichannel-pr12-vault-egress.md`. GO حامد ۲۹ اکتبر ۲۰۲۶ برای PR open — merge/deploy فقط با GO جدا.
+- شاخه `feat/omnichannel-pr12-vault-egress-bale-rubika`. طرح: `docs/design/omnichannel-redesign/pr12-vault-egress-plan.md`؛ گزارش: `docs/reports/2026-10-29-omnichannel-pr12-vault.md`. GO حامد ۲۹ اکتبر ۲۰۲۶ برای PR open — merge/deploy فقط با GO جدا.
 
 ## 2026-10-29 — CURSOR-FIX checkout auth / payment / login UI (GO حامد)
 
