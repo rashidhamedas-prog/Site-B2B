@@ -50,10 +50,14 @@ async function main() {
   const prevDisabled = process.env.OMNICHANNEL_DISABLED_PROVIDERS;
   const prevTok = process.env.BALE_TEST_TOKEN;
   const prevUploadMode = process.env.BALE_MEDIA_UPLOAD_MODE;
+  const prevBaleApi = process.env.BALE_API_URL;
+  const prevStrict = process.env.OMNICHANNEL_VAULT_STRICT_MESSENGERS;
   const token = '987654321:bale-test-token-not-real';
   try {
     delete process.env.OMNICHANNEL_CONNECTORS_ENABLED;
     delete process.env.OMNICHANNEL_DISABLED_PROVIDERS;
+    delete process.env.BALE_API_URL;
+    delete process.env.OMNICHANNEL_VAULT_STRICT_MESSENGERS;
     process.env.BALE_TEST_TOKEN = token;
 
     // text conversion
@@ -82,6 +86,13 @@ async function main() {
     assert((await adapter.validateConnection('BALE_TEST_TOKEN')).ok === true, 'getMe ok');
     assert(calls[0].url === `${BALE_API}/bot${token}/getMe`, 'official Bale URL');
     assert((await adapter.validateConnection('NOPE')).error === 'invalid_credential', 'bad ref → invalid_credential');
+
+    // BALE_API_URL override (egress mirror) — Telegram path untouched
+    process.env.BALE_API_URL = 'https://bale-mirror.test/';
+    calls = recorder(adapter, (method) => (method === 'getMe' ? { id: 1, username: 'taranom_bot' } : new Error('x')));
+    assert((await adapter.validateConnection('BALE_TEST_TOKEN')).ok === true, 'getMe via override');
+    assert(calls[0].url === `https://bale-mirror.test/bot${token}/getMe`, 'BALE_API_URL redirects fetch');
+    delete process.env.BALE_API_URL;
 
     // inspectDestination: channel where bot is admin with post rights
     calls = recorder(adapter, (method) => {
@@ -275,6 +286,10 @@ async function main() {
     else process.env.BALE_TEST_TOKEN = prevTok;
     if (prevUploadMode === undefined) delete process.env.BALE_MEDIA_UPLOAD_MODE;
     else process.env.BALE_MEDIA_UPLOAD_MODE = prevUploadMode;
+    if (prevBaleApi === undefined) delete process.env.BALE_API_URL;
+    else process.env.BALE_API_URL = prevBaleApi;
+    if (prevStrict === undefined) delete process.env.OMNICHANNEL_VAULT_STRICT_MESSENGERS;
+    else process.env.OMNICHANNEL_VAULT_STRICT_MESSENGERS = prevStrict;
   }
   console.log('bale.adapter.spec.ts: ok');
 }

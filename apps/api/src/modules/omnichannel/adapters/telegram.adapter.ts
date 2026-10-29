@@ -6,7 +6,7 @@ import {
 } from './channel-adapter';
 import { isOmnichannelProviderEnabled } from '../omnichannel.constants';
 import { isAllowedSecretRef } from '../omnichannel-secrets';
-import { peekVaultToken } from '../omnichannel-token-vault';
+import { isVaultStrictMessengers, peekVaultToken } from '../omnichannel-token-vault';
 import { classifyTelegramHttpError, classifyTelegramThrow, redactProviderError } from './telegram-errors';
 import {
   TELEGRAM_CAPTION_LIMIT,
@@ -65,6 +65,8 @@ export function telegramApiBase(source: { TELEGRAM_API_URL?: string | undefined 
 /**
  * Env-name indirection shared by every provider: `${PROVIDER}_…` names only.
  * Admin-saved vault overlay wins (owner just pasted a token); env is the fallback.
+ * When `OMNICHANNEL_VAULT_STRICT_MESSENGERS` is on, BALE/RUBIKA refuse env-only
+ * (fail closed → null). Telegram always keeps vault-then-env (structure-ready only).
  * The plaintext never leaves this process.
  */
 export function resolveProviderToken(provider: string, secretRef: string): string | null {
@@ -72,6 +74,9 @@ export function resolveProviderToken(provider: string, secretRef: string): strin
   if (!isAllowedSecretRef(name) || !name.startsWith(`${provider}_`)) return null;
   const fromVault = peekVaultToken(name);
   if (fromVault) return fromVault;
+  if (isVaultStrictMessengers() && (provider === 'BALE' || provider === 'RUBIKA')) {
+    return null;
+  }
   const value = process.env[name];
   return value && String(value).trim() ? String(value).trim() : null;
 }

@@ -54,6 +54,7 @@ import {
   OutOfPanelIngestDto,
 } from '../dto/omnichannel-coverage.dto';
 import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
+import { isVaultStrictMessengers } from '../omnichannel-token-vault';
 import {
   areOmnichannelConnectorsEnabled,
   isOmnichannelAutoPublishEnabled,
@@ -138,6 +139,8 @@ export class OmnichannelAdminController {
       providers: providerReadiness(),
       /** Write-only token inventory: source + fingerprint, never the secret. */
       secrets: await this.svc.listSecretStatuses(),
+      /** BALE/RUBIKA env-only rejected when true. Telegram exempt. Default false. */
+      strictMessengers: isVaultStrictMessengers(),
       ...settings,
       // When a destination is selected, operator metrics must not use stale global leftovers.
       ...(scoped

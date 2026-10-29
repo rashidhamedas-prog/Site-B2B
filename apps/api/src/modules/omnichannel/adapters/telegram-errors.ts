@@ -82,7 +82,11 @@ export function classifyTelegramThrow(err: unknown): TelegramErrorCode {
 
 export function redactProviderError(message: string): string {
   return String(message || '')
+    // Telegram / Bale BotFather paths: /bot{token}/…
     .replace(/\/bot[^/\s?#]+/gi, '/bot[redacted]')
+    // Rubika v3 paths: /v3/{token}/…
+    .replace(/\/v3\/[^/\s?#]+/gi, '/v3/[redacted]')
+    // Telegram-like digits:secret (Bale shares the shape; HR-3 ≥20 chars)
     .replace(/\d{6,}:[A-Za-z0-9_-]{20,}/g, '[redacted-token]')
     .slice(0, 200);
 }

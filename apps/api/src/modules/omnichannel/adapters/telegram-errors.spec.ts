@@ -5,6 +5,7 @@ import {
   classifyTelegramHttpError,
   classifyTelegramThrow,
   isNonRetryableProviderError,
+  redactProviderError,
 } from './telegram-errors';
 import { shouldDeadLetter } from '../services/outbox-lease';
 
@@ -32,5 +33,13 @@ assert(
   shouldDeadLetter(1, 8, { forceDead: isNonRetryableProviderError(new Error('timeout')) }) === false,
   'timeout does not force DEAD via this helper',
 );
+
+const tgTok = '123456789:AA-fake-telegram-token-XXXXXX';
+const baleTok = '987654321:bale-test-token-not-real';
+const rubikaTok = 'RUBIKA-test-token-not-real-ABCDEF';
+assert(!redactProviderError(`/bot${tgTok}/sendMessage`).includes(tgTok), 'redact TG /bot path');
+assert(!redactProviderError(`/bot${baleTok}/getMe`).includes(baleTok), 'redact Bale /bot path');
+assert(!redactProviderError(`https://botapi.rubika.ir/v3/${rubikaTok}/getMe`).includes(rubikaTok), 'redact Rubika /v3 path');
+assert(redactProviderError(`token ${tgTok} leaked`).includes('[redacted-token]'), 'redact digits:secret shape');
 
 console.log('telegram-errors.spec.ts: ok');

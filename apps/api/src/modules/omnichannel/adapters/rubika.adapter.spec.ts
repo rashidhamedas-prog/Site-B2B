@@ -15,6 +15,8 @@ import {
   rubikaChatTypeFromId,
   rubikaMessage,
 } from './rubika.adapter';
+import { resolveMessengerApiBase } from '../provider-egress';
+import { redactProviderError } from './telegram-errors';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -35,7 +37,8 @@ function recorder(
   const calls: Call[] = [];
   adapter.http = (async (url: string | URL | Request, init?: RequestInit) => {
     const href = String(url);
-    if (!href.startsWith(RUBIKA_API)) {
+    const apiBase = resolveMessengerApiBase('RUBIKA');
+    if (!href.startsWith(apiBase)) {
       calls.push({ url: href, body: init?.body instanceof FormData ? init.body : null, init });
       if (!other) throw new Error(`unexpected url ${href}`);
       return other(href, init);
@@ -54,10 +57,12 @@ async function main() {
   const prevFlag = process.env.OMNICHANNEL_CONNECTORS_ENABLED;
   const prevDisabled = process.env.OMNICHANNEL_DISABLED_PROVIDERS;
   const prevTok = process.env.RUBIKA_TEST_TOKEN;
+  const prevRubikaApi = process.env.RUBIKA_API_URL;
   const token = 'RUBIKA-test-token-not-real-ABCDEF';
   try {
     delete process.env.OMNICHANNEL_CONNECTORS_ENABLED;
     delete process.env.OMNICHANNEL_DISABLED_PROVIDERS;
+    delete process.env.RUBIKA_API_URL;
     process.env.RUBIKA_TEST_TOKEN = token;
 
     // pure helpers
@@ -93,6 +98,17 @@ async function main() {
     let calls = recorder(adapter, (method) => (method === 'getMe' ? { bot: { bot_id: 'b0x', username: 'taranom_bot' } } : new Error('INVALID_INPUT')));
     assert((await adapter.validateConnection('RUBIKA_TEST_TOKEN')).ok === true, 'getMe ok');
     assert(calls[0].url === `${RUBIKA_API}/${token}/getMe`, 'official v3 URL shape /v3/{token}/{method}');
+    assert(
+      !redactProviderError(calls[0].url).includes(token),
+      'error scrubber strips Rubika token from /v3/{token}/ paths',
+    );
+
+    process.env.RUBIKA_API_URL = 'https://rubika-mirror.test/v3';
+    calls = recorder(adapter, (method) => (method === 'getMe' ? { bot: { bot_id: 'b0x' } } : new Error('INVALID_INPUT')));
+    assert((await adapter.validateConnection('RUBIKA_TEST_TOKEN')).ok === true, 'getMe via override');
+    assert(calls[0].url === `https://rubika-mirror.test/v3/${token}/getMe`, 'RUBIKA_API_URL redirects fetch');
+    delete process.env.RUBIKA_API_URL;
+
     recorder(adapter, () => new Error('INVALID_ACCESS'));
     assert((await adapter.validateConnection('RUBIKA_TEST_TOKEN')).error === 'invalid_credential', 'INVALID_ACCESS → invalid_credential');
 
@@ -232,6 +248,8 @@ async function main() {
     else process.env.OMNICHANNEL_DISABLED_PROVIDERS = prevDisabled;
     if (prevTok === undefined) delete process.env.RUBIKA_TEST_TOKEN;
     else process.env.RUBIKA_TEST_TOKEN = prevTok;
+    if (prevRubikaApi === undefined) delete process.env.RUBIKA_API_URL;
+    else process.env.RUBIKA_API_URL = prevRubikaApi;
   }
   console.log('rubika.adapter.spec.ts: ok');
 }

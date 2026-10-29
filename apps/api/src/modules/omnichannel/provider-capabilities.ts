@@ -4,7 +4,13 @@ import {
   isOmnichannelProviderEnabled,
   type OmnichannelProvider,
 } from './omnichannel.constants';
-import { peekVaultToken, publicSecretStatus, type TokenSource } from './omnichannel-token-vault';
+import {
+  isVaultStrictMessengers,
+  peekVaultToken,
+  publicSecretStatus,
+  type TokenSource,
+} from './omnichannel-token-vault';
+import { resolveMessengerApiBase } from './provider-egress';
 
 /**
  * What each official Bot API can do with a product post. Read from the vendors' docs on
@@ -144,6 +150,10 @@ export function secretRefConfigured(secretRef: string, env: NodeJS.ProcessEnv = 
   const name = String(secretRef || '').trim();
   if (!/^(TELEGRAM|BALE|RUBIKA)_[A-Z0-9_]{1,80}$/.test(name)) return false;
   if (peekVaultToken(name)) return true;
+  const provider = name.split('_')[0];
+  if (isVaultStrictMessengers(env) && (provider === 'BALE' || provider === 'RUBIKA')) {
+    return false;
+  }
   return String(env[name] || '').trim().length > 0;
 }
 
@@ -154,8 +164,9 @@ export function providerReadiness(env: NodeJS.ProcessEnv = process.env): Provide
     const secret = publicSecretStatus(defaultSecretRef, env);
     return {
       ...PROVIDER_CAPABILITIES[provider],
+      apiBase: resolveMessengerApiBase(provider, env),
       enabled: isOmnichannelProviderEnabled(provider),
-      tokenConfigured: secret.configured,
+      tokenConfigured: secretRefConfigured(defaultSecretRef, env),
       tokenSource: secret.source,
       tokenFingerprint: secret.fingerprint,
       defaultSecretRef,

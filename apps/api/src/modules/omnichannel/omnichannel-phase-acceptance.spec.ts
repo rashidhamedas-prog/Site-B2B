@@ -246,6 +246,8 @@ assert(bale.includes('ConnectorDisabledError') && rubika.includes('ConnectorDisa
 assert(bale.includes('isOmnichannelProviderEnabled') && rubika.includes('isOmnichannelProviderEnabled'), 'Bale/Rubika honour per-provider kill switch');
 assert(telegram.includes('api.telegram.org'), 'Telegram official API');
 assert(telegram.includes('TELEGRAM_API_URL'), 'Telegram base URL is env-overridable');
+assert(telegram.includes('export function telegramApiBase'), 'telegramApiBase remains the TG egress entry');
+assert(!telegram.includes('resolveMessengerApiBase'), 'Telegram adapter does not call provider-egress for its own base');
 assert(bale.includes('https://tapi.bale.ai') && !bale.includes('parse_mode'), 'Bale official API, Markdown-only (no parse_mode)');
 assert(rubika.includes('https://botapi.rubika.ir/v3') && rubika.includes('meta_data_parts') && rubika.includes('requestSendFile'), 'Rubika official API v3 (metadata + upload flow)');
 assert(!rubika.includes('sendMediaGroup') && !rubika.includes('button_link'), 'Rubika: no invented album/button-url API');
@@ -253,9 +255,16 @@ assert(secrets.includes('TELEGRAM|BALE|RUBIKA'), 'secretRef allowlist');
 {
   const vault = src('modules/omnichannel/omnichannel-token-vault.ts');
   const vaultSvc = src('modules/omnichannel/services/omnichannel-token-vault.service.ts');
+  const egress = src('modules/omnichannel/provider-egress.ts');
   assert(vault.includes('aes-256-gcm') && vault.includes('omnichannel.secret.vault'), 'tokens encrypted in dedicated vault key');
   assert(vault.includes('isProductionLike') && vault.includes('vault_key_missing'), 'production requires OMNICHANNEL_VAULT_KEY');
   assert(vault.includes('setAAD'), 'GCM binds secretRef as AAD');
+  assert(vault.includes('isVaultStrictMessengers') && vault.includes('envIgnored'), 'PR-12 strict BALE/RUBIKA + envIgnored status');
+  assert(egress.includes('resolveMessengerApiBase') && egress.includes('telegramApiBase'), 'PR-12 egress helper; TG delegates');
+  assert(egress.includes('BALE_API_URL') && egress.includes('RUBIKA_API_URL'), 'PR-12 Bale/Rubika base overrides');
+  assert(bale.includes("resolveMessengerApiBase('BALE')") && rubika.includes("resolveMessengerApiBase('RUBIKA')"), 'adapters use egress resolver');
+  assert(omniAdmin.includes('strictMessengers'), 'status exposes strictMessengers flag');
+  assert(adminOmni.includes('توکن تلگرام در فاز جدا'), 'admin notes Telegram vault deferred');
   assert(vaultSvc.includes('pessimistic_write') && vaultSvc.includes('applyVaultOverlay({})'), 'vault persist locks; missing key clears overlay');
   assert(omniSvc.includes('probeCredential') && !omniSvc.includes('if (isOmnichannelProviderEnabled(provider))'), 'getMe before persist even when provider gated');
   assert(omniAdmin.includes("Put('secrets')") && omniAdmin.includes('putSecret'), 'write-only token endpoint');
