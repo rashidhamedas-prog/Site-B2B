@@ -134,8 +134,6 @@ export class OmnichannelAdminController {
       templatesUi: isOmnichannelTemplatesUiEnabled(),
       /** PR-11 media health tab. Default false until staging validate. */
       mediaHealthUi: isOmnichannelMediaHealthUiEnabled(),
-      /** Resolved omnichannel role for UI gates (scan button). Never secrets. */
-      omnichannelRole: req?.omnichannelActor?.omnichannelRole || null,
       phase: 11,
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
@@ -148,6 +146,7 @@ export class OmnichannelAdminController {
       outboxDeadByEventType: diagnosis.outboxDeadByEventType,
       scopedDestinationId: destinationId || null,
       rbacEnabled,
+      /** Resolved omnichannel role for UI gates (scan button). Never secrets. */
       omnichannelRole: req?.omnichannelActor?.omnichannelRole || (rbacEnabled ? 'PUBLISHER' : 'OWNER'),
       /** Per-platform capability matrix + boolean readiness (enabled flag, token present). Never token values. */
       providers: providerReadiness(),
