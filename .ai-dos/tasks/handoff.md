@@ -1,3 +1,11 @@
+## 2026-10-30T00:45:00Z — PR-14 Order bots CODE (PR open, bots OFF)
+
+- PR https://github.com/rashidhamedas-prog/Site-B2B/pull/149 · head `e39b376d` · branch `ai/TASK-20261029-pr14-order-bots` · worktree `D:/proje/Site-B2B-pr14`.
+- Migration: `OmnichannelOrderBots1761836400001` / file `20261030-001-omnichannel-order-bots.ts`.
+- Evidence: bot unit specs green (ts-node); `apps/api` + `apps/web` `tsc --noEmit` exit 0.
+- Bots remain OFF (`OMNICHANNEL_ORDER_BOT_*` + UI + per-connection `orderBotEnabled` default false). No merge/deploy/Iran migrate by agent.
+- Next: CI; Owner merge GO → Iran backup → migrate → optional brief Bale canary then OFF.
+
 ## 2026-10-29T21:15:00Z — PR-14 Order bots CODE (implementer)
 
 - Claimed `TASK-20261029-omni-pr14-order-bots` on branch `ai/TASK-20261029-pr14-order-bots` worktree `D:/proje/Site-B2B-pr14` from `origin/master` @ ≥ ab4019b0 (tip includes #148).
