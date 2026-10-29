@@ -83,8 +83,12 @@ export class StorageService implements OnModuleInit {
 
   extractKeyFromUrl(url: string): string | null {
     if (!url) return null;
-    const mediaMatch = url.match(/\/media\/(.+)$/);
-    if (mediaMatch) return sanitizeObjectKey(mediaMatch[1]);
+    // Prefer indexOf over /\/media\/(.+)$/ — CodeQL flags that regex as ReDoS on
+    // attacker-controlled URLs with many "/media/" repetitions.
+    const mediaIdx = url.indexOf('/media/');
+    if (mediaIdx !== -1) {
+      return sanitizeObjectKey(url.slice(mediaIdx + '/media/'.length));
+    }
     const bucketPrefix = `/${this.bucket}/`;
     const bucketIdx = url.indexOf(bucketPrefix);
     if (bucketIdx !== -1) return sanitizeObjectKey(url.slice(bucketIdx + bucketPrefix.length));
