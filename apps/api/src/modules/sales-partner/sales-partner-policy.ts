@@ -171,6 +171,7 @@ export type PublicSalesPartner = {
   phoneMasked: string;
   ibanMasked: string | null;
   termsAcceptedAt: string | null;
+  mustChangePassword?: boolean;
 };
 
 const REAPPLY_BLOCKED_PROFILE_STATUSES = new Set(['ACTIVE', 'SUSPENDED', 'CLOSED']);
@@ -216,6 +217,7 @@ export function toPublicSalesPartner(input: {
   phone: string;
   ibanLast4?: string | null;
   termsAcceptedAt?: Date | null;
+  mustChangePassword?: boolean;
 }): PublicSalesPartner {
   const status = isSalesPartnerProfileStatus(input.status) ? input.status : 'PENDING_REVIEW';
   return {
@@ -227,5 +229,6 @@ export function toPublicSalesPartner(input: {
     phoneMasked: maskPhone(input.phone),
     ibanMasked: input.ibanLast4 ? `IR****${input.ibanLast4}` : null,
     termsAcceptedAt: input.termsAcceptedAt ? input.termsAcceptedAt.toISOString() : null,
+    mustChangePassword: Boolean(input.mustChangePassword),
   };
 }

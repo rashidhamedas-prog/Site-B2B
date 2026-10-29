@@ -134,6 +134,9 @@ src/modules/torob/torob-product-api.spec.ts
 src/modules/product/default-retail-variant.spec.ts
 src/database/migrations/20260829-003-torob-product-fields.spec.ts
 src/modules/vendor/vendor-policy.spec.ts
+src/modules/notification/otp-send-path.spec.ts
+src/modules/sales-partner/sales-partner-sms-attempt.spec.ts
+src/modules/sales-partner/sales-partner-otp-dispatch.spec.ts
 src/modules/sales-partner/sales-partner-policy.spec.ts
 src/modules/sales-partner/sales-partner-notice-policy.spec.ts
 src/modules/sales-partner/sales-commission-policy.spec.ts
