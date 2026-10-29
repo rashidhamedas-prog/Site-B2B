@@ -1,3 +1,12 @@
+## 2026-10-29T19:35:00Z — PR-12 vault + egress BALE/RUBIKA (implement + PR open)
+
+- Branch `feat/omnichannel-pr12-vault-egress-bale-rubika` worktree `D:/proje/Site-B2B-pr12` rebased onto `origin/master` (includes #145 panel urgent + #142 PR-10).
+- PR https://github.com/rashidhamedas-prog/Site-B2B/pull/144 — **open**, no merge/deploy.
+- Delivered: `provider-egress` + BALE/RUBIKA `BALE_API_URL`/`RUBIKA_API_URL`; `OMNICHANNEL_VAULT_STRICT_MESSENGERS` (default false); scrubber `/v3/`; status `strictMessengers`/`envIgnored`; Telegram `telegramApiBase` body / `TELEGRAM_API_URL` / Worker **untouched** (only shared `resolveProviderToken` strict branch for BALE/RUBIKA).
+- Evidence: local `ts-node --transpile-only` specs green (egress, vault, bale, rubika, phase-acceptance, telegram-errors, telegram.adapter); api+web `tsc --noEmit` exit 0.
+- Hard stops held: no FORCE, no connector enable, no SMS, no TG egress move.
+- Next: parent/owner merge GO after CI + confirm Iran vault entries before enabling strict.
+
 ## 2026-10-29T19:45:00Z — Panel urgent §1 IMPLEMENT + PR open
 
 - Soft-reclaimed thin mounts: `AdminOmnichannel.tsx`, `admin-omnichannel-ui.tsx`, `omnichannel-admin.controller.ts`, `omnichannel.service.ts`.
@@ -14,7 +23,6 @@
 - PR https://github.com/rashidhamedas-prog/Site-B2B/pull/142 — no merge/deploy (parent after CI).
 - Hard stops held: no FORCE/SKIP_DRAIN, no connector enable, no egress/SMS/PR-14 inbound, no invented chat IDs.
 - Next: CI green → parent merge with same GO → optional staging UI/strict flags; Hamed fills ownerChatId/contact/order-bot.
-
 ## 2026-10-28T17:45:00Z — PR-9 Composer (implement + PR open)
 
 - Branch `feat/omnichannel-pr9-composer` worktree `D:/proje/Site-B2B-pr9` from `origin/master` @ 9e0db80d (PR-8 #138).
@@ -4843,4 +4851,5 @@ The originally reported bug (blog-link save error on retail/wholesale) is fully 
 - Files: migration+spec, destination-publish-settings(+spec), entities, dto, controller, omnichannel.service, phase-acceptance, AdminOmnichannel, admin-omnichannel-ui, report, WORKLOG, active.yaml/handoff
 - Gates: destination/connection/phase/publication-automation specs ok; web tsc 0; api tsc only pre-existing order-money-guard.spec noise
 - Exact next: independent Reviewer + Security; parent commit/push/deploy. Do not Done TASK-20260826-001. Do not flip connector flags.
+
 
