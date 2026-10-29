@@ -343,6 +343,25 @@ export class OmnichannelAlertsService {
     return this.alerts.save(alert);
   }
 
+  /** PR-14 inbox reply / mark-answered — resolve open unanswered for a conversation. */
+  async resolveOpenForConversation(conversationId: string): Promise<number> {
+    const open = await this.alerts.find({
+      where: {
+        type: 'bot_unanswered',
+        conversationId,
+        status: In(['open', 'acked']),
+      },
+    });
+    if (!open.length) return 0;
+    const now = new Date();
+    for (const alert of open) {
+      alert.status = 'resolved';
+      if (!alert.panelSeenAt) alert.panelSeenAt = now;
+    }
+    await this.alerts.save(open);
+    return open.length;
+  }
+
   /**
    * Test/staging helper — NOT an HTTP production route.
    * Callers must pass explicit customerChatId from fixtures (never invent LIVE ids).

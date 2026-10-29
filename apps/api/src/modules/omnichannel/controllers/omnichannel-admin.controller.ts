@@ -20,6 +20,7 @@ import { OmnichannelComposerService } from '../services/omnichannel-composer.ser
 import { OmnichannelSettingsService } from '../services/omnichannel-settings.service';
 import { OmnichannelMediaService } from '../services/omnichannel-media.service';
 import { OmnichannelAlertsService } from '../services/omnichannel-alerts.service';
+import { OmnichannelBotInboxService } from '../services/omnichannel-bot-inbox.service';
 import {
   ActorReasonDto,
   ClearWaitingOutboxDto,
@@ -64,6 +65,13 @@ import {
   AckOmnichannelAlertDto,
   ResolveOmnichannelAlertDto,
 } from '../dto/omnichannel-alerts.dto';
+import {
+  BotInboxMarkAnsweredDto,
+  BotInboxReferSocialDto,
+  BotInboxReplyDto,
+  PatchOrderBotDto,
+  TestOwnerChatDto,
+} from '../dto/omnichannel-bot.dto';
 import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import { isVaultStrictMessengers } from '../omnichannel-token-vault';
 import {
@@ -76,6 +84,7 @@ import {
   isOmnichannelTemplatesUiEnabled,
   isOmnichannelMediaHealthUiEnabled,
   isOmnichannelUnansweredAlertsUiEnabled,
+  isOmnichannelOrderBotUiEnabled,
 } from '../omnichannel.constants';
 import { providerReadiness } from '../provider-capabilities';
 import {
@@ -105,6 +114,7 @@ export class OmnichannelAdminController {
     private readonly channelSettings: OmnichannelSettingsService,
     private readonly media: OmnichannelMediaService,
     private readonly alerts: OmnichannelAlertsService,
+    private readonly botInbox: OmnichannelBotInboxService,
   ) {}
 
   @Get('health')
@@ -144,7 +154,9 @@ export class OmnichannelAdminController {
       mediaHealthUi: isOmnichannelMediaHealthUiEnabled(),
       /** PR-13 unanswered alerts tab. Default false until validated. */
       unansweredAlertsUi: isOmnichannelUnansweredAlertsUiEnabled(),
-      phase: 13,
+      /** PR-14 order-bot inbox tab. Default false. */
+      orderBotUi: isOmnichannelOrderBotUiEnabled(),
+      phase: 14,
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
       outbox,
@@ -564,6 +576,95 @@ export class OmnichannelAdminController {
   resolveAlert(@Param('id') id: string, @Body() body: ResolveOmnichannelAlertDto) {
     assertNoPlaintextSecrets(body || {});
     return this.alerts.resolveAlert(id);
+  }
+
+  @Get('bots/inbox')
+  @OmnichannelMinRole('VIEWER')
+  @ApiOperation({ summary: 'صندوق ربات‌های سفارش (PR-14؛ UI flag default OFF)' })
+  listBotInbox(
+    @Query('provider') provider?: string,
+    @Query('tag') tag?: string,
+    @Query('unansweredOnly') unansweredOnly?: string,
+  ) {
+    return this.botInbox.listInbox({
+      provider,
+      tag,
+      unansweredOnly: unansweredOnly === '1' || unansweredOnly === 'true',
+    });
+  }
+
+  @Get('bots/inbox/:conversationId')
+  @OmnichannelMinRole('VIEWER')
+  @ApiOperation({ summary: 'رشته گفتگوی ربات سفارش' })
+  getBotInboxThread(@Param('conversationId') conversationId: string) {
+    return this.botInbox.getThread(conversationId);
+  }
+
+  @Post('bots/inbox/:conversationId/reply')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'پاسخ ادمین به گفتگوی ربات' })
+  replyBotInbox(
+    @Param('conversationId') conversationId: string,
+    @Body() body: BotInboxReplyDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets(body || {});
+    const role = (req.omnichannelActor?.omnichannelRole || 'OWNER') as OmnichannelRole;
+    return this.botInbox.reply(conversationId, body.text, { role, goRef: body.goRef });
+  }
+
+  @Post('bots/inbox/:conversationId/refer-social')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'ارجاع به سوشال مدیا (forward به ownerChatId)' })
+  referBotInbox(
+    @Param('conversationId') conversationId: string,
+    @Body() body: BotInboxReferSocialDto,
+  ) {
+    assertNoPlaintextSecrets(body || {});
+    return this.botInbox.referSocial(conversationId, body?.note);
+  }
+
+  @Post('bots/inbox/:conversationId/mark-answered')
+  @OmnichannelMinRole('PUBLISHER')
+  @ApiOperation({ summary: 'علامت پاسخ‌داده‌شده + resolve هشدار PR-13' })
+  markBotInboxAnswered(
+    @Param('conversationId') conversationId: string,
+    @Body() body: BotInboxMarkAnsweredDto,
+  ) {
+    assertNoPlaintextSecrets(body || {});
+    return this.botInbox.markAnswered(conversationId);
+  }
+
+  @Patch('connections/:id/order-bot')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
+  @ApiOperation({ summary: 'فعال/غیرفعال ربات سفارش اتصال (Owner+goRef؛ default OFF)' })
+  patchOrderBot(
+    @Param('id') id: string,
+    @Body() body: PatchOrderBotDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets(body || {});
+    const role = (req.omnichannelActor?.omnichannelRole || 'OWNER') as OmnichannelRole;
+    return this.botInbox.setOrderBotEnabled(id, body.enabled === true, {
+      id: req.omnichannelActor?.id,
+      role,
+      goRef: body.goRef,
+    });
+  }
+
+  @Post('destinations/:id/channel-settings/test-owner-chat')
+  @OmnichannelMinRole('OWNER')
+  @RequiresGoRef()
+  @ApiOperation({ summary: 'تست یک پیام به ownerChatId تنظیم‌شده (هرگز شناسه ساختگی)' })
+  testOwnerChat(
+    @Param('id') id: string,
+    @Body() body: TestOwnerChatDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets(body || {});
+    const role = (req.omnichannelActor?.omnichannelRole || 'OWNER') as OmnichannelRole;
+    return this.botInbox.testOwnerChat(id, { role, goRef: body.goRef });
   }
 
   @Get('coverage')

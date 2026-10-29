@@ -1,3 +1,16 @@
+## 2026-10-30 — Omnichannel PR-14 security + phase-review (#149؛ bots OFF)
+
+- Security: بدون CREDIT از phone-only؛ `timingSafeSecretEqual`؛ فقط private chat؛ ماسک `09*********`؛ unique→duplicate ۲۰۰؛ enable با audit+goRef.
+- Phase: `maybePoll` از outbox worker؛ notice فارسی rate-limit persist+send؛ `pr14-order-bots-plan.md` روی شاخه.
+- بدون merge/deploy؛ flags OFF. PR #149.
+
+## 2026-10-30 — Omnichannel PR-14 Order bots CODE (flags OFF؛ بدون merge/deploy)
+
+- inbound Bale webhook + Rubika poller + Telegram stub؛ FSM سفارش عمده؛ PFI از Order+Invoice؛ inbox پنل؛ `orderBotEnabled` پیش‌فرض OFF.
+- ALTER `20261030-001` روی جداول PR-13؛ بدون recreate؛ بدون FORCE/egress تلگرام/SMS/remap canary `4858359991`.
+- شاخه `ai/TASK-20261029-pr14-order-bots` / worktree `D:/proje/Site-B2B-pr14`. گزارش: `docs/reports/2026-10-30-omnichannel-pr14-order-bots.md`.
+- GO حامد ۲۹ اکتبر ۲۰۲۶ §4 برای CODE با bots OFF — merge/deploy فقط با GO جدا.
+
 ## 2026-10-29 — Omnichannel PR-13 Unanswered alert (بدون merge/deploy)
 
 - هشدار بی‌پاسخ >۶۰ثانیه: جداول conversation/message/alerts، policy خالص، اسکنر worker، API `alerts` + ack/resolve، تب «هشدارها» پشت `OMNICHANNEL_UNANSWERED_ALERTS_UI` (پیش‌فرض خاموش).

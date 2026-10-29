@@ -86,10 +86,46 @@ export function resolveTelegramToken(secretRef: string): string | null {
 }
 
 export type UpdateLike = {
-  message?: { chat?: TelegramChat; forward_from_chat?: TelegramChat; sender_chat?: TelegramChat };
+  update_id?: number;
+  message?: {
+    message_id?: number;
+    text?: string;
+    chat?: TelegramChat;
+    forward_from_chat?: TelegramChat;
+    sender_chat?: TelegramChat;
+  };
   channel_post?: { chat?: TelegramChat };
   my_chat_member?: { chat?: TelegramChat };
+  callback_query?: { data?: string; message?: { message_id?: number; chat?: TelegramChat; text?: string } };
 };
+
+/**
+ * PR-14 inbound parse only — no egress / TELEGRAM_API_URL / vault changes.
+ * Used by Telegram webhook stub behind OMNICHANNEL_ORDER_BOT_TELEGRAM=false.
+ */
+export function parseTelegramInboundUpdate(update: unknown): {
+  customerChatId: string;
+  text: string;
+  providerMessageId: string | null;
+  chatType: string;
+  privateChat: boolean;
+} | null {
+  if (!update || typeof update !== 'object') return null;
+  const u = update as UpdateLike;
+  const msg = u.message || u.callback_query?.message;
+  const chatId = msg?.chat?.id != null ? String(msg.chat.id) : '';
+  if (!chatId) return null;
+  const chatType = String(msg?.chat?.type || '').toLowerCase();
+  const privateChat = chatType === 'private';
+  const text = String(u.message?.text || u.callback_query?.data || '').trim();
+  const mid =
+    u.message?.message_id != null
+      ? String(u.message.message_id)
+      : u.update_id != null
+        ? `upd:${u.update_id}`
+        : null;
+  return { customerChatId: chatId, text, providerMessageId: mid, chatType, privateChat };
+}
 
 /** Pure: chats worth showing an admin, newest first, de-duplicated by id. Private user chats are skipped. */
 export function chatsFromUpdates(updates: UpdateLike[]): DiscoveredChat[] {
