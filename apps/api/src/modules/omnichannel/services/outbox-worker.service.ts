@@ -22,6 +22,7 @@ import { OutboxService } from './outbox.service';
 import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { isNonRetryableProviderError, safeWorkerError } from '../adapters/telegram-errors';
 import { OmnichannelService } from './omnichannel.service';
+import { OmnichannelAlertsService } from './omnichannel-alerts.service';
 import { OmnichannelTokenVaultService } from './omnichannel-token-vault.service';
 import { PHASE4_EVENT_TYPES, shouldDeadLetter } from './outbox-lease';
 import {
@@ -100,6 +101,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     private readonly adapters: ChannelAdapterRegistry,
     private readonly omnichannel: OmnichannelService,
     private readonly tokenVault: OmnichannelTokenVaultService,
+    @Optional() private readonly alerts?: OmnichannelAlertsService,
     @Optional() private readonly marketing?: CustomerMarketingService,
     @Optional() private readonly marketingSms?: MarketingSmsSender,
   ) {}
@@ -235,6 +237,14 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     this.running = true;
     this.beat();
     try {
+      // PR-13 unanswered scan (rate-limited inside service; no-op when empty).
+      try {
+        await this.alerts?.maybeScanFromWorker();
+      } catch (scanErr: unknown) {
+        this.logger.warn(
+          `unanswered alert scan failed: ${scanErr instanceof Error ? scanErr.message : String(scanErr)}`,
+        );
+      }
       await this.tokenVault.refreshIfStale();
       const batch = await this.outbox.leaseBatch(this.workerId, 20);
       for (const row of batch) {

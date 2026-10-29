@@ -92,6 +92,9 @@ import { OmnichannelAuditEntity } from '../modules/omnichannel/entities/omnichan
 import { OmnichannelMediaAssetEntity } from '../modules/omnichannel/entities/omnichannel-media-asset.entity';
 import { OmnichannelPostBackupEntity } from '../modules/omnichannel/entities/omnichannel-post-backup.entity';
 import { OmnichannelDeliveryMessageEntity } from '../modules/omnichannel/entities/omnichannel-delivery-message.entity';
+import { OmnichannelBotConversationEntity } from '../modules/omnichannel/entities/omnichannel-bot-conversation.entity';
+import { OmnichannelBotMessageEntity } from '../modules/omnichannel/entities/omnichannel-bot-message.entity';
+import { OmnichannelAlertEntity } from '../modules/omnichannel/entities/omnichannel-alert.entity';
 import { CartSignalEntity } from '../modules/cart/cart-signal.entity';
 import { SmsEventLogEntity } from '../modules/cart/sms-event-log.entity';
 import {
@@ -172,6 +175,9 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     OmnichannelMediaAssetEntity,
     OmnichannelPostBackupEntity,
     OmnichannelDeliveryMessageEntity,
+    OmnichannelBotConversationEntity,
+    OmnichannelBotMessageEntity,
+    OmnichannelAlertEntity,
     CartSignalEntity,
     SmsEventLogEntity,
     MarketingConsentEntity,

@@ -1,3 +1,9 @@
+## 2026-10-29 — Omnichannel PR-13 Unanswered alert (بدون merge/deploy)
+
+- هشدار بی‌پاسخ >۶۰ثانیه: جداول conversation/message/alerts، policy خالص، اسکنر worker، API `alerts` + ack/resolve، تب «هشدارها» پشت `OMNICHANNEL_UNANSWERED_ALERTS_UI` (پیش‌فرض خاموش).
+- `ownerChatId` فقط از تنظیمات کانال (PR-10 `ownerChatIdForDestination`)؛ خالی → فقط پنل. تلگرام notify معوق؛ بله/روبیکا فقط وقتی کانکتور از قبل LIVE.
+- شاخه `feat/omnichannel-pr13-unanswered-alert` / worktree `D:/proje/Site-B2B-pr13` (rebased onto #144/#145/#142). بدون FORCE/egress/SMS/ربات/شناسه ساختگی. Merge/deploy فقط با GO حامد.
+
 ## 2026-10-29 — Omnichannel PR-12 vault + egress BALE/RUBIKA (بدون merge/deploy)
 
 - `provider-egress`: `BALE_API_URL` / `RUBIKA_API_URL`؛ TELEGRAM فقط delegate به `telegramApiBase` (بدون تغییر Worker/TELEGRAM_API_URL).

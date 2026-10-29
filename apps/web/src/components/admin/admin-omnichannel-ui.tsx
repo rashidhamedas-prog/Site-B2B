@@ -138,6 +138,8 @@ export type Status = {
   mediaHealthUi?: boolean;
   /** Resolved Viewer/Publisher/Owner for UI gates (scan). */
   omnichannelRole?: 'VIEWER' | 'PUBLISHER' | 'OWNER' | null;
+  /** OMNICHANNEL_UNANSWERED_ALERTS_UI. Unanswered alerts tab when true. */
+  unansweredAlertsUi?: boolean;
   phase: number;
   retailCanaryLimit: number;
   wholesaleCanaryLimit: number;

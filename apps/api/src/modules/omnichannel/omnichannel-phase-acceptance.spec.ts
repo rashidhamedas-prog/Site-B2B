@@ -349,4 +349,23 @@ assert(db.includes('OmnichannelMediaAssetEntity'), 'media registry on runtime Ty
   assert(!mediaSvc.includes("OMNICHANNEL_CONNECTORS_ENABLED = 'true'"), 'no connector enable');
 }
 
+/* --- PR-13 unanswered alerts (panel + optional owner notify; no invented chat ids) --- */
+{
+  const policy = src('modules/omnichannel/unanswered-alert-policy.ts');
+  const alertsSvc = src('modules/omnichannel/services/omnichannel-alerts.service.ts');
+  const channelSettings = src('modules/omnichannel/channel-settings.ts');
+  const constants = src('modules/omnichannel/omnichannel.constants.ts');
+  const worker = src('modules/omnichannel/services/outbox-worker.service.ts');
+  assert(policy.includes('evaluateUnansweredAlerts') && policy.includes('DEFAULT_UNANSWERED_THRESHOLD_SEC'), 'pure unanswered policy');
+  assert(omniAdmin.includes("Get('alerts')") && omniAdmin.includes("Post('alerts/:id/ack')") && omniAdmin.includes("Post('alerts/:id/resolve')"), 'alerts routes');
+  assert(omniAdmin.includes('unansweredAlertsUi') && constants.includes('OMNICHANNEL_UNANSWERED_ALERTS_UI'), 'alerts UI flag default-gated');
+  assert(alertsSvc.includes('owner_chat_id_empty') && alertsSvc.includes('telegram_notify_deferred'), 'empty owner → panel; telegram deferred');
+  assert(channelSettings.includes('ownerChatIdForDestination'), 'PR-10 ownerChatId read helper');
+  assert(worker.includes('maybeScanFromWorker'), 'worker tick hooks unanswered scan');
+  assert(adminOmni.includes('AdminOmnichannelAlerts') || adminOmni.includes('هشدارها'), 'admin alerts tab mount');
+  assert(db.includes('OmnichannelAlertEntity') && db.includes('OmnichannelBotConversationEntity'), 'alert entities on runtime TypeORM');
+  assert(!alertsSvc.includes('TELEGRAM_API_URL') && !policy.includes('TELEGRAM_API_URL'), 'no telegram egress in alerts');
+  assert(!alertsSvc.includes('OMNICHANNEL_CONNECTORS_ENABLED=true'), 'does not enable connectors');
+}
+
 console.log('omnichannel-phase-acceptance.spec.ts: ok');

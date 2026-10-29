@@ -396,3 +396,15 @@ export function writeChannelSettingsIntoPublish(
   next.channelSettings = channelSettingsBlob(content);
   return next;
 }
+
+/**
+ * PR-13 read helper — Owner-entered ownerChatId only; never invent LIVE ids.
+ * Accepts destination.publishSettings (flat or nested channelSettings).
+ */
+export function ownerChatIdForDestination(publishSettings: unknown): string {
+  return parseChannelContentSettings(publishSettings).ownerChatId;
+}
+
+export function ownerChatIdConfigured(publishSettings: unknown): boolean {
+  return ownerChatIdForDestination(publishSettings).length > 0;
+}
