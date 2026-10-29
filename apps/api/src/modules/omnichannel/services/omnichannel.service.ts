@@ -175,6 +175,7 @@ import {
   assertNoForbiddenProductClaims,
   emptyChannelContentSettings,
   formatMinOrderQty,
+  readEmergencyHold,
   type ChannelContentSettings,
 } from '../channel-settings';
 import { assertTemplateBodyClaims } from '../template-claim-guard';

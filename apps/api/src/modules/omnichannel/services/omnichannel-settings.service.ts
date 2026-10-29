@@ -23,7 +23,6 @@ import {
 import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import {
   assertChannelContentInput,
-  channelSettingsTextBlob,
   copyChannelContent,
   hasChannelContentPatch,
   parseChannelContentSettings,
@@ -34,6 +33,7 @@ import {
 } from '../channel-settings';
 import {
   assertNoCrossChannelContamination,
+  channelSettingsTextBlob,
   contaminationWarnings,
   findCrossChannelContamination,
   type SiblingChannelMarkers,

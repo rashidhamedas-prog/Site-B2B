@@ -23,6 +23,20 @@ export type ComposerApiClient = {
   post: <T>(path: string, body?: unknown) => Promise<T>;
 };
 
+/** PR-10: read per-destination showPriceDefault only (never invent true). */
+export function destinationShowPriceDefault(dest: {
+  publishSettings?: Record<string, unknown> | null;
+} | null | undefined): boolean {
+  const raw = dest?.publishSettings;
+  if (!raw || typeof raw !== 'object') return false;
+  const nested = raw.channelSettings;
+  const bag =
+    nested && typeof nested === 'object' && !Array.isArray(nested)
+      ? (nested as Record<string, unknown>)
+      : raw;
+  return bag.showPriceDefault === true || bag.showPrice === true;
+}
+
 type ProductHit = {
   id: string;
   sku: string;
@@ -535,11 +549,14 @@ export function AdminOmnichannelComposer({
                     <label className="mt-2 flex items-center gap-2 text-xs cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={includePrice[id] === true}
+                        checked={includePrice[id] ?? destinationShowPriceDefault(dest)}
                         onChange={(e) => setIncludePrice((prev) => ({ ...prev, [id]: e.target.checked }))}
                         data-omni-composer-price
                       />
                       نمایش قیمت در کپشن
+                      {destinationShowPriceDefault(dest) ? (
+                        <span className="text-[10px] text-gray-400">(پیش‌فرض مقصد)</span>
+                      ) : null}
                     </label>
                   </div>
                 );
