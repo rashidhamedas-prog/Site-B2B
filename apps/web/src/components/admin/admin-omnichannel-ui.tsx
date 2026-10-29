@@ -181,7 +181,6 @@ export type Status = {
     deadOther: number;
   };
   rbacEnabled?: boolean;
-  omnichannelRole?: 'VIEWER' | 'PUBLISHER' | 'OWNER' | string;
 };
 
 export type ConnectionPublishSettings = {
