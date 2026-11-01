@@ -1,4 +1,3 @@
-import { CmsPageIntro } from '@/components/cms/CmsPageIntro';
 import { WholesaleAboutView } from '@/components/wholesale/WholesaleAboutView';
 import { metadataForCmsPage } from '@/lib/cms/fetch';
 import { WHOLESALE_ORIGIN } from '@/lib/seo-origins';
@@ -16,9 +15,5 @@ export async function generateMetadata() {
 
 export default function AboutPage() {
   return (
-    <>
-      <CmsPageIntro channel="WHOLESALE" pageKey="about" storedOnly />
-      <WholesaleAboutView />
-    </>
-  );
+  return <WholesaleAboutView />;
 }
