@@ -26,6 +26,8 @@ for (const viewport of VIEWPORTS) {
       const page = await context.newPage();
       await mockApi(page);
       const productionLeaks = await guardProductionHosts(page);
+      // Registered after the guard so it wins: the cart heartbeat is not a mock endpoint.
+      await page.route('**/cart/heartbeat', (route) => route.fulfill({ status: 204, body: '' }));
 
       await page.addInitScript(() => {
         const w = window as ClsWindow;
