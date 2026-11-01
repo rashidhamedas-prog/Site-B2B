@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SettingsService } from '../../settings/settings.service';
@@ -26,6 +26,8 @@ export function canManageSegments(role: string): boolean {
 
 @Injectable()
 export class SegmentService {
+  private readonly logger = new Logger(SegmentService.name);
+
   constructor(
     private readonly audience: AudienceService,
     private readonly sms: SmsPanelService,
@@ -36,9 +38,10 @@ export class SegmentService {
   ) {}
 
   async fields() {
-    const cities = await this.audience.distinctCities().catch(
-      () => [] as Array<{ city: string; count: number }>,
-    );
+    const cities = await this.audience.distinctCities().catch((err: unknown) => {
+      this.logger.warn(`segment fields: city list failed: ${err instanceof Error ? err.message : String(err)}`);
+      return [] as Array<{ city: string; count: number }>;
+    });
     return audienceFieldCatalog(cities);
   }
 

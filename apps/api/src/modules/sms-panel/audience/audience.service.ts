@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { normalizeIranMobileStrict } from '../domain/phone';
@@ -12,6 +18,8 @@ import {
 
 @Injectable()
 export class AudienceService {
+  private readonly logger = new Logger(AudienceService.name);
+
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   private db(): AudienceDb {
@@ -27,7 +35,8 @@ export class AudienceService {
         try {
           const count = await countSource(db, source);
           return { source, count, available: true as const };
-        } catch {
+        } catch (err) {
+          this.logSourceError(source, err);
           return { source, count: 0, available: false as const };
         }
       }),
@@ -126,7 +135,7 @@ export class AudienceService {
       else if (source === 'SALES_PARTNER') loaders.SALES_PARTNER = load('SALES_PARTNER');
       else if (source === 'RETAIL') loaders.RETAIL = load('RETAIL');
     }
-    const settled = await settleSources(loaders);
+    const settled = await settleSources(loaders, (source, err) => this.logSourceError(source, err));
     const phones = [
       ...new Set(
         settled.rows
@@ -134,16 +143,24 @@ export class AudienceService {
           .filter((phone): phone is string => !!phone),
       ),
     ];
-    const flags = await loadSuppressionPhones(db, phones).catch(() => null);
+    let flags: Awaited<ReturnType<typeof loadSuppressionPhones>>;
+    try {
+      flags = await loadSuppressionPhones(db, phones);
+    } catch (err) {
+      this.logger.error(
+        `audience suppression lookup failed (phones=${phones.length}): ${errorMessage(err)}`,
+      );
+      throw new ServiceUnavailableException({
+        message: 'بررسی لغو اشتراک و لیست سیاه ممکن نشد؛ پیش‌نمایش و ارسال تا رفع خطا متوقف است',
+        code: 'SMS_SUPPRESSION_UNAVAILABLE',
+      });
+    }
     const merged = mergeAudienceHits({
       hits: settled.rows,
-      optedOutPhones: flags?.optedOut || [],
-      blacklistedPhones: flags?.blacklisted || [],
+      optedOutPhones: flags.optedOut,
+      blacklistedPhones: flags.blacklisted,
     });
     const partialSources = [...settled.partialSources];
-    if (!flags && phones.length && !partialSources.includes('WHOLESALE')) {
-      partialSources.push('WHOLESALE');
-    }
     const validHits = settled.rows.filter((hit) => normalizeIranMobileStrict(hit.phoneRaw)).length;
     const duplicateExtras = Math.max(0, validHits - phones.length);
     return {
@@ -153,4 +170,12 @@ export class AudienceService {
       partialSources,
     };
   }
+
+  private logSourceError(source: AudienceSource, err: unknown) {
+    this.logger.error(`audience source ${source} failed: ${errorMessage(err)}`);
+  }
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
