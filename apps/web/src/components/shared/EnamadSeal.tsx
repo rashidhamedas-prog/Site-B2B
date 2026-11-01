@@ -12,6 +12,10 @@ import {
 
 type Channel = 'WHOLESALE' | 'RETAIL';
 
+/** trustseal.enamad.ir logo.aspx is 125×136; reserving it avoids a late resize in the footer. */
+const ENAMAD_LOGO_W = 125;
+const ENAMAD_LOGO_H = 136;
+
 /**
  * Renders Enamad trust seal for a channel.
  * Prefers structured <a><img> (Enamad-compliant referrerpolicy).
@@ -76,12 +80,19 @@ export function EnamadSeal({
           src={assets.src}
           alt="نماد اعتماد الکترونیکی"
           width={size}
-          height={size}
+          height={Math.round((size * ENAMAD_LOGO_H) / ENAMAD_LOGO_W)}
           loading="lazy"
           decoding="async"
           fetchPriority="low"
           referrerPolicy="origin"
-          style={{ cursor: 'pointer', width: size, height: 'auto', maxWidth: '100%' }}
+          style={{
+            cursor: 'pointer',
+            width: size,
+            height: 'auto',
+            maxWidth: '100%',
+            aspectRatio: `${ENAMAD_LOGO_W} / ${ENAMAD_LOGO_H}`,
+            objectFit: 'contain',
+          }}
           id={cfg.code || undefined}
         />
       </a>
