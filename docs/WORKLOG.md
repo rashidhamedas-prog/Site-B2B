@@ -1,3 +1,8 @@
+## 2026-11-02 — کاهش JS مشترک layout عمده (TASK-20261101-shared-js-reduction)
+
+- JS اولیه `/about` از 180.8 به 142.7 kB gzip (−21%)، `/` و `/products` حدود −10%؛ JS اختصاصی layout عمده از ~67 به 28.5 kB. روش: جدا کردن پیش‌فرض chrome از `lib/cms/defaults`، `apiClient` و `product-display` با `import()` در جزایر layout، `next/dynamic` (`ssr:false`) برای GA/web-vitals، LandingPopups، FloatingContact و ScrollToTop، و import مستقیم به‌جای barrel `components/ui`.
+- Lighthouse موبایل (simulated، میانه ۳): `/` LCP 3656→3623ms و TBT 275→87ms؛ `/about` LCP 3321→3174ms؛ CLS صفر. معیار LCP <2.5s/−20% برآورده نشد؛ بخش اصلی LCP شبیه‌سازی‌شده فریم‌ورک، CSS، فونت و تصاویر `/about` است. گزارش: `docs/reports/2026-11-02-shared-js-reduction.md`. بدون merge/deploy.
+
 ## 2026-11-01 — /about v3 (S0–S7) + فونت optional + حذف loading مسیر عمده (PR #152)
 
 - `/about` با ۸ بخش سرور‌رندر، تصاویر `/about/v3`، gsap فقط دسکتاپ بدون reduced-motion، دیالوگ فقط در `section#cta`؛ Vazirmatn `display: optional` و حذف `(wholesale)/loading.tsx` (تصمیم حامد). ۲۴/۲۴ تست `about-v3.spec.ts` سبز؛ LCP موبایل ۳٫۲۹s در برابر master ۳٫۷۰s، CLS صفر. گزارش: `docs/reports/2026-11-01-about-v3.md`.
