@@ -774,6 +774,16 @@ export class SmsPanelService {
       return fresh;
     }
 
+    const circuit = this.rateLimit.providerCircuit;
+    if (!circuit.allowRequest()) {
+      fresh.status = 'QUEUED';
+      fresh.attempts = Math.max(0, fresh.attempts - 1);
+      fresh.nextAttemptAt = circuit.retryAt();
+      fresh.lastError = 'PROVIDER_CIRCUIT_OPEN';
+      await this.messages.save(fresh);
+      return fresh;
+    }
+
     const provider = this.providerSvc.get();
     try {
       let result;
@@ -798,6 +808,11 @@ export class SmsPanelService {
           line: lineResolved.line,
           idempotencyKey: fresh.idempotencyKey,
         });
+      }
+      if (result.ok || !(result.error?.ambiguous || result.error?.retryable)) {
+        circuit.recordSuccess();
+      } else if (circuit.recordFailure()) {
+        this.logger.warn(`SMS provider circuit opened after ${result.error?.code || 'error'}`);
       }
       if (result.ok) {
         fresh.status = 'SENT';
@@ -845,6 +860,9 @@ export class SmsPanelService {
       if (fresh.campaignId) await this.maybeCompleteCampaign(fresh.campaignId);
       return failed;
     } catch (err: any) {
+      if (circuit.recordFailure()) {
+        this.logger.warn('SMS provider circuit opened after thrown error');
+      }
       fresh.status = 'QUEUED';
       fresh.nextAttemptAt = new Date(Date.now() + backoffDelayMs(fresh.attempts));
       fresh.lastError = String(err?.message || err);
@@ -867,6 +885,7 @@ export class SmsPanelService {
   }
 
   async processQueue(limit = 20): Promise<number> {
+    if (this.rateLimit.providerCircuit.getState() === 'OPEN') return 0;
     const due = await this.messages.find({
       where: {
         status: In(['QUEUED']),

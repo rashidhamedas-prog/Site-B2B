@@ -7,6 +7,7 @@ src/modules/redis/otp-cooldown.spec.ts
 src/modules/notification/sms-cooldown-http.spec.ts
 src/modules/notification/notification.otp-send.spec.ts
 src/modules/sms-panel/domain/domain.spec.ts
+src/modules/sms-panel/domain/circuit-breaker.spec.ts
 src/modules/sms-panel/provider/provider.spec.ts
 src/modules/sms-panel/sms-panel.rbac.spec.ts
 src/modules/sms-panel/sms-panel.fsm.spec.ts
