@@ -14,6 +14,5 @@ export async function generateMetadata() {
 }
 
 export default function AboutPage() {
-  return (
   return <WholesaleAboutView />;
 }
