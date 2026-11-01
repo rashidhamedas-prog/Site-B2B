@@ -183,9 +183,44 @@ export class SalesPartnerAdminController {
     return this.catalog.preview(body.salesPartnerId, body.productId, body.lineTotalIrr);
   }
 
+  @Get('applications/pending-otp/dry-run')
+  pendingOtpDryRun() {
+    return this.salesPartners.pendingOtpDryRun();
+  }
+
+  @Post('applications/manual-verify-credentials/bulk')
+  bulkManualVerifyCredentials(
+    @Body() body: { ids?: string[] },
+    @Req() req: { user?: { sub?: string; id?: string } },
+  ) {
+    return this.salesPartners.bulkManualVerifyApplicationCredentials(
+      body.ids || [],
+      req.user?.sub || req.user?.id || '',
+    );
+  }
+
   @Get('applications')
   applications(@Query('status') status?: string) {
     return this.salesPartners.listApplications(status);
+  }
+
+  @Post('applications/:id/resend-otp')
+  resendApplicationOtp(
+    @Param('id') id: string,
+    @Req() req: { user?: { sub?: string; id?: string } },
+  ) {
+    return this.salesPartners.resendApplicationOtp(id, req.user?.sub || req.user?.id || '');
+  }
+
+  @Post('applications/:id/manual-verify-credentials')
+  manualVerifyCredentials(
+    @Param('id') id: string,
+    @Req() req: { user?: { sub?: string; id?: string } },
+  ) {
+    return this.salesPartners.manualVerifyApplicationCredentials(
+      id,
+      req.user?.sub || req.user?.id || '',
+    );
   }
 
   @Get('applications/:id')

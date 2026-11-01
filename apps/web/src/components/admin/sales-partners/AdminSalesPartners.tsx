@@ -328,6 +328,95 @@ export function AdminSalesPartners() {
     }
   }
 
+  async function resendApplicationOtp(row: ApplicationRow) {
+    setBusyId(row.id);
+    setError(null);
+    setDetailError(null);
+    try {
+      const res = await apiClient.post<{
+        delivery?: string;
+        lastSmsAttemptLabel?: string | null;
+        message?: string;
+      }>(`/admin/sales-partners/applications/${row.id}/resend-otp`, {});
+      window.alert(
+        res?.lastSmsAttemptLabel ||
+          (res?.delivery === 'sent'
+            ? 'کد پیامکی دوباره ارسال شد'
+            : res?.delivery === 'pending'
+              ? 'ارسال در وضعیت نامشخص است؛ چند لحظه بعد دوباره بررسی کنید'
+              : 'ارسال کد ناموفق بود'),
+      );
+      await load();
+      if (detailId === row.id) await openApplication(row.id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'ارسال مجدد کد ناموفق بود';
+      setError(msg);
+      setDetailError(msg);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function manualVerifyCredentials(row: ApplicationRow) {
+    const ok = window.confirm(
+      `تأیید دستی شماره برای «${row.displayName}» (${row.phoneMasked})؟\nنام کاربری = موبایل و یک رمز موقت پیامک می‌شود؛ وضعیت به «در انتظار بررسی» می‌رود (تأیید نهایی همکار نیست).`,
+    );
+    if (!ok) return;
+    setBusyId(row.id);
+    setError(null);
+    setDetailError(null);
+    try {
+      const res = await apiClient.post<{ statusLabel?: string; lastSmsAttemptLabel?: string | null }>(
+        `/admin/sales-partners/applications/${row.id}/manual-verify-credentials`,
+        {},
+      );
+      window.alert(res?.statusLabel || res?.lastSmsAttemptLabel || 'انجام شد');
+      setDetailId(null);
+      setDetail(null);
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'تأیید دستی ناموفق بود';
+      setError(msg);
+      setDetailError(msg);
+      await load();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function bulkManualVerifyPendingOtp() {
+    const pending = apps.filter((a) => a.status === 'PENDING_OTP');
+    if (pending.length === 0) {
+      window.alert('متقاضی PENDING_OTP در لیست فعلی نیست.');
+      return;
+    }
+    const names = pending.map((a) => `• ${a.displayName} (${a.phoneMasked})`).join('\n');
+    const ok = window.confirm(
+      `تأیید دستی گروهی برای ${pending.length} متقاضی؟\n\n${names}\n\nبرای هرکدام رمز موقت پیامک می‌شود و وضعیت به «در انتظار بررسی» می‌رود.`,
+    );
+    if (!ok) return;
+    setBusyId('bulk-manual-verify');
+    setError(null);
+    try {
+      const res = await apiClient.post<{
+        okCount?: number;
+        failCount?: number;
+        count?: number;
+      }>('/admin/sales-partners/applications/manual-verify-credentials/bulk', {
+        ids: pending.map((a) => a.id),
+      });
+      window.alert(
+        `انجام شد: ${res?.okCount ?? 0} موفق از ${res?.count ?? pending.length}` +
+          (res?.failCount ? ` — ${res.failCount} ناموفق` : ''),
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تأیید گروهی ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function sendWelcomeSms(row: ApplicationRow) {
     const ok = window.confirm(
       row.welcomeSmsSent
@@ -773,6 +862,18 @@ export function AdminSalesPartners() {
                 {f.label}
               </button>
             ))}
+            {apps.some((a) => a.status === 'PENDING_OTP') ? (
+              <button
+                type="button"
+                className={`min-h-10 rounded-full border border-amber-300 bg-amber-50 px-3 text-sm text-amber-950 ${spFocusClass}`}
+                disabled={busyId === 'bulk-manual-verify'}
+                onClick={() => void bulkManualVerifyPendingOtp()}
+              >
+                {busyId === 'bulk-manual-verify'
+                  ? 'در حال تأیید گروهی…'
+                  : `تأیید دستی گروهی (${apps.filter((a) => a.status === 'PENDING_OTP').length})`}
+              </button>
+            ) : null}
           </div>
           <ul className="space-y-3">
             {filteredApps.length === 0 && <li><SpEmptyState>درخواستی با این فیلتر نیست.</SpEmptyState></li>}
@@ -799,6 +900,7 @@ export function AdminSalesPartners() {
                         role="status"
                       >
                         هنوز کد پیامکی ثبت‌نام را تأیید نکرده
+                        {row.lastSmsAttemptLabel ? ` · ${row.lastSmsAttemptLabel}` : ''}
                       </p>
                     )}
                     {row.status === 'APPROVED' && row.welcomeSmsSent && (
@@ -840,6 +942,26 @@ export function AdminSalesPartners() {
                   >
                     مشاهده جزئیات
                   </button>
+                  {row.status === 'PENDING_OTP' ? (
+                    <>
+                      <button
+                        type="button"
+                        className={`min-h-11 rounded-xl border border-stone-200 bg-white px-3 text-sm ${spFocusClass}`}
+                        disabled={busyId === row.id}
+                        onClick={() => void resendApplicationOtp(row)}
+                      >
+                        {busyId === row.id ? '…' : 'ارسال مجدد کد'}
+                      </button>
+                      <button
+                        type="button"
+                        className={`min-h-11 rounded-xl border border-amber-300 bg-amber-50 px-3 text-sm text-amber-950 ${spFocusClass}`}
+                        disabled={busyId === row.id}
+                        onClick={() => void manualVerifyCredentials(row)}
+                      >
+                        تأیید دستی + رمز
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </li>
             ))}
@@ -1636,6 +1758,14 @@ export function AdminSalesPartners() {
         onWelcomeSms={() => {
           const row = apps.find((a) => a.id === detailId);
           if (row) void sendWelcomeSms(row);
+        }}
+        onResendOtp={() => {
+          const row = apps.find((a) => a.id === detailId);
+          if (row) void resendApplicationOtp(row);
+        }}
+        onManualVerifyCredentials={() => {
+          const row = apps.find((a) => a.id === detailId);
+          if (row) void manualVerifyCredentials(row);
         }}
       />
 

@@ -11,6 +11,13 @@
 - شاخه `ai/TASK-20261029-pr14-order-bots` / worktree `D:/proje/Site-B2B-pr14`. گزارش: `docs/reports/2026-10-30-omnichannel-pr14-order-bots.md`.
 - GO حامد ۲۹ اکتبر ۲۰۲۶ §4 برای CODE با bots OFF — merge/deploy فقط با GO جدا.
 
+## 2026-10-29 — Sales-partner PENDING_OTP stuck (TASK-20261029-sp-otp-stuck)
+
+- تشخیص: ۲۵ گیرکرده؛ ۹ مورد اخیر بدون `otp_requested` (شکست OTP بعد از save). SMS DB: enabled + otpTemplate + line + apiKey؛ egress خیر.
+- اصلاح: OTP تراکنشی/verify + ثبت `lastSmsAttempt`؛ ادمین resend / manual-verify credentials / dry-run؛ `mustChangePassword`؛ UI.
+- شاخه `ai/TASK-20261029-sp-otp-stuck` / worktree `D:/proje/Site-B2B-sp-otp`. گزارش: `docs/reports/2026-10-29-sp-otp-stuck.md`.
+- بدون پیامک واقعی؛ merge/deploy فقط با GO حامد + deploy-approval.
+
 ## 2026-10-29 — Omnichannel PR-13 Unanswered alert (بدون merge/deploy)
 
 - هشدار بی‌پاسخ >۶۰ثانیه: جداول conversation/message/alerts، policy خالص، اسکنر worker، API `alerts` + ack/resolve، تب «هشدارها» پشت `OMNICHANNEL_UNANSWERED_ALERTS_UI` (پیش‌فرض خاموش).

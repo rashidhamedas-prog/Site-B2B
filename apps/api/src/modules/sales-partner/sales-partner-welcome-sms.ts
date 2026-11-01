@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { randomInt } from 'crypto';
 import { validateNewPassword } from '../auth/password-policy';
 
 /** Avoid ambiguous chars (0/O, 1/l/I) for SMS readability. */
@@ -8,10 +8,10 @@ export const WELCOME_SMS_COOLDOWN_MS = 15 * 60 * 1000;
 
 export function generateSalesPartnerTempPassword(length = 10): string {
   const size = Math.max(8, Math.min(32, length));
-  const bytes = randomBytes(size);
   let out = '';
+  // Unbiased CSPRNG index — avoid `randomBytes()[i] % alphabet.length` (CodeQL bias).
   for (let i = 0; i < size; i += 1) {
-    out += TEMP_PASSWORD_ALPHABET[bytes[i]! % TEMP_PASSWORD_ALPHABET.length];
+    out += TEMP_PASSWORD_ALPHABET[randomInt(TEMP_PASSWORD_ALPHABET.length)]!;
   }
   return out;
 }

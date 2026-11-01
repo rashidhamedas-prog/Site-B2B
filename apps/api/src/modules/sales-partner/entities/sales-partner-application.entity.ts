@@ -50,6 +50,19 @@ export class SalesPartnerApplicationEntity {
   @Column({ type: 'uuid', nullable: true })
   profileId: string | null;
 
+  /** Last OTP/credentials SMS attempt metadata (no codes or passwords). */
+  @Column({ type: 'jsonb', nullable: true })
+  lastSmsAttempt: {
+    at: string;
+    purpose: 'otp' | 'credentials' | 'welcome';
+    result: 'sent' | 'pending' | 'failed';
+    errorCode?: string;
+    errorMessage?: string;
+    via?: string;
+    durationMs?: number;
+    phoneMasked: string;
+  } | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

@@ -4,6 +4,7 @@ import {
   normalizeSalesPartnerCode,
   partnerOrderAttribution,
   salesPartnerPublicCode,
+  salesPartnerPublicCodeFromBytes,
   salesPartnerSharePath,
 } from './sales-partner-attribution';
 
@@ -22,10 +23,19 @@ assert(canAdminChangeAttribution({ reason: 'تصحيح انتساب سفارش',
 assert(canAdminChangeAttribution({ reason: 'تصحيح انتساب سفارش', hasEarnedCommission: false, nextPartnerActive: false }).ok === false, 'inactive target');
 assert(canAdminChangeAttribution({ reason: 'تصحيح انتساب سفارش', hasEarnedCommission: false, nextPartnerActive: true }).ok === true, 'admin ok');
 
-const code = salesPartnerPublicCode(Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]));
+const code = salesPartnerPublicCode();
 assert(normalizeSalesPartnerCode(code) === code, 'generated code');
+assert(code.length === 8, 'code length');
 assert(normalizeSalesPartnerCode('ABC') === null, 'short code rejected');
 assert(salesPartnerSharePath(code, 'sara').includes(`/go/sp/${code}/sara`), 'share path');
+
+const fromPool = salesPartnerPublicCodeFromBytes(Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]));
+assert(fromPool !== null && normalizeSalesPartnerCode(fromPool) === fromPool, 'fromBytes ok');
+assert(
+  salesPartnerPublicCodeFromBytes(Uint8Array.from([250, 1, 2, 3, 4, 5, 6, 7, 8])) === fromPool,
+  'reject high bytes before mapping',
+);
+assert(salesPartnerPublicCodeFromBytes(Uint8Array.from([250, 251, 252])) === null, 'insufficient after reject');
 
 const clicked = attributeLinkProducts({
   partnerActive: true,

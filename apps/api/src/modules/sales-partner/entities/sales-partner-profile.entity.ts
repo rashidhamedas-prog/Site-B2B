@@ -89,6 +89,10 @@ export class SalesPartnerProfileEntity {
   @Column({ type: 'timestamptz', default: () => 'now()' })
   smsPromoConsentAt: Date;
 
+  /** Set after admin manual credentials SMS; cleared when partner changes password. */
+  @Column({ type: 'boolean', default: false })
+  mustChangePassword: boolean;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

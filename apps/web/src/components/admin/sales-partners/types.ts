@@ -14,6 +14,8 @@ export type ApplicationRow = {
   /** True after a successful admin welcome credentials SMS. */
   welcomeSmsSent?: boolean;
   welcomeSmsLastSentAt?: string | null;
+  lastSmsAttempt?: Record<string, unknown> | null;
+  lastSmsAttemptLabel?: string | null;
 };
 
 export type ApplicationDetail = {
@@ -31,6 +33,8 @@ export type ApplicationDetail = {
   profileId: string | null;
   createdAt: string;
   updatedAt: string;
+  lastSmsAttempt?: Record<string, unknown> | null;
+  lastSmsAttemptLabel?: string | null;
 };
 
 export type ApplyFormFieldType = 'text' | 'textarea' | 'select' | 'phone' | 'national_id' | 'checkbox';

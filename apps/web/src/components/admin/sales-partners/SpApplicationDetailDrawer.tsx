@@ -15,6 +15,8 @@ type Props = {
   onClose: () => void;
   onReview: (action: 'APPROVE' | 'NEED_INFO' | 'REJECT', reason?: string) => void;
   onWelcomeSms?: () => void;
+  onResendOtp?: () => void;
+  onManualVerifyCredentials?: () => void;
 };
 
 export function SpApplicationDetailDrawer({
@@ -27,6 +29,8 @@ export function SpApplicationDetailDrawer({
   onClose,
   onReview,
   onWelcomeSms,
+  onResendOtp,
+  onManualVerifyCredentials,
 }: Props) {
   const [reason, setReason] = useState('');
   const [confirmApprove, setConfirmApprove] = useState(false);
@@ -97,6 +101,14 @@ export function SpApplicationDetailDrawer({
                       <dd className="mt-1 text-amber-900">{detail.reviewNote}</dd>
                     </div>
                   ) : null}
+                  {(detail.lastSmsAttemptLabel || listHint?.lastSmsAttemptLabel) ? (
+                    <div>
+                      <dt className="text-stone-500">پیامک</dt>
+                      <dd className="mt-1 text-stone-800">
+                        {detail.lastSmsAttemptLabel || listHint?.lastSmsAttemptLabel}
+                      </dd>
+                    </div>
+                  ) : null}
                 </dl>
               </section>
 
@@ -140,6 +152,18 @@ export function SpApplicationDetailDrawer({
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-6 text-amber-950" role="status">
               کاربر هنوز کد پیامکی ثبت‌نام را تأیید نکرده. تا تکمیل OTP این درخواست در صف بررسی ادمین نیست.
             </p>
+            <div className="flex flex-wrap gap-2">
+              {onResendOtp ? (
+                <SpButton variant="secondary" className="flex-1" disabled={busy} onClick={onResendOtp}>
+                  ارسال مجدد کد
+                </SpButton>
+              ) : null}
+              {onManualVerifyCredentials ? (
+                <SpButton className="flex-1" disabled={busy} onClick={onManualVerifyCredentials}>
+                  تأیید دستی شماره و ارسال نام کاربری و رمز
+                </SpButton>
+              ) : null}
+            </div>
           </footer>
         ) : null}
 
