@@ -13,6 +13,7 @@ import { AdminOmnichannelChannelSettings } from './admin-omnichannel-channel-set
 import { AdminOmnichannelTemplates } from './admin-omnichannel-templates';
 import { AdminOmnichannelMediaHealth } from './admin-omnichannel-media-health';
 import { AdminOmnichannelAlerts } from './admin-omnichannel-alerts';
+import { AdminOmnichannelBotInbox } from './admin-omnichannel-bot-inbox';
 import {
   AdminOmnichannelPager,
   parseListPageResponse,
@@ -94,7 +95,7 @@ import {
   type WithdrawAction,
 } from './admin-omnichannel-ui';
 
-type View = 'status' | 'publish' | 'composer' | 'settings' | 'ops' | 'coverage' | 'channelSettings' | 'templates' | 'media-health' | 'alerts';
+type View = 'status' | 'publish' | 'composer' | 'settings' | 'ops' | 'coverage' | 'channelSettings' | 'templates' | 'media-health' | 'alerts' | 'botInbox';
 type Step = 'bot' | 'channels' | 'template' | 'rules' | 'activate';
 type SourceType = 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE' | 'FREE_POST';
 type OutboxScope = 'channel' | 'all';
@@ -2518,6 +2519,7 @@ export function AdminOmnichannel() {
             : []),
           ...(status?.mediaHealthUi ? [['media-health', 'رسانه'] as [View, string]] : []),
           ...(status?.unansweredAlertsUi ? [['alerts', 'هشدارها'] as [View, string]] : []),
+          ...(status?.orderBotUi ? [['botInbox', 'صندوق ربات‌ها'] as [View, string]] : []),
           ['settings', 'تنظیمات'],
           ['ops', 'صف و حسابرسی'],
         ] as Array<[View, string]>).map(([id, label]) => (
@@ -2665,6 +2667,14 @@ export function AdminOmnichannel() {
             setSettingsCollapsed(false);
             setStep('channels');
           }}
+          onNotice={setNotice}
+          onError={setError}
+        />
+      )}
+      {view === 'botInbox' && status?.orderBotUi && (
+        <AdminOmnichannelBotInbox
+          apiClient={apiClient}
+          enabled={Boolean(status?.orderBotUi)}
           onNotice={setNotice}
           onError={setError}
         />

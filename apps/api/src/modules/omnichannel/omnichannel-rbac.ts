@@ -82,6 +82,8 @@ export const GO_REF_REQUIRED_ACTIONS = [
   'channel_settings_copy_from',
   'template_activate',
   'destination_emergency_hold',
+  'order_bot_enable',
+  'test_owner_chat',
 ] as const;
 
 export type GoRefRequiredAction = (typeof GO_REF_REQUIRED_ACTIONS)[number];

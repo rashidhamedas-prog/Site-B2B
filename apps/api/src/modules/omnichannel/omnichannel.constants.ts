@@ -113,6 +113,26 @@ export function isOmnichannelUnansweredAlertsUiEnabled(): boolean {
   return process.env.OMNICHANNEL_UNANSWERED_ALERTS_UI === 'true';
 }
 
+/** PR-14 order-bot inbox UI tab. Default OFF. */
+export function isOmnichannelOrderBotUiEnabled(): boolean {
+  return process.env.OMNICHANNEL_ORDER_BOT_UI === 'true';
+}
+
+/** PR-14 Bale order-bot inbound processing. Default OFF. */
+export function isOmnichannelOrderBotBaleEnabled(): boolean {
+  return process.env.OMNICHANNEL_ORDER_BOT_BALE === 'true';
+}
+
+/** PR-14 Rubika order-bot poller. Default OFF. */
+export function isOmnichannelOrderBotRubikaEnabled(): boolean {
+  return process.env.OMNICHANNEL_ORDER_BOT_RUBIKA === 'true';
+}
+
+/** PR-14 Telegram order-bot inbound (code present, egress untouched). Default OFF. */
+export function isOmnichannelOrderBotTelegramEnabled(): boolean {
+  return process.env.OMNICHANNEL_ORDER_BOT_TELEGRAM === 'true';
+}
+
 /**
  * When true, live createPublication requires explicit destinationIds[] (no implicit all-targets).
  * Default true while COMPOSER_UI is on; set OMNICHANNEL_COMPOSER_STRICT_DESTINATIONS=false to relax.

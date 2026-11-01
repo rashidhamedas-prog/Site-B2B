@@ -1,3 +1,28 @@
+## 2026-10-30T02:00:00Z — PR-14 security + phase-review pushed (#149)
+
+- Branch `ai/TASK-20261029-pr14-order-bots` · worktree `D:/proje/Site-B2B-pr14` · PR https://github.com/rashidhamedas-prog/Site-B2B/pull/149 · head `949aa968`
+- Fixed: no CREDIT phone-only; timingSafeEqual; private-only; PII mask; unique→duplicate 200; enable audit+goRef; worker `maybePoll`; rate-limit notice send/persist; plan md on branch.
+- Evidence: bot unit specs FAILS=0; `apps/api` + `apps/web` `tsc --noEmit` exit 0.
+- Bots OFF. No merge/deploy.
+- Deferred: live smoke, Iran migrate, phone-at-rest auto-PFI without verified binding, Telegram Worker egress.
+- Next: CI; Owner merge GO separate.
+
+## 2026-10-30T00:45:00Z — PR-14 Order bots CODE (PR open, bots OFF)
+
+- PR https://github.com/rashidhamedas-prog/Site-B2B/pull/149 · head `e39b376d` · branch `ai/TASK-20261029-pr14-order-bots` · worktree `D:/proje/Site-B2B-pr14`.
+- Migration: `OmnichannelOrderBots1761836400001` / file `20261030-001-omnichannel-order-bots.ts`.
+- Evidence: bot unit specs green (ts-node); `apps/api` + `apps/web` `tsc --noEmit` exit 0.
+- Bots remain OFF (`OMNICHANNEL_ORDER_BOT_*` + UI + per-connection `orderBotEnabled` default false). No merge/deploy/Iran migrate by agent.
+- Next: CI; Owner merge GO → Iran backup → migrate → optional brief Bale canary then OFF.
+
+## 2026-10-29T21:15:00Z — PR-14 Order bots CODE (implementer)
+
+- Claimed `TASK-20261029-omni-pr14-order-bots` on branch `ai/TASK-20261029-pr14-order-bots` worktree `D:/proje/Site-B2B-pr14` from `origin/master` @ ≥ ab4019b0 (tip includes #148).
+- Soft-reclaimed stale PR-8 holds on shared controller/module/AdminOmnichannel/constants (PR-8 already merged to master).
+- Delivered: mig `20261030-001`, bots/* pure+specs, inbound/inbox/poller, webhook controller, admin inbox routes, UI tab flag OFF, test-owner-chat enabled when ownerChatId+goRef set.
+- Hard stops: bots env default OFF; no connector enable; no Telegram egress; no canary remap `4858359991`; no FORCE/SKIP_DRAIN; no invent IDs; no SMS; no deploy.
+- Next: unit specs + tsc → push PR to master; Owner merge/migrate/smoke GO separate. Bots stay OFF.
+
 ## 2026-10-29T22:40:00Z — PR-13 Unanswered alert (implement + PR open)
 
 - GO حامد ۲۹ اکتبر ۲۰۲۶ — implement + open PR; **no merge/deploy**.

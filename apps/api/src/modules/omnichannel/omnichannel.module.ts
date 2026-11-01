@@ -1,4 +1,4 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { ChannelConnectionEntity } from './entities/channel-connection.entity';
@@ -14,6 +14,7 @@ import { OmnichannelBotConversationEntity } from './entities/omnichannel-bot-con
 import { OmnichannelBotMessageEntity } from './entities/omnichannel-bot-message.entity';
 import { OmnichannelAlertEntity } from './entities/omnichannel-alert.entity';
 import { OmnichannelAdminController } from './controllers/omnichannel-admin.controller';
+import { OmnichannelBotWebhookController } from './controllers/omnichannel-bot-webhook.controller';
 import { OmnichannelService } from './services/omnichannel.service';
 import { OmnichannelDeleteService } from './services/omnichannel-delete.service';
 import { OmnichannelEditService } from './services/omnichannel-edit.service';
@@ -23,6 +24,9 @@ import { OmnichannelComposerService } from './services/omnichannel-composer.serv
 import { OmnichannelSettingsService } from './services/omnichannel-settings.service';
 import { OmnichannelMediaService } from './services/omnichannel-media.service';
 import { OmnichannelAlertsService } from './services/omnichannel-alerts.service';
+import { OmnichannelBotInboundService } from './services/omnichannel-bot-inbound.service';
+import { OmnichannelBotInboxService } from './services/omnichannel-bot-inbox.service';
+import { OmnichannelBotPollerService } from './services/omnichannel-bot-poller.service';
 import { OutboxService } from './services/outbox.service';
 import { ChannelProjectionService } from './services/channel-projection.service';
 import { TelegramAdapter } from './adapters/telegram.adapter';
@@ -42,12 +46,18 @@ import { OmnichannelTokenVaultService } from './services/omnichannel-token-vault
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 import { UploadModule } from '../upload/upload.module';
 import { StorageService } from '../upload/storage.service';
+import { ProductModule } from '../product/product.module';
+import { CustomerModule } from '../customer/customer.module';
+import { InvoiceModule } from '../invoice/invoice.module';
 
 @Global()
 @Module({
   imports: [
     AuthModule,
     UploadModule,
+    forwardRef(() => ProductModule),
+    forwardRef(() => CustomerModule),
+    forwardRef(() => InvoiceModule),
     TypeOrmModule.forFeature([
       ChannelConnectionEntity,
       ChannelDestinationEntity,
@@ -71,7 +81,7 @@ import { StorageService } from '../upload/storage.service';
       AppSettingEntity,
     ]),
   ],
-  controllers: [OmnichannelAdminController],
+  controllers: [OmnichannelAdminController, OmnichannelBotWebhookController],
   providers: [
     OmnichannelService,
     OmnichannelDeleteService,
@@ -82,6 +92,9 @@ import { StorageService } from '../upload/storage.service';
     OmnichannelSettingsService,
     OmnichannelMediaService,
     OmnichannelAlertsService,
+    OmnichannelBotInboundService,
+    OmnichannelBotInboxService,
+    OmnichannelBotPollerService,
     OutboxService,
     ChannelProjectionService,
     {
@@ -116,6 +129,9 @@ import { StorageService } from '../upload/storage.service';
     ChannelAdapterRegistry,
     OmnichannelTokenVaultService,
     OmnichannelAlertsService,
+    OmnichannelBotInboundService,
+    OmnichannelBotInboxService,
+    OmnichannelBotPollerService,
   ],
 })
 export class OmnichannelModule {}

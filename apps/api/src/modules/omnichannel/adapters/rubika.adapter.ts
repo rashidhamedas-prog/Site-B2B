@@ -232,6 +232,40 @@ export class RubikaAdapter implements ChannelAdapter {
     }
   }
 
+  /**
+   * PR-14 order-bot poller: getUpdates with offset_id ack (unlike discoverChats).
+   * No invented webhook — polling only when orderBotEnabled.
+   */
+  async fetchOrderBotUpdates(
+    secretRef: string,
+    offsetId?: string | null,
+  ): Promise<{
+    ok: boolean;
+    error?: string;
+    updates: Array<Record<string, unknown>>;
+    nextOffsetId: string | null;
+  }> {
+    this.assertEnabled();
+    const token = resolveRubikaToken(secretRef);
+    if (!token) return { ok: false, error: 'invalid_credential', updates: [], nextOffsetId: null };
+    try {
+      const body: Record<string, unknown> = { limit: 50 };
+      const offset = String(offsetId || '').trim();
+      if (offset) body.offset_id = offset;
+      const result = await this.rubikaCall<{
+        updates?: Array<Record<string, unknown>>;
+        next_offset_id?: string;
+      }>(token, 'getUpdates', body);
+      return {
+        ok: true,
+        updates: Array.isArray(result.updates) ? result.updates : [],
+        nextOffsetId: result.next_offset_id != null ? String(result.next_offset_id) : null,
+      };
+    } catch (err: unknown) {
+      return { ok: false, error: classifyRubikaThrow(err), updates: [], nextOffsetId: null };
+    }
+  }
+
   async preview(input: Record<string, unknown>): Promise<Record<string, unknown>> {
     this.assertEnabled();
     const photos = this.photosFrom(input);

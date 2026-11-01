@@ -3,7 +3,7 @@
 /**
  * PR-10 «تنظیمات کانال» — per-destination content + emergency hold.
  * Mounted only when status.channelSettingsUi / OMNICHANNEL_CHANNEL_SETTINGS_UI=true.
- * Never invents LIVE contact/UTM/ownerChat ids. OwnerChat test deferred to PR-14.
+ * Never invents LIVE contact/UTM/ownerChat ids. OwnerChat test via PR-14 endpoint.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { Callout, PROVIDER_META, type Provider } from './admin-omnichannel-ui';
@@ -351,11 +351,35 @@ export function AdminOmnichannelChannelSettings({
         </label>
         <button
           type="button"
-          className="btn btn-secondary btn-sm opacity-60 cursor-not-allowed"
-          disabled
-          title="تست آی‌دی مقصد هدایت پیام‌ها در PR-14"
+          className="btn btn-secondary btn-sm cursor-pointer"
+          disabled={loading || !String(form.ownerChatId || '').trim() || !goRef.trim()}
+          title={
+            !String(form.ownerChatId || '').trim()
+              ? 'ابتدا ownerChatId را ذخیره کنید (هرگز شناسه ساختگی وارد نکنید)'
+              : !goRef.trim()
+                ? 'goRef مالک لازم است'
+                : 'یک پیام آزمایشی به ownerChatId ارسال می‌شود'
+          }
+          onClick={() => {
+            void (async () => {
+              if (!destinationId || !goRef.trim()) return;
+              setLoading(true);
+              try {
+                const res = await apiClient.post<{ ok?: boolean; sent?: boolean; reason?: string }>(
+                  `/v1/omnichannel/destinations/${destinationId}/channel-settings/test-owner-chat`,
+                  { goRef: goRef.trim() },
+                );
+                if (res?.sent) onNotice('پیام تست به آی‌دی مقصد هدایت ارسال شد');
+                else onNotice(`تست انجام شد — ارسال نشد (${res?.reason || 'unknown'})`);
+              } catch (err) {
+                onError(err instanceof Error ? err.message : 'تست ownerChatId ناموفق');
+              } finally {
+                setLoading(false);
+              }
+            })();
+          }}
         >
-          تست آی‌دی مقصد هدایت پیام‌ها (PR-14)
+          تست آی‌دی مقصد هدایت پیام‌ها
         </button>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="block text-sm">
