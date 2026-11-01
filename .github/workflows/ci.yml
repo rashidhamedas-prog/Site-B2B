@@ -137,19 +137,27 @@ jobs:
           # SC1091: dynamic $_SCRIPT_DIR / $APP_DIR sources; libs are listed explicitly.
           shellcheck -x -e SC1091 \
             scripts/auto-deploy.sh scripts/lib/deploy-lock.sh \
-            scripts/lib/deploy-preflight.sh scripts/lib/compose-created-check.sh
+            scripts/lib/deploy-preflight.sh scripts/lib/compose-created-check.sh \
+            scripts/nginx-http-healthcheck.sh scripts/tests/nginx-config.test.sh
           # Test harness uses subshells + with_tmpdir; SC2030/2031/2317 are expected.
           shellcheck -e SC1091,SC2030,SC2031,SC2317,SC2015,SC2012,SC2034,SC2086 \
             scripts/tests/deploy-lock.test.sh scripts/tests/fixtures/old-auto-deploy-lock.sh
       - name: Deploy lock tests (no Docker)
         run: bash scripts/tests/deploy-lock.test.sh
 
+  nginx-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: nginx -t + http→https / HSTS container contract (directory mount)
+        run: bash scripts/tests/nginx-config.test.sh
+
   # Manual deploy only. Requires /opt/taranom/deploy-approval.json on the VPS
   # for the exact origin/master SHA + goRef. TARANOM_DEPLOY_FORCE does not bypass
   # that gate. Recommend GitHub Environment "production" required reviewers
   # (configure in repo Settings → Environments; not applied by this workflow file).
   deploy:
-    needs: [lint-and-build, omnichannel-migrate, deploy-lock-tests]
+    needs: [lint-and-build, omnichannel-migrate, deploy-lock-tests, nginx-config]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     environment: production

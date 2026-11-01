@@ -276,8 +276,12 @@ services:
     image: nginx:alpine
     container_name: taranom_nginx
     restart: unless-stopped
+    # Directory bind, not a single-file bind: `git reset` replaces nginx.conf's
+    # inode and a file bind keeps serving the old one. Any `nginx -t/-T` inside
+    # this container must pass `-c /etc/nginx/taranom/nginx.conf`.
+    command: ['nginx', '-c', '/etc/nginx/taranom/nginx.conf', '-g', 'daemon off;']
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx:/etc/nginx/taranom:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - /opt/seo-auto/deploy/nginx/conf.d:/etc/nginx/conf.d:ro
       - certbot_www:/var/www/certbot:ro
