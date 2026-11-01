@@ -18,7 +18,8 @@ export function cartSessionId(): string {
   try {
     let id = localStorage.getItem(SESSION_KEY);
     if (!id || id.length < 8) {
-      id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+      const rand = crypto.getRandomValues(new Uint32Array(2));
+      id = `${Date.now().toString(36)}${rand[0].toString(36)}${rand[1].toString(36)}`.slice(0, 24);
       localStorage.setItem(SESSION_KEY, id);
     }
     return id;
