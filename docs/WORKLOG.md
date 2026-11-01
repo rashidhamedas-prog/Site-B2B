@@ -1,3 +1,7 @@
+## 2026-11-01 — /about v3 (S0–S7) + فونت optional + حذف loading مسیر عمده (PR #152)
+
+- `/about` با ۸ بخش سرور‌رندر، تصاویر `/about/v3`، gsap فقط دسکتاپ بدون reduced-motion، دیالوگ فقط در `section#cta`؛ Vazirmatn `display: optional` و حذف `(wholesale)/loading.tsx` (تصمیم حامد). ۲۴/۲۴ تست `about-v3.spec.ts` سبز؛ LCP موبایل ۳٫۲۹s در برابر master ۳٫۷۰s، CLS صفر. گزارش: `docs/reports/2026-11-01-about-v3.md`.
+
 ## 2026-11-01 — http→https یک hop + HSTS + mount پوشه nginx (fix/http-redirect-02)
 
 - فاز 01 (فقط‌خواندنی): هر چهار هاست روی http پاسخ 301 درست می‌دهند و 200 گزارش‌شده بازتولید نشد. سرور = master، کانفیگ زنده = مخزن، بدون override nginx یا سرویس میزبان. تنها ایراد: `http://www.poshaktaranom.com` دو‌hop بود.
