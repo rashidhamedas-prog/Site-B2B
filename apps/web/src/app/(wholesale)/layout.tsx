@@ -5,8 +5,7 @@ import {
   WholesaleMobileCategorySlot,
 } from '@/components/wholesale/WholesaleCategoryNav';
 import { Footer } from '@/components/layout/Footer';
-import { ScrollToTop } from '@/components/shared/ScrollToTop';
-import { FloatingContact } from '@/components/shared/FloatingContact';
+import { WholesaleFloatingChrome } from '@/components/wholesale/WholesaleFloatingChrome';
 import { SkipLink } from '@/components/shared/SkipLink';
 import { ThemeRuntime } from '@/components/wholesale/ThemeRuntime';
 import { CartProvider } from '@/lib/cart';
@@ -131,8 +130,7 @@ export default async function WholesaleLayout({ children }: { children: React.Re
         />
         <main id="main">{children}</main>
         <Footer />
-        <FloatingContact chrome={bag.chrome} />
-        <ScrollToTop />
+        <WholesaleFloatingChrome chrome={bag.chrome} />
       </CartProvider>
     </WholesaleChromeProvider>
   );

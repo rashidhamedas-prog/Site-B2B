@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api';
+import dynamic from 'next/dynamic';
 import { ThemeApply } from './ThemeApply';
-import { LandingPopups } from './LandingPopups';
 import {
   DEFAULT_THEME,
   mergePublicTheme,
@@ -13,6 +12,11 @@ import {
 interface PublicSettings {
   theme?: ThemeSettings;
 }
+
+// Renders nothing until a scroll/timer trigger, so it never contributes SSR markup.
+const LandingPopups = dynamic(() => import('./LandingPopups').then((m) => m.LandingPopups), {
+  ssr: false,
+});
 
 /**
  * Loads public theme settings and applies glass/color + landing popups.
@@ -29,8 +33,8 @@ export function ThemeRuntime({ theme: preloaded }: { theme?: ThemeSettings | nul
       return;
     }
     let cancelled = false;
-    apiClient
-      .get<PublicSettings>('/settings/public')
+    import('@/lib/api')
+      .then(({ apiClient }) => apiClient.get<PublicSettings>('/settings/public'))
       .then((res) => {
         if (cancelled || !res?.theme) return;
         setTheme(mergePublicTheme(res.theme));
