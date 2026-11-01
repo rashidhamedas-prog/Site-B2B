@@ -12,12 +12,10 @@ export const BUSINESS_FACTS = {
   foundedGregorianYear: 2015,
   /** اندازه تیم تولید */
   teamSize: 15,
-  /** مشتری فعال عمده */
-  activeCustomers: 500,
+  /** UNVERIFIED — tracked in SEO-REMAINING-MANUAL-ACTIONS.md; keep conservative */
+  activeCustomers: 200,
   /** تعداد مدل فعال (approximate, conservative) */
   activeModels: 50,
-  /** حداقل سفارش عمده از هر مدل */
-  minOrderPerModel: 6,
 } as const;
 
 /** Full locked claim: «بیش از ۱۰ سال فعالیت تولیدی». */
