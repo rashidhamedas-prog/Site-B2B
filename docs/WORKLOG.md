@@ -3,6 +3,12 @@
 - JS اولیه `/about` از 180.8 به 142.7 kB gzip (−21%)، `/` و `/products` حدود −10%؛ JS اختصاصی layout عمده از ~67 به 28.5 kB. روش: جدا کردن پیش‌فرض chrome از `lib/cms/defaults`، `apiClient` و `product-display` با `import()` در جزایر layout، `next/dynamic` (`ssr:false`) برای GA/web-vitals، LandingPopups، FloatingContact و ScrollToTop، و import مستقیم به‌جای barrel `components/ui`.
 - Lighthouse موبایل (simulated، میانه ۳): `/` LCP 3656→3623ms و TBT 275→87ms؛ `/about` LCP 3321→3174ms؛ CLS صفر. معیار LCP <2.5s/−20% برآورده نشد؛ بخش اصلی LCP شبیه‌سازی‌شده فریم‌ورک، CSS، فونت و تصاویر `/about` است. گزارش: `docs/reports/2026-11-02-shared-js-reduction.md`. بدون merge/deploy.
 
+## 2026-11-02 — CLS صفر کروم عمده (TASK-20261102-header-nav-cls)
+
+- اندازه‌گیری روی production (داده‌ی واقعی، Playwright + layout-shift sources) سه منبع داد: (۱) `nav.hidden.items-center` در ۱۴۴۰ حدود 34px جابه‌جا (0.000558) چون اسلات «دسته‌بندی» در `Suspense fallback={null}` دیر ظاهر می‌شد و ردیف `justify-between` را هل می‌داد؛ (۲) `FloatingContact` روی هوم با باز شدن نوار بوتیک از راه `bottom` بالا می‌پرید (۰٫۰۰۱–۰٫۰۰۷)؛ (۳) مهر اینماد 72×72 رزرو ولی لوگو 125×136 بود → شیفت 3px فوتر.
+- رفع: fallback هم‌اندازه `WholesaleCategoryNavFallback` (لینک «دسته‌بندی ▾» به `/products`، بدون JS هم کار می‌کند؛ لیست خالی هم همین را نشان می‌دهد)، جابه‌جایی دکمه شناور با `transform`، نسبت 125:136 برای اینماد. منو حذف نشد، Suspense برای TTFB حفظ شد.
+- تست: `e2e/header-nav-cls.spec.ts` (/، /about، /products در ۳۹۰ و ۱۴۴۰، CLS کل = 0) در ماتریس CI. گزارش: `docs/reports/2026-11-02-header-nav-cls.md`.
+
 ## 2026-11-01 — /about v3 (S0–S7) + فونت optional + حذف loading مسیر عمده (PR #152)
 
 - `/about` با ۸ بخش سرور‌رندر، تصاویر `/about/v3`، gsap فقط دسکتاپ بدون reduced-motion، دیالوگ فقط در `section#cta`؛ Vazirmatn `display: optional` و حذف `(wholesale)/loading.tsx` (تصمیم حامد). ۲۴/۲۴ تست `about-v3.spec.ts` سبز؛ LCP موبایل ۳٫۲۹s در برابر master ۳٫۷۰s، CLS صفر. گزارش: `docs/reports/2026-11-01-about-v3.md`.

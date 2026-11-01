@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { Header } from '@/components/layout/Header';
 import {
+  WholesaleCategoryNavFallback,
   WholesaleCategoryNavSlot,
   WholesaleMobileCategorySlot,
 } from '@/components/wholesale/WholesaleCategoryNav';
@@ -118,7 +119,7 @@ export default async function WholesaleLayout({ children }: { children: React.Re
         <SkipLink />
         <Header
           categoryNav={
-            <Suspense fallback={null}>
+            <Suspense fallback={<WholesaleCategoryNavFallback />}>
               <WholesaleCategoryNavSlot />
             </Suspense>
           }

@@ -45,9 +45,11 @@ export function FloatingContact({
   if (pathname === '/checkout' || pathname.startsWith('/checkout/')) return null;
 
   const onProduct = /^\/products\/[^/]+/.test(pathname);
+  // Lift above the home boutique bar with transform, not `bottom`: a layout move of
+  // a fixed element without user input counts as CLS.
   const dockClass = onProduct
     ? 'bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-6'
-    : 'bottom-[calc(1.5rem+var(--wholesale-bottom-bar,0px)+env(safe-area-inset-bottom,0px))]';
+    : 'bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] [transform:translateY(calc(-1*var(--wholesale-bottom-bar,0px)))] transition-transform duration-300 motion-reduce:transition-none';
 
   return (
     <div

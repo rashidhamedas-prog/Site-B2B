@@ -53,16 +53,40 @@ export async function WholesaleMobileCategorySlot() {
   );
 }
 
+const TRIGGER_CLASS =
+  'flex cursor-pointer list-none items-center gap-1 rounded-lg px-3.5 py-2 text-sm font-semibold text-gray-700 marker:content-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden';
+
+function TriggerLabel() {
+  return (
+    <>
+      دسته‌بندی
+      <span aria-hidden className="text-xs text-gray-400 motion-reduce:transform-none group-open:rotate-180">
+        ▾
+      </span>
+    </>
+  );
+}
+
+/**
+ * Same box as the `<summary>` trigger. Used as the Suspense fallback and when the
+ * API returns no categories, so the streamed menu never resizes the header row
+ * (MegaNav sits in a justify-between flex row and would shift).
+ */
+export function WholesaleCategoryNavFallback() {
+  return (
+    <Link href="/products" className={TRIGGER_CLASS}>
+      <TriggerLabel />
+    </Link>
+  );
+}
+
 export function WholesaleCategoryNav({ categories }: { categories: WholesaleNavCategory[] }) {
-  if (categories.length === 0) return null;
+  if (categories.length === 0) return <WholesaleCategoryNavFallback />;
 
   return (
     <details className="group relative">
-      <summary className="flex cursor-pointer list-none items-center gap-1 rounded-lg px-3.5 py-2 text-sm font-semibold text-gray-700 marker:content-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
-        دسته‌بندی
-        <span aria-hidden className="text-xs text-gray-400 motion-reduce:transform-none group-open:rotate-180">
-          ▾
-        </span>
+      <summary className={TRIGGER_CLASS}>
+        <TriggerLabel />
       </summary>
       <div className="absolute end-0 top-full z-50 pt-2">
         <div className="w-[min(92vw,22rem)] rounded-2xl border border-[color:var(--color-border)] bg-white p-3 shadow-lg">
