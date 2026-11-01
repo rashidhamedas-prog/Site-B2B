@@ -22,7 +22,8 @@ const vazirmatn = localFont({
     },
   ],
   variable: '--font-vazirmatn',
-  display: 'swap',
+  // `optional`: a late swap reflows the header and hero copy (CLS); the preloaded file is cached for the next view.
+  display: 'optional',
   preload: true,
   adjustFontFallback: false,
   fallback: ['Tahoma', 'Arial', 'sans-serif'],
