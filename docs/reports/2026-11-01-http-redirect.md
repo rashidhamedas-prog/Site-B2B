@@ -13,6 +13,11 @@
 - `scripts/auto-deploy.sh`: `docker compose run --rm nginx nginx -t` پیش از drain یا build، force-recreate بدون شرط، بررسی `nginx -T` برای ریدایرکت، اجرای `scripts/nginx-http-healthcheck.sh` و ثبت `logs/DEPLOYED_SHA`.
 - CI: `scripts/tests/nginx-config.test.sh` (job `nginx-config`).
 
+## نتیجه
+- PR #151 با squash به master رفت (`b9cf9783`) و در 2026-11-01 12:18 UTC از راه تایمر و فایل تأیید deploy شد. چک سلامت داخل deploy پاس شد.
+- ماتریس فاز 04 پاس شد (`docs/fix-programme/http-redirect-phase04-matrix.txt`). فاز 03 لازم نشد.
+- تصمیم حامد (2026-11-01): HSTS `max-age=31536000` و 444 برای Host ناشناخته روی http همین‌طور می‌مانند.
+
 ## ریسک و rollback
 - HSTS از `63072000; includeSubDomains` به `31536000` کاهش یافت. مرورگرهایی که سیاست قبلی را گرفته‌اند تا انقضا همان را نگه می‌دارند (بی‌ضرر).
 - Host ناشناخته روی http حالا 444 می‌گیرد (قبلاً به www.ir ریدایرکت می‌شد).
