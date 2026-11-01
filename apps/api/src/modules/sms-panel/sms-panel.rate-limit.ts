@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RedisService } from '../redis/redis.module';
+import { CircuitBreaker } from './domain/circuit-breaker';
 import { SmsMessageEntity } from './entities/sms-panel.entities';
 
 /**
@@ -12,6 +13,10 @@ export class SmsPanelRateLimit {
   private tokens = 5;
   private lastRefill = Date.now();
   private readonly capacity: number;
+  readonly providerCircuit = new CircuitBreaker({
+    failureThreshold: Number(process.env.SMS_CIRCUIT_FAILURES) || undefined,
+    cooldownMs: Number(process.env.SMS_CIRCUIT_COOLDOWN_MS) || undefined,
+  });
 
   constructor(
     private readonly redis: RedisService,

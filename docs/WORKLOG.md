@@ -1,3 +1,10 @@
+## 2026-11-01 — SMS panel provider circuit breaker (بدون merge/deploy)
+
+- تنها کمبود باقی‌مانده از ریویوی PR #107 (spec بند ۴ صف): circuit breaker برای sms.ir.
+- `domain/circuit-breaker.ts` (CLOSED/OPEN/HALF_OPEN، یک probe)؛ در `dispatchMessage` درست قبل از provider؛ خطای ambiguous/retryable/throw شمرده می‌شود؛ OPEN → ردیف QUEUED تا پایان cooldown بدون مصرف attempt؛ `processQueue` در OPEN کاری نمی‌کند.
+- env اختیاری: `SMS_CIRCUIT_FAILURES` (۵)، `SMS_CIRCUIT_COOLDOWN_MS` (۶۰۰۰۰). وضعیت per-process مثل token bucket.
+- تست: `circuit-breaker.spec.ts`؛ `tsc` + `unit-specs: 205 ok`. بدون پیامک واقعی. شاخه `feat/sms-circuit-breaker`؛ merge/deploy فقط با GO حامد.
+
 ## 2026-10-30 — Omnichannel PR-14 security + phase-review (#149؛ bots OFF)
 
 - Security: بدون CREDIT از phone-only؛ `timingSafeSecretEqual`؛ فقط private chat؛ ماسک `09*********`؛ unique→duplicate ۲۰۰؛ enable با audit+goRef.
