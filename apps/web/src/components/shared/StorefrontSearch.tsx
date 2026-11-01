@@ -3,13 +3,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Search, X } from 'lucide-react';
-import { apiClient } from '@/lib/api';
-import { mediaUrl, toman } from '@/lib/product-display';
 import { cn } from '@/lib/cn';
 
 type Channel = 'RETAIL' | 'WHOLESALE';
 
-type SearchHit = {
+type SearchProduct = {
   id: string;
   name: string;
   slug: string;
@@ -18,6 +16,8 @@ type SearchHit = {
   wholesalePrice?: number | null;
   sale?: { payable?: number; active?: boolean };
 };
+
+type SearchHit = { id: string; name: string; slug: string; img: string | null; priceText: string | null };
 
 export function StorefrontSearch({
   channel,
@@ -71,10 +71,28 @@ export function StorefrontSearch({
     const timer = window.setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await apiClient.get<{ data: SearchHit[] }>(
+        const [{ apiClient }, { mediaUrl, toman }] = await Promise.all([
+          import('@/lib/api'),
+          import('@/lib/product-display'),
+        ]);
+        const res = await apiClient.get<{ data: SearchProduct[] }>(
           `/products?channel=${channel}&search=${encodeURIComponent(query)}&limit=8&status=ACTIVE`,
         );
-        setHits(Array.isArray(res.data) ? res.data : []);
+        const products = Array.isArray(res.data) ? res.data : [];
+        setHits(
+          products.map((p) => {
+            const price = Number(
+              p.sale?.payable ?? (channel === 'RETAIL' ? p.retailPrice : p.wholesalePrice) ?? 0,
+            );
+            return {
+              id: p.id,
+              name: p.name,
+              slug: p.slug,
+              img: mediaUrl(p.images?.[0]) || null,
+              priceText: price > 0 ? toman(price) : null,
+            };
+          }),
+        );
       } catch {
         setHits([]);
       } finally {
@@ -127,8 +145,7 @@ export function StorefrontSearch({
             ) : (
               <ul>
                 {hits.map((p) => {
-                  const img = mediaUrl(p.images?.[0]);
-                  const price = Number(p.sale?.payable ?? (retail ? p.retailPrice : p.wholesalePrice) ?? 0);
+                  const img = p.img;
                   return (
                     <li key={p.id}>
                       <Link
@@ -147,8 +164,8 @@ export function StorefrontSearch({
                         </span>
                         <span className="min-w-0 flex-1 text-right">
                           <span className="block truncate text-sm font-medium text-neutral-900">{p.name}</span>
-                          {price > 0 ? (
-                            <span className="text-xs text-neutral-500">{toman(price)} تومان</span>
+                          {p.priceText ? (
+                            <span className="text-xs text-neutral-500">{p.priceText} تومان</span>
                           ) : null}
                         </span>
                       </Link>
@@ -243,8 +260,7 @@ export function StorefrontSearch({
                 ) : (
                   <ul>
                     {hits.map((p) => {
-                      const img = mediaUrl(p.images?.[0]);
-                      const price = Number(p.sale?.payable ?? (retail ? p.retailPrice : p.wholesalePrice) ?? 0);
+                      const img = p.img;
                       return (
                         <li key={p.id}>
                           <Link
@@ -262,9 +278,9 @@ export function StorefrontSearch({
                               <span className="block truncate text-sm font-medium text-gray-900">
                                 {p.name}
                               </span>
-                              {price > 0 ? (
+                              {p.priceText ? (
                                 <span className="text-xs text-gray-500">
-                                  {toman(price)} تومان
+                                  {p.priceText} تومان
                                 </span>
                               ) : null}
                             </span>

@@ -1,7 +1,4 @@
-import { apiClient } from './api';
-import { getToken } from './auth';
-
-function phoneFromShopperToken(): string {
+function phoneFromShopperToken(getToken: () => string | null): string {
   const token = getToken();
   if (!token) return '';
   try {
@@ -40,13 +37,15 @@ export function pulseCartHeartbeat(input: {
   if (typeof window === 'undefined') return;
   if (timer) clearTimeout(timer);
   timer = setTimeout(() => {
-    apiClient
-      .post('/cart/heartbeat', {
-        channel: input.channel,
-        sessionId: cartSessionId(),
-        phone: input.phone || phoneFromShopperToken(),
-        items: input.items,
-      })
+    Promise.all([import('./api'), import('./auth')])
+      .then(([{ apiClient }, { getToken }]) =>
+        apiClient.post('/cart/heartbeat', {
+          channel: input.channel,
+          sessionId: cartSessionId(),
+          phone: input.phone || phoneFromShopperToken(getToken),
+          items: input.items,
+        }),
+      )
       .catch(() => undefined);
   }, 4000);
 }

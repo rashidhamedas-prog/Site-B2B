@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api';
 import {
   EMPTY_ENAMAD,
   enamadHasRenderable,
@@ -35,13 +34,15 @@ export function EnamadSeal({
   useEffect(() => {
     if (config !== undefined || !channel) return;
     let cancelled = false;
-    apiClient
-      .get<{
-        business?: {
-          enamadWholesale?: Partial<EnamadSealConfig>;
-          enamadRetail?: Partial<EnamadSealConfig>;
-        };
-      }>(`/settings/public?channel=${channel}`)
+    import('@/lib/api')
+      .then(({ apiClient }) =>
+        apiClient.get<{
+          business?: {
+            enamadWholesale?: Partial<EnamadSealConfig>;
+            enamadRetail?: Partial<EnamadSealConfig>;
+          };
+        }>(`/settings/public?channel=${channel}`),
+      )
       .then((s) => {
         if (cancelled) return;
         const raw =

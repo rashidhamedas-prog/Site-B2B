@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api';
 import { DEFAULT_MENUS, type MenusSettings } from '@/lib/menus';
 
 const TTL_MS = 60_000;
@@ -35,8 +34,8 @@ async function loadMenus(): Promise<MenusSettings> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.data;
   if (inflight) return inflight;
 
-  inflight = apiClient
-    .get<{ menus?: MenusSettings }>('/settings/public')
+  inflight = import('@/lib/api')
+    .then(({ apiClient }) => apiClient.get<{ menus?: MenusSettings }>('/settings/public'))
     .then((res) => {
       const next = normalizeMenus(res?.menus);
       cache = { at: Date.now(), data: next };
