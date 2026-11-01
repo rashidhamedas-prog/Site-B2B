@@ -1,0 +1,60 @@
+﻿control: HTTP/1.1 200 OK
+http://poshaktaranom.ir/ | first: 301 https://www.poshaktaranom.ir/ | final: 200 1 https://www.poshaktaranom.ir/
+http://poshaktaranom.ir/about | first: 301 https://www.poshaktaranom.ir/about | final: 200 1 https://www.poshaktaranom.ir/about
+http://poshaktaranom.ir/sitemap.xml | first: 301 https://www.poshaktaranom.ir/sitemap.xml | final: 200 1 https://www.poshaktaranom.ir/sitemap.xml
+http://poshaktaranom.ir/robots.txt | first: 301 https://www.poshaktaranom.ir/robots.txt | final: 200 1 https://www.poshaktaranom.ir/robots.txt
+http://poshaktaranom.ir/?utm_source=test&x=1 | first: 301 https://www.poshaktaranom.ir/?utm_source=test&x=1 | final: 200 1 https://www.poshaktaranom.ir/?utm_source=test&x=1
+http://poshaktaranom.ir/products/aban-memory-hooded-jacket | first: 301 https://www.poshaktaranom.ir/products/aban-memory-hooded-jacket | final: 200 1 https://www.poshaktaranom.ir/products/aban-memory-hooded-jacket
+http://www.poshaktaranom.ir/ | first: 301 https://www.poshaktaranom.ir/ | final: 200 1 https://www.poshaktaranom.ir/
+http://www.poshaktaranom.ir/about | first: 301 https://www.poshaktaranom.ir/about | final: 200 1 https://www.poshaktaranom.ir/about
+http://www.poshaktaranom.ir/sitemap.xml | first: 301 https://www.poshaktaranom.ir/sitemap.xml | final: 200 1 https://www.poshaktaranom.ir/sitemap.xml
+http://www.poshaktaranom.ir/robots.txt | first: 301 https://www.poshaktaranom.ir/robots.txt | final: 200 1 https://www.poshaktaranom.ir/robots.txt
+http://www.poshaktaranom.ir/?utm_source=test&x=1 | first: 301 https://www.poshaktaranom.ir/?utm_source=test&x=1 | final: 200 1 https://www.poshaktaranom.ir/?utm_source=test&x=1
+http://www.poshaktaranom.ir/products/aban-memory-hooded-jacket | first: 301 https://www.poshaktaranom.ir/products/aban-memory-hooded-jacket | final: 200 1 https://www.poshaktaranom.ir/products/aban-memory-hooded-jacket
+http://poshaktaranom.com/ | first: 301 https://poshaktaranom.com/ | final: 200 1 https://poshaktaranom.com/
+http://poshaktaranom.com/about | first: 301 https://poshaktaranom.com/about | final: 200 1 https://poshaktaranom.com/about
+http://poshaktaranom.com/sitemap.xml | first: 301 https://poshaktaranom.com/sitemap.xml | final: 200 1 https://poshaktaranom.com/sitemap.xml
+http://poshaktaranom.com/robots.txt | first: 301 https://poshaktaranom.com/robots.txt | final: 200 1 https://poshaktaranom.com/robots.txt
+http://poshaktaranom.com/?utm_source=test&x=1 | first: 301 https://poshaktaranom.com/?utm_source=test&x=1 | final: 200 1 https://poshaktaranom.com/?utm_source=test&x=1
+http://poshaktaranom.com/products/womens-travis-style-sneakers | first: 301 https://poshaktaranom.com/products/womens-travis-style-sneakers | final: 200 1 https://poshaktaranom.com/products/womens-travis-style-sneakers
+http://www.poshaktaranom.com/ | first: 301 https://poshaktaranom.com/ | final: 200 1 https://poshaktaranom.com/
+http://www.poshaktaranom.com/about | first: 301 https://poshaktaranom.com/about | final: 200 1 https://poshaktaranom.com/about
+http://www.poshaktaranom.com/sitemap.xml | first: 301 https://poshaktaranom.com/sitemap.xml | final: 200 1 https://poshaktaranom.com/sitemap.xml
+http://www.poshaktaranom.com/robots.txt | first: 301 https://poshaktaranom.com/robots.txt | final: 200 1 https://poshaktaranom.com/robots.txt
+http://www.poshaktaranom.com/?utm_source=test&x=1 | first: 301 https://poshaktaranom.com/?utm_source=test&x=1 | final: 200 1 https://poshaktaranom.com/?utm_source=test&x=1
+http://www.poshaktaranom.com/products/womens-travis-style-sneakers | first: 301 https://poshaktaranom.com/products/womens-travis-style-sneakers | final: 200 1 https://poshaktaranom.com/products/womens-travis-style-sneakers
+https://poshaktaranom.ir/ | first: 301 https://www.poshaktaranom.ir/ | final: 200 1 https://www.poshaktaranom.ir/
+https://poshaktaranom.ir/about | first: 301 https://www.poshaktaranom.ir/about | final: 200 1 https://www.poshaktaranom.ir/about
+https://poshaktaranom.ir/sitemap.xml | first: 301 https://www.poshaktaranom.ir/sitemap.xml | final: 200 1 https://www.poshaktaranom.ir/sitemap.xml
+https://poshaktaranom.ir/robots.txt | first: 301 https://www.poshaktaranom.ir/robots.txt | final: 200 1 https://www.poshaktaranom.ir/robots.txt
+https://poshaktaranom.ir/?utm_source=test&x=1 | first: 301 https://www.poshaktaranom.ir/?utm_source=test&x=1 | final: 200 1 https://www.poshaktaranom.ir/?utm_source=test&x=1
+https://poshaktaranom.ir/products/aban-memory-hooded-jacket | first: 301 https://www.poshaktaranom.ir/products/aban-memory-hooded-jacket | final: 200 1 https://www.poshaktaranom.ir/products/aban-memory-hooded-jacket
+https://www.poshaktaranom.ir/ | first: 200  | final: 200 0 https://www.poshaktaranom.ir/
+https://www.poshaktaranom.ir/about | first: 200  | final: 200 0 https://www.poshaktaranom.ir/about
+https://www.poshaktaranom.ir/sitemap.xml | first: 200  | final: 200 0 https://www.poshaktaranom.ir/sitemap.xml
+https://www.poshaktaranom.ir/robots.txt | first: 200  | final: 200 0 https://www.poshaktaranom.ir/robots.txt
+https://www.poshaktaranom.ir/?utm_source=test&x=1 | first: 200  | final: 200 0 https://www.poshaktaranom.ir/?utm_source=test&x=1
+https://www.poshaktaranom.ir/products/aban-memory-hooded-jacket | first: 200  | final: 200 0 https://www.poshaktaranom.ir/products/aban-memory-hooded-jacket
+https://poshaktaranom.com/ | first: 200  | final: 200 0 https://poshaktaranom.com/
+https://poshaktaranom.com/about | first: 200  | final: 200 0 https://poshaktaranom.com/about
+https://poshaktaranom.com/sitemap.xml | first: 200  | final: 200 0 https://poshaktaranom.com/sitemap.xml
+https://poshaktaranom.com/robots.txt | first: 200  | final: 200 0 https://poshaktaranom.com/robots.txt
+https://poshaktaranom.com/?utm_source=test&x=1 | first: 200  | final: 200 0 https://poshaktaranom.com/?utm_source=test&x=1
+https://poshaktaranom.com/products/womens-travis-style-sneakers | first: 200  | final: 200 0 https://poshaktaranom.com/products/womens-travis-style-sneakers
+https://www.poshaktaranom.com/ | first: 301 https://poshaktaranom.com/ | final: 200 1 https://poshaktaranom.com/
+https://www.poshaktaranom.com/about | first: 301 https://poshaktaranom.com/about | final: 200 1 https://poshaktaranom.com/about
+https://www.poshaktaranom.com/sitemap.xml | first: 301 https://poshaktaranom.com/sitemap.xml | final: 200 1 https://poshaktaranom.com/sitemap.xml
+https://www.poshaktaranom.com/robots.txt | first: 301 https://poshaktaranom.com/robots.txt | final: 200 1 https://poshaktaranom.com/robots.txt
+https://www.poshaktaranom.com/?utm_source=test&x=1 | first: 301 https://poshaktaranom.com/?utm_source=test&x=1 | final: 200 1 https://poshaktaranom.com/?utm_source=test&x=1
+https://www.poshaktaranom.com/products/womens-travis-style-sneakers | first: 301 https://poshaktaranom.com/products/womens-travis-style-sneakers | final: 200 1 https://poshaktaranom.com/products/womens-travis-style-sneakers
+ACME http://poshaktaranom.ir -> 404
+ACME http://www.poshaktaranom.ir -> 404
+ACME http://poshaktaranom.com -> 404
+ACME http://www.poshaktaranom.com -> 404
+HSTS https://www.poshaktaranom.ir -> Strict-Transport-Security: max-age=31536000
+HSTS https://poshaktaranom.com -> Strict-Transport-Security: max-age=31536000
+HSTS https://poshaktaranom.ir -> Strict-Transport-Security: max-age=31536000
+HSTS https://www.poshaktaranom.com -> Strict-Transport-Security: max-age=31536000
+HSTS https://api.poshaktaranom.com -> Strict-Transport-Security: max-age=31536000
+HSTS http://poshaktaranom.ir -> []
+api health: 200

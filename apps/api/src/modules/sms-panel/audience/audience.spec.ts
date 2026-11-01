@@ -196,16 +196,21 @@ async function main() {
     },
   };
   await assert.rejects(() => loadSourceHits(db, 'SALES_PARTNER', { q: 'نگار' }));
-  const settled = await settleSources<number>({
-    WHOLESALE: async () => [1],
-    WHOLESALE_REFERRAL: async () => [2],
-    SALES_PARTNER: async () => {
-      throw new Error('down');
+  const reported: string[] = [];
+  const settled = await settleSources<number>(
+    {
+      WHOLESALE: async () => [1],
+      WHOLESALE_REFERRAL: async () => [2],
+      SALES_PARTNER: async () => {
+        throw new Error('down');
+      },
+      RETAIL: async () => [4],
     },
-    RETAIL: async () => [4],
-  });
+    (source, err) => reported.push(`${source}:${(err as Error).message}`),
+  );
   assert.deepEqual(settled.partialSources, ['SALES_PARTNER']);
   assert.equal(settled.rows.length, 3);
+  assert.deepEqual(reported, ['SALES_PARTNER:down']);
 
   const inbound = readFileSync(join(__dirname, '..', 'sms-panel.service.ts'), 'utf8');
   const start = inbound.indexOf('async pollInbound()');

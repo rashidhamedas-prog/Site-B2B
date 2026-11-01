@@ -285,8 +285,8 @@ async function customerHits(
     const consents = await db.query<{ customerId: string; source: string | null }>(
       `SELECT "customerId" AS "customerId", source AS "source"
        FROM marketing_consents
-       WHERE channel = 'SMS' AND status = 'GRANTED' AND "customerId" = ANY($1::uuid[])`,
-      [ids],
+       WHERE channel = 'SMS' AND status = 'GRANTED' AND "customerId" = ANY($1::text[])`,
+      [ids.map(String)],
     );
     for (const row of consents) consentByCustomer.set(row.customerId, row.source || null);
     const orders = await db.query<OrderAgg>(

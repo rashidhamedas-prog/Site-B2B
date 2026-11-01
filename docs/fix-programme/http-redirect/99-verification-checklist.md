@@ -1,0 +1,18 @@
+# چک‌لیست نهایی
+- [ ] خلاصه ریسک 00 خوانده شد و کاهش ریسک هر مورد رعایت شد.
+- [ ] کنترل شبکه سالم بود. رفتار http با `curl -sSI` / `curl -v` تأیید شد.
+- [ ] فاز 01 کاملاً فقط‌خواندنی بود (allowlist).
+- [ ] تنها نوشتن SSH در فاز 02 فایل `deploy-approval.json` بود: اتمیک (tmp + mv)، با SHA کامل و goRef «Hamed GO 1405/08/10 14:42 — http→https redirect fix».
+- [ ] merge فقط پس از سبز شدن کامل CI انجام شد. deploy با تایمر و بدون FORCE.
+- [ ] فاز 03 فقط برای (b) و (c) و فقط با allowlist همان علت اجرا شد. backup در `/opt/taranom/backups/http-redirect-<ts>/` گرفته شد.
+- [ ] DB، volumeهای داده، `.env`، اسرار و سرویس‌های دیگر دست نخوردند. reboot انجام نشد.
+- [ ] هیچ کلید یا رمزی در فایل، لاگ یا چت نیامد (فقط `<key-path>`).
+- [ ] http→https روی هر چهار هاست یک hop است و کوئری حفظ شده. apex .ir → www.poshaktaranom.ir و www.com → poshaktaranom.com.
+- [ ] مقصد نهایی برای /، /about، محصول، sitemap.xml و robots.txt پاسخ 200 می‌دهد.
+- [ ] کانفیگ nginx به صورت پوشه mount شده است و `nginx -T` سرور با مخزن یکی است.
+- [ ] HSTS `max-age=31536000` فقط روی https است، بدون includeSubDomains و preload.
+- [ ] ACME challenge روی http پاسخ 404 از nginx می‌دهد (ریدایرکت نمی‌شود).
+- [ ] .ir/about دست‌نخورده است و به .com نمی‌رود. canonical و ساختار URL تغییر نکرده‌اند.
+- [ ] در صورت شکست: revert commit و فایل تأیید revert («Hamed GO 1405/08/10 14:42 — revert http redirect fix») انجام شد، یا backup فاز 03 بازگردانده شد. رفتار برابر baseline تأیید شد. force-push نشد.
+- [ ] هیچ ارسال یا انتشاری انجام نشد و هیچ داده‌ای تغییر نکرد.
+- [ ] گزارش نهایی و فهرست تصمیم‌های باقی‌مانده آماده است.

@@ -1784,7 +1784,9 @@ export class SmsPanelService {
         reason: `sms_unsubscribe:${source}`,
         createdByUserId: actorId,
       }),
-    ).catch(() => undefined);
+    ).catch((err: unknown) => {
+      this.logger.warn(`suppression mirror failed phone=${maskMobile(phone)}: ${String((err as Error)?.message || err)}`);
+    });
     await this.auditLog({
       actorId,
       action: 'unsubscribe.manual',
@@ -1894,9 +1896,13 @@ export class SmsPanelService {
       );
       // لغو و بازگشت روی شماره ثبت می‌شود. پرچم رضایت پیش‌فرض همکار عوض نمی‌شود.
       if (intent === 'UNSUBSCRIBE_11') {
-        await this.addUnsubscribe('system', phone, 'INBOUND_11').catch(() => undefined);
+        await this.addUnsubscribe('system', phone, 'INBOUND_11').catch((err: unknown) => {
+          this.logger.error(`inbound unsubscribe failed phone=${maskMobile(phone)}: ${String((err as Error)?.message || err)}`);
+        });
       } else if (intent === 'RESUBSCRIBE_12') {
-        await this.removeUnsubscribe('system', phone).catch(() => undefined);
+        await this.removeUnsubscribe('system', phone).catch((err: unknown) => {
+          this.logger.error(`inbound resubscribe failed phone=${maskMobile(phone)}: ${String((err as Error)?.message || err)}`);
+        });
       }
       n += 1;
     }

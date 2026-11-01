@@ -1,3 +1,17 @@
+## 2026-11-01 — http→https یک hop + HSTS + mount پوشه nginx (fix/http-redirect-02)
+
+- فاز 01 (فقط‌خواندنی): هر چهار هاست روی http پاسخ 301 درست می‌دهند و 200 گزارش‌شده بازتولید نشد. سرور = master، کانفیگ زنده = مخزن، بدون override nginx یا سرویس میزبان. تنها ایراد: `http://www.poshaktaranom.com` دو‌hop بود.
+- nginx: بلوک‌های :80 با مقصد هاردکد (بدون `$host`)، `default_server` با 444 (ACME باز)، HSTS فقط `max-age=31536000` روی همه 443ها (includeSubDomains حذف شد، بدون preload).
+- compose: `./nginx:/etc/nginx/taranom:ro` + `nginx -c`. deploy: `nginx -t` پیش از هر تغییر، recreate بدون شرط، بررسی `nginx -T`، `scripts/nginx-http-healthcheck.sh` و ثبت `logs/DEPLOYED_SHA`.
+- CI: job `nginx-config` (`nginx -t` روی stable و alpine + قرارداد کانتینری). گزارش: `docs/reports/2026-11-01-http-redirect.md`.
+
+## 2026-11-01 — SMS preview «خطا در بارگذاری منابع: WHOLESALE, RETAIL» (fix ریشه‌ای)
+
+- علت: `audience-sources.ts` کوئری `marketing_consents` ستون varchar `"customerId"` را با `$1::uuid[]` مقایسه می‌کرد → Postgres `character varying = uuid` → هر دو منبع مشتری partial. اصلاح: `ANY($1::text[])`؛ بدون migration تغییر نوع ستون. کوئری `orders` (ستون uuid) دست نخورد.
+- خطای منابع (`settleSources`، `sources()`) و city list حالا لاگ می‌شوند؛ inbound لغو11/12 و mirror suppression با موبایل ماسک‌شده لاگ می‌شوند.
+- خطای lookup لغو/لیست سیاه دیگر بی‌صدا رد نمی‌شود: `AudienceService` ۵۰۳ `SMS_SUPPRESSION_UNAVAILABLE` می‌دهد → پیش‌نمایش، prepare و ارسال کمپین مسدود. هک «WHOLESALE در partialSources» حذف شد.
+- تست: `audience-sources.pg.spec.ts` روی Postgres واقعی (جداول از migrationهای واقعی) + job CI `sms-audience-pg`؛ `audience.spec` برای onError. شاخه `fix/sms-preview-consent-cast`. بدون deploy؛ `deploy-approval.json` فقط با حامد.
+
 ## 2026-10-30 — Omnichannel PR-14 security + phase-review (#149؛ bots OFF)
 
 - Security: بدون CREDIT از phone-only؛ `timingSafeSecretEqual`؛ فقط private chat؛ ماسک `09*********`؛ unique→duplicate ۲۰۰؛ enable با audit+goRef.
