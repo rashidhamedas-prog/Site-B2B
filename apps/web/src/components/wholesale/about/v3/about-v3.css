@@ -110,7 +110,7 @@
 @media (min-width: 1024px) {
   .av3-hero-copy {
     position: absolute;
-    inset-block-end: 3rem;
+    inset-block-start: 3rem;
     inset-inline-start: 2rem;
     max-width: 34rem;
     padding: 2rem 2.25rem;

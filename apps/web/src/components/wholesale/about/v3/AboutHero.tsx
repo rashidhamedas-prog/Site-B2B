@@ -25,7 +25,14 @@ export function AboutHero() {
     <section className="av3-hero" aria-labelledby="about-h1">
       <picture>
         <source media="(min-width:768px)" srcSet={desktopSrcSet} sizes="100vw" />
-        <img {...mobile} alt={HERO_ALT} className="av3-hero-img" data-about-hero="" />
+        <img
+          {...mobile}
+          alt={HERO_ALT}
+          fetchPriority="high"
+          loading="eager"
+          className="av3-hero-img"
+          data-about-hero=""
+        />
       </picture>
       <div className="av3-wrap">
         <div className="av3-hero-copy">

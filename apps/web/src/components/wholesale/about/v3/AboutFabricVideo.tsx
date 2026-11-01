@@ -14,7 +14,9 @@ const MOBILE = {
 };
 
 /**
- * S3 loop. No autoplay: plays only while in view and motion is allowed (or the user un-stops it).
+ * S3 loop. `poster` downloads eagerly, so the server renders the 28 KB mobile frame to keep bandwidth
+ * for the hero (LCP); desktop swaps in the 360 KB frame only near the viewport.
+ *  No autoplay: plays only while in view and motion is allowed (or the user un-stops it).
  * Without JS or with reduced motion only the poster is shown.
  */
 export function AboutFabricVideo() {
@@ -37,12 +39,22 @@ export function AboutFabricVideo() {
     const video = videoRef.current;
     if (!video) return;
 
+    let posterIo: IntersectionObserver | undefined;
     if (window.matchMedia('(max-width:767px)').matches) {
-      video.poster = MOBILE.poster;
       const [webm, mp4] = Array.from(video.querySelectorAll('source'));
       if (webm) webm.src = MOBILE.webm;
       if (mp4) mp4.src = MOBILE.mp4;
       video.load();
+    } else {
+      posterIo = new IntersectionObserver(
+        ([entry]) => {
+          if (!entry?.isIntersecting) return;
+          video.poster = DESKTOP.poster;
+          posterIo?.disconnect();
+        },
+        { rootMargin: '600px 0px' },
+      );
+      posterIo.observe(video);
     }
 
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -58,6 +70,7 @@ export function AboutFabricVideo() {
     );
     io.observe(video);
     return () => {
+      posterIo?.disconnect();
       io.disconnect();
       video.pause();
     };
@@ -86,7 +99,7 @@ export function AboutFabricVideo() {
             loop
             preload="none"
             aria-hidden="true"
-            poster={DESKTOP.poster}
+            poster={MOBILE.poster}
             data-about-video=""
           >
             <source src={DESKTOP.webm} type="video/webm" />
