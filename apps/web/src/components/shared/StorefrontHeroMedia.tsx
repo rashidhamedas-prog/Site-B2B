@@ -49,7 +49,7 @@ export function StorefrontHeroMedia({
               alt: '',
               fill: true,
               sizes: '100vw',
-              quality: 70,
+              quality: 75,
             }).props.srcSet
           }
         />
