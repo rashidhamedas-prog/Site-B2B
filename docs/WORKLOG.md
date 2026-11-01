@@ -1,3 +1,10 @@
+## 2026-11-01 — http→https یک hop + HSTS + mount پوشه nginx (fix/http-redirect-02)
+
+- فاز 01 (فقط‌خواندنی): هر چهار هاست روی http پاسخ 301 درست می‌دهند و 200 گزارش‌شده بازتولید نشد. سرور = master، کانفیگ زنده = مخزن، بدون override nginx یا سرویس میزبان. تنها ایراد: `http://www.poshaktaranom.com` دو‌hop بود.
+- nginx: بلوک‌های :80 با مقصد هاردکد (بدون `$host`)، `default_server` با 444 (ACME باز)، HSTS فقط `max-age=31536000` روی همه 443ها (includeSubDomains حذف شد، بدون preload).
+- compose: `./nginx:/etc/nginx/taranom:ro` + `nginx -c`. deploy: `nginx -t` پیش از هر تغییر، recreate بدون شرط، بررسی `nginx -T`، `scripts/nginx-http-healthcheck.sh` و ثبت `logs/DEPLOYED_SHA`.
+- CI: job `nginx-config` (`nginx -t` روی stable و alpine + قرارداد کانتینری). گزارش: `docs/reports/2026-11-01-http-redirect.md`.
+
 ## 2026-10-30 — Omnichannel PR-14 security + phase-review (#149؛ bots OFF)
 
 - Security: بدون CREDIT از phone-only؛ `timingSafeSecretEqual`؛ فقط private chat؛ ماسک `09*********`؛ unique→duplicate ۲۰۰؛ enable با audit+goRef.

@@ -1,0 +1,15 @@
+{
+  "programme": "http-redirect",
+  "updatedAt": "2026-11-01T12:10:00Z",
+  "phases": {
+    "01-diagnosis": {
+      "status": "done",
+      "cause": "none-reproducible",
+      "causeDetail": "All four hosts return a single 301 to https on http with query preserved. Server HEAD == origin/master (6365d471), running nginx config == repo file, no host :80 service, override does not touch nginx, nginx force-recreated on every deploy since 2026-09-30. Causes (b),(c),(d) ruled out; (a) not present now. The reported http 200 could not be reproduced. The only remaining defect is a two-hop chain for http://www.poshaktaranom.com (-> https://www -> https://apex).",
+      "evidence": "docs/fix-programme/http-redirect-server-readonly.md"
+    },
+    "02-repo-fix": { "status": "in_progress", "branch": "fix/http-redirect-02" },
+    "03-direct-server": { "status": "skipped", "reason": "cause is not (b) or (c)" },
+    "04-verification": { "status": "pending" }
+  }
+}

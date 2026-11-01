@@ -155,6 +155,14 @@ if [ -z "$GO_REF" ]; then
   GO_REF="$(run_nolock python3 -c 'import json,sys; print(json.loads(sys.argv[1])["goRef"])' "$APPROVAL_JSON")"
 fi
 
+# Validate the just-pulled nginx config before touching any container.
+echo "$(date -Is) validating nginx config (nginx -t, directory mount)..."
+if ! run_nolock docker compose run --rm --no-deps -T --name "taranom_nginx_configtest_$$" \
+  nginx nginx -c /etc/nginx/taranom/nginx.conf -t; then
+  echo "$(date -Is) ERROR: nginx -t failed — deploy aborted before any container change"
+  exit 1
+fi
+
 drain_worker_or_abort "$DRAIN_TIMEOUT_SEC"
 
 echo "$(date -Is) building images..."
@@ -177,9 +185,23 @@ fi
 echo "$(date -Is) starting containers..."
 run_nolock docker compose up -d api web worker
 run_nolock docker compose stop worker-b >/dev/null 2>&1 || true
-# Force-recreate nginx: single-file bind of nginx.conf goes stale on inode replace
-# (git reset / rewrite); `up -d` alone can keep the old inode. Also remounts conf.d.
+# Always force-recreate nginx (directory bind + remounts conf.d), then prove the
+# running container sees the repo config — a stale config fails the deploy.
 run_nolock docker compose up -d nginx --no-deps --force-recreate
+nginx_ok=0
+for _ in $(seq 1 15); do
+  if run_nolock docker compose exec -T nginx nginx -c /etc/nginx/taranom/nginx.conf -T 2>/dev/null \
+    | grep -q 'return 301 https://www.poshaktaranom.ir'; then
+    nginx_ok=1
+    break
+  fi
+  sleep 2
+done
+if [ "$nginx_ok" != "1" ]; then
+  echo "$(date -Is) ERROR: running nginx does not show the repo http→https redirect config"
+  run_nolock docker compose logs --tail 40 nginx || true
+  exit 1
+fi
 
 echo "$(date -Is) schema is TypeORM migrations only (no safety-net SQL)"
 
@@ -195,7 +217,15 @@ if [ "$ok" != "1" ]; then
   exit 1
 fi
 
-echo "$(date -Is) deploy complete at $(git rev-parse --short HEAD)"
+echo "$(date -Is) checking nginx http→https redirects + HSTS..."
+if ! run_nolock bash "$APP_DIR/scripts/nginx-http-healthcheck.sh"; then
+  echo "$(date -Is) ERROR: nginx edge healthcheck failed"
+  exit 1
+fi
+
+mkdir -p "$(dirname "$DEPLOY_LOG")"
+echo "$TARGET_COMMIT" > "$(dirname "$DEPLOY_LOG")/DEPLOYED_SHA"
+echo "$(date -Is) deploy complete at $(git rev-parse --short HEAD) (deployed_sha=$TARGET_COMMIT)"
 consume_approval "$TARGET_COMMIT" "$GO_REF"
 echo "$(date -Is) approval consumed; logged to $DEPLOY_LOG"
 
