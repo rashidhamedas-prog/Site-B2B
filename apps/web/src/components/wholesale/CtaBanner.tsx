@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/ui/Button';
 import { Phone, Send } from 'lucide-react';
 
 export function CtaBanner({

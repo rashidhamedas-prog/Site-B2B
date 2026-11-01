@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ArrowLeft, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/ui/Button';
 import { channelSaleDisplay, toman } from '@/lib/product-display';
 
 interface Product {

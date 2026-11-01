@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ProductCatalog } from '@/components/wholesale/ProductCatalog';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/ui/Button';
 
 export const metadata: Metadata = {
   title: 'کلکسیون لینن — عمده از کارگاه مشهد',
