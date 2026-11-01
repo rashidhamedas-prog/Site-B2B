@@ -1,3 +1,9 @@
+## 2026-11-02 — CLS صفر کروم عمده (TASK-20261102-header-nav-cls)
+
+- اندازه‌گیری روی production (داده‌ی واقعی، Playwright + layout-shift sources) سه منبع داد: (۱) `nav.hidden.items-center` در ۱۴۴۰ حدود 34px جابه‌جا (0.000558) چون اسلات «دسته‌بندی» در `Suspense fallback={null}` دیر ظاهر می‌شد و ردیف `justify-between` را هل می‌داد؛ (۲) `FloatingContact` روی هوم با باز شدن نوار بوتیک از راه `bottom` بالا می‌پرید (۰٫۰۰۱–۰٫۰۰۷)؛ (۳) مهر اینماد 72×72 رزرو ولی لوگو 125×136 بود → شیفت 3px فوتر.
+- رفع: fallback هم‌اندازه `WholesaleCategoryNavFallback` (لینک «دسته‌بندی ▾» به `/products`، بدون JS هم کار می‌کند؛ لیست خالی هم همین را نشان می‌دهد)، جابه‌جایی دکمه شناور با `transform`، نسبت 125:136 برای اینماد. منو حذف نشد، Suspense برای TTFB حفظ شد.
+- تست: `e2e/header-nav-cls.spec.ts` (/، /about، /products در ۳۹۰ و ۱۴۴۰، CLS کل = 0) در ماتریس CI. گزارش: `docs/reports/2026-11-02-header-nav-cls.md`.
+
 ## 2026-11-01 — /about v3 (S0–S7) + فونت optional + حذف loading مسیر عمده (PR #152)
 
 - `/about` با ۸ بخش سرور‌رندر، تصاویر `/about/v3`، gsap فقط دسکتاپ بدون reduced-motion، دیالوگ فقط در `section#cta`؛ Vazirmatn `display: optional` و حذف `(wholesale)/loading.tsx` (تصمیم حامد). ۲۴/۲۴ تست `about-v3.spec.ts` سبز؛ LCP موبایل ۳٫۲۹s در برابر master ۳٫۷۰s، CLS صفر. گزارش: `docs/reports/2026-11-01-about-v3.md`.
