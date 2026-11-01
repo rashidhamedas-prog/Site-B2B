@@ -126,6 +126,40 @@ jobs:
       - name: Empty-DB omnichannel migrations up/down/up
         run: bash scripts/omnichannel-migrations-disposable-updown.sh
 
+  sms-audience-pg:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: taranom
+          POSTGRES_PASSWORD: drill
+          POSTGRES_DB: taranom_sms_pg_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U taranom -d taranom_sms_pg_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Build shared-types
+        run: npm run build -w @taranom/shared-types
+      - name: SMS audience sources on real Postgres
+        working-directory: apps/api
+        env:
+          NODE_ENV: test
+          SMS_PG_TEST_URL: postgres://taranom:drill@127.0.0.1:5432/taranom_sms_pg_test
+        run: npx ts-node --transpile-only src/modules/sms-panel/audience/audience-sources.pg.spec.ts
+
   deploy-lock-tests:
     runs-on: ubuntu-latest
     steps:
@@ -157,7 +191,7 @@ jobs:
   # that gate. Recommend GitHub Environment "production" required reviewers
   # (configure in repo Settings → Environments; not applied by this workflow file).
   deploy:
-    needs: [lint-and-build, omnichannel-migrate, deploy-lock-tests, nginx-config]
+    needs: [lint-and-build, omnichannel-migrate, sms-audience-pg, deploy-lock-tests, nginx-config]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     environment: production

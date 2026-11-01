@@ -128,6 +128,7 @@ export function presentAudienceContacts(contacts: AudienceContact[], role?: stri
 
 export async function settleSources<T>(
   loaders: Record<AudienceSource, () => Promise<T[]>>,
+  onError?: (source: AudienceSource, err: unknown) => void,
 ): Promise<{ rows: T[]; partialSources: AudienceSource[] }> {
   const sources = Object.keys(loaders) as AudienceSource[];
   const settled = await Promise.all(
@@ -136,6 +137,7 @@ export async function settleSources<T>(
         const rows = await loaders[source]();
         return { source, rows };
       } catch (err) {
+        onError?.(source, err);
         const message = err instanceof Error ? err.message : 'source failed';
         return { source, error: message };
       }
