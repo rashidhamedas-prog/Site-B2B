@@ -21,7 +21,7 @@
 @media (min-width: 1024px) {
   .av3-wrap { padding-inline: 2rem; }
 }
-.av3-crumbs { padding-top: 1.5rem; font-size: 0.75rem; color: #6b7280; }
+.av3-crumbs { padding-top: 1.5rem; font-size: 0.75rem; color: var(--av3-muted); }
 .av3-crumbs ol { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 .av3-crumbs a:hover { color: var(--av3-green); text-decoration: underline; }
 .av3-crumbs [aria-current] { font-weight: 600; color: var(--av3-green-deep); }
