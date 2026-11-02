@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/ui/Button';
 import { usePresence } from '@/components/motion/usePresence';
 import type { ReactNode } from 'react';
 import type { MenuItem } from '@/lib/menus';

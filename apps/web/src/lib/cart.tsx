@@ -2,8 +2,8 @@
 
 import { createContext, useContext, useReducer, useEffect, useRef, useState, ReactNode } from 'react';
 import { pulseCartHeartbeat } from '@/lib/cart-heartbeat';
-import { notifyCartAdded } from '@/components/motion/CartToast';
-import { registerCartSnapshot } from '@/lib/retail-analytics';
+import { notifyCartAdded } from '@/components/motion/cart-added-event';
+import { registerCartSnapshot } from '@/lib/cart-snapshot';
 
 export const WHOLESALE_CART_STORAGE_KEY = 'taranom_cart';
 const CART_STORAGE_KEY = WHOLESALE_CART_STORAGE_KEY;

@@ -1,6 +1,6 @@
 import type { ContentBlock } from '@/lib/cms/types';
-import { getDefaultBlocks } from '@/lib/cms/defaults';
-import { arr, findBlock, str, bool } from '@/lib/cms/fetch';
+import { defaultRetailChrome, defaultWholesaleChrome } from '@/lib/cms/chrome-defaults';
+import { arr, findBlock, str, bool } from '@/lib/cms/block-utils';
 
 export interface SiteChromeData {
   announcement?: {
@@ -37,7 +37,7 @@ export function parseChromeBlocks(blocks: ContentBlock[]): SiteChromeData {
 }
 
 export function defaultSiteChrome(channel: 'WHOLESALE' | 'RETAIL'): SiteChromeData {
-  return parseChromeBlocks(getDefaultBlocks(channel, 'chrome'));
+  return parseChromeBlocks(channel === 'WHOLESALE' ? defaultWholesaleChrome() : defaultRetailChrome());
 }
 
 export function chromeStr(chrome: Record<string, unknown> | undefined, key: string, fallback = '') {

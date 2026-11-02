@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
-import { Modal, Button } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 import { usePresence } from '@/components/motion/usePresence';
 import type { ThemePopupConfig, ThemeSettings } from './ThemeApply';
 

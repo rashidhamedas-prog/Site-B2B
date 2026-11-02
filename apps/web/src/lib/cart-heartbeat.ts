@@ -1,7 +1,4 @@
-import { apiClient } from './api';
-import { getToken } from './auth';
-
-function phoneFromShopperToken(): string {
+function phoneFromShopperToken(getToken: () => string | null): string {
   const token = getToken();
   if (!token) return '';
   try {
@@ -21,7 +18,8 @@ export function cartSessionId(): string {
   try {
     let id = localStorage.getItem(SESSION_KEY);
     if (!id || id.length < 8) {
-      id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+      const rand = crypto.getRandomValues(new Uint32Array(2));
+      id = `${Date.now().toString(36)}${rand[0].toString(36)}${rand[1].toString(36)}`.slice(0, 24);
       localStorage.setItem(SESSION_KEY, id);
     }
     return id;
@@ -40,13 +38,15 @@ export function pulseCartHeartbeat(input: {
   if (typeof window === 'undefined') return;
   if (timer) clearTimeout(timer);
   timer = setTimeout(() => {
-    apiClient
-      .post('/cart/heartbeat', {
-        channel: input.channel,
-        sessionId: cartSessionId(),
-        phone: input.phone || phoneFromShopperToken(),
-        items: input.items,
-      })
+    Promise.all([import('./api'), import('./auth')])
+      .then(([{ apiClient }, { getToken }]) =>
+        apiClient.post('/cart/heartbeat', {
+          channel: input.channel,
+          sessionId: cartSessionId(),
+          phone: input.phone || phoneFromShopperToken(getToken),
+          items: input.items,
+        }),
+      )
       .catch(() => undefined);
   }, 4000);
 }

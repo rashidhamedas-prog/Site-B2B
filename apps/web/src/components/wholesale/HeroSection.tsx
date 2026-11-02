@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/ui/Button';
 import { ArrowLeft } from 'lucide-react';
 import { HeroCarouselControls, useHeroCarousel } from '@/components/shared/HeroCarousel';
 import { StorefrontHeroMedia } from '@/components/shared/StorefrontHeroMedia';

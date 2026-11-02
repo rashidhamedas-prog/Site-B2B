@@ -6,7 +6,7 @@ import { User, Phone } from 'lucide-react';
 import { NewsTicker } from '@/components/shared/NewsTicker';
 import { isStorefrontHomePath, resolveTickerItems } from '@/lib/cms/news-ticker';
 import { StorefrontSearch } from '@/components/shared/StorefrontSearch';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/ui/Button';
 import { MobileMenuButton } from './MobileMenu';
 import { CartBadge } from './CartBadge';
 import { MegaNav } from './MegaNav';

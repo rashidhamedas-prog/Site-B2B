@@ -1,6 +1,9 @@
 'use client';
 
 import { hostLooksRetail } from './channel';
+import { readRegisteredCartSnapshot } from './cart-snapshot';
+
+export { registerCartSnapshot } from './cart-snapshot';
 import {
   ga4EnvFor,
   ensureGtagStub,
@@ -423,18 +426,10 @@ const RETAIL_CART_STORAGE_KEY = 'taranom_retail_cart';
 const DAY_MS = 86_400_000;
 
 type CartCohort = { fp: string; since: number };
-type CartSnapshotReader = () => RetailAnalyticsItemInput[] | null;
-
-let cartSnapshotReader: CartSnapshotReader | null = null;
-
-/** Cart owners register a synchronous reader so add_to_cart can fingerprint the post-add cart. */
-export function registerCartSnapshot(reader: CartSnapshotReader | null) {
-  cartSnapshotReader = reader;
-}
 
 function readCartSnapshot(): RetailAnalyticsItemInput[] | null {
   try {
-    const fromOwner = cartSnapshotReader?.();
+    const fromOwner = readRegisteredCartSnapshot();
     if (fromOwner) return fromOwner;
     if (typeof window === 'undefined') return null;
     // zustand persist writes synchronously inside set(), before trackAddToCart runs.

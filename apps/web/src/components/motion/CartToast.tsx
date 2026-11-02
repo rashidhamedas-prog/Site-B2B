@@ -1,13 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { CART_ADDED_EVENT as EVENT } from './cart-added-event';
 
-const EVENT = 'taranom:cart-added';
-
-export function notifyCartAdded(name?: string) {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent(EVENT, { detail: { name: name?.trim() ?? '' } }));
-}
+export { notifyCartAdded } from './cart-added-event';
 
 export function CartToast() {
   const [message, setMessage] = useState('');

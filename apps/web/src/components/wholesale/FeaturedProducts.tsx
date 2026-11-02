@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/ui/Button';
 import { slimWholesaleCatalogProduct } from '@/lib/slim-wholesale-catalog';
 import { fetchProductsBlockCatalog } from '@/lib/cms/fetch-products-block';
 import { WholesaleProductCard, type WholesaleCardProduct } from './WholesaleProductCard';

@@ -237,8 +237,7 @@ export function publicAnalyticsPagePath(
   return q ? `${path}?${q}` : path;
 }
 
-/** SSR marker rendered by GoogleAnalyticsProvider on routes where the app sends page_view itself. */
-export const GA_PAGEVIEW_OWNER_ATTR = 'data-ga-pageview-owner';
+export { GA_PAGEVIEW_OWNER_ATTR } from './ga-pageview-owner';
 
 /**
  * gtag `set` fields to queue before gtm.js loads. The container's Google tag otherwise
