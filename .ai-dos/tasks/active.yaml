@@ -88,7 +88,7 @@ tasks:
       - "apps/web/src/lib/retail-analytics.ts"
       - "docs/WORKLOG.md"
       - "docs/reports/2026-11-02-shared-js-reduction.md"
-    notes: "Initial JS gz /about 180.8→142.7 kB (−21%), / 212.2→190.3, /products 221.1→199.9. LH mobile simulated median: / LCP 3656→3623ms TBT 275→87ms; /about LCP 3321→3174ms TBT 46→38ms; CLS 0. LCP acceptance NOT met: simulated LCP dominated by framework JS (101 kB), render-blocking CSS, font preload and /about images. Follow-ups in docs/reports/2026-11-02-shared-js-reduction.md. GO حامد 1405/08/11 up to PR only; no merge/deploy."
+    notes: "Initial JS gz /about 180.8→142.7 kB (−21%), / 212.2→190.3, /products 221.1→199.9. LH mobile simulated median: / LCP 3656→3623ms TBT 275→87ms; /about LCP 3321→3174ms TBT 46→38ms; CLS 0. LCP acceptance NOT met: simulated LCP dominated by framework JS (101 kB), render-blocking CSS, font preload and /about images. Follow-ups in docs/reports/2026-11-02-shared-js-reduction.md. GO حامد 1405/08/11 up to PR only; no merge/deploy. Round 2 (LCP-only, Hamed: do not merge yet): LCP element = hero img (fetchpriority high) on both pages, Render Delay dominant; headless Windows first-frame swap ~144ms puts observed LCP after all JS/load so Lantern counts the whole doc/CSS/JS/font. Offline Lantern bound: /about with poster+logo+all non-framework JS removed = 2682ms > 2657 target; no code change kept. Medians current master→branch: / 3644→3664ms, /about 3324→3222ms, TBT 173→134 / 53→39, CLS 0."
   - id: "TASK-20261029-omni-pr14-order-bots"
     title: "Omnichannel PR-14: order bots CODE (flags OFF)"
     status: "in_progress"

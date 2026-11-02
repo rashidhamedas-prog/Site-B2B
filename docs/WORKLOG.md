@@ -2,6 +2,7 @@
 
 - JS اولیه `/about` از 180.8 به 142.7 kB gzip (−21%)، `/` و `/products` حدود −10%؛ JS اختصاصی layout عمده از ~67 به 28.5 kB. روش: جدا کردن پیش‌فرض chrome از `lib/cms/defaults`، `apiClient` و `product-display` با `import()` در جزایر layout، `next/dynamic` (`ssr:false`) برای GA/web-vitals، LandingPopups، FloatingContact و ScrollToTop، و import مستقیم به‌جای barrel `components/ui`.
 - Lighthouse موبایل (simulated، میانه ۳): `/` LCP 3656→3623ms و TBT 275→87ms؛ `/about` LCP 3321→3174ms؛ CLS صفر. معیار LCP <2.5s/−20% برآورده نشد؛ بخش اصلی LCP شبیه‌سازی‌شده فریم‌ورک، CSS، فونت و تصاویر `/about` است. گزارش: `docs/reports/2026-11-02-shared-js-reduction.md`. بدون merge/deploy.
+- دور دوم LCP (تصمیم حامد، همان PR #158): عنصر LCP هر دو صفحه تصویر هیرو با `fetchpriority=high` است و فاز غالب Render Delay است (`/` ~3.2s، `/about` ~2.6s). علت: روی Chrome headless ویندوز swap فریم اول ~۱۴۴ms طول می‌کشد، پس LCP مشاهده‌شده بعد از اجرای همه JS و `load` می‌افتد و Lantern کل doc/CSS/JS/فونت را در گراف LCP می‌گذارد. شبیه‌سازی آفلاین نشان داد حتی حذف همه JS غیر فریم‌ورک، poster و لوگو، `/about` را فقط به 2682ms می‌رساند (هدف 2657). هیچ تغییر کدی نگه داشته نشد. میانه‌ها روی master فعلی→شاخه: `/` 3644→3664ms، `/about` 3324→3222ms، TBT 173→134 و 53→39، CLS صفر.
 
 ## 2026-11-02 — CLS صفر کروم عمده (TASK-20261102-header-nav-cls)
 
