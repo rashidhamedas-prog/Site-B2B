@@ -3,6 +3,8 @@
 /** Messenger / catalog outbox events (excludes SMS, search, marketing noise). */
 export function isChannelPublishEventType(eventType: string) {
   const t = String(eventType || '');
+  // product.video.* is a media transcode job, not a messenger post (mirrors API gate-block-reason).
+  if (t.startsWith('product.video.')) return false;
   return t.startsWith('product.') || t.startsWith('blog.') || t.startsWith('cms.') || t.startsWith('publication.');
 }
 

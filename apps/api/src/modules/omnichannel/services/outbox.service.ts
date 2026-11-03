@@ -81,7 +81,10 @@ SET status = $2,
 WHERE id = $1
 `;
 
-/** Soft-cancel waiting work — never DELETE. DONE keeps audit/retention history. */
+/**
+ * Soft-cancel waiting work — never DELETE. DONE keeps audit/retention history.
+ * product.video.* is skipped: cancelling it would strand the product_video row in queued.
+ */
 export const CANCEL_PENDING_SQL = `
 UPDATE omnichannel_outbox_events
 SET status = 'DONE',
@@ -91,6 +94,7 @@ SET status = 'DONE',
     "lockedBy" = NULL,
     "updatedAt" = NOW()
 WHERE status = 'PENDING'
+  AND "eventType" NOT LIKE 'product.video.%'
 RETURNING id
 `;
 
@@ -149,6 +153,7 @@ SET status = 'DONE',
     "updatedAt" = NOW()
 WHERE status = 'PROCESSING'
   AND ("lockedAt" IS NULL OR "lockedAt" < NOW() - ($2 * INTERVAL '1 minute'))
+  AND "eventType" NOT LIKE 'product.video.%'
 RETURNING id
 `;
 

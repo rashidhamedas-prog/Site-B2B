@@ -94,6 +94,12 @@ async function main() {
   assert(!CANCEL_PENDING_CHANNEL_SQL.includes('sales_partner'), 'channel cancel skips sales_partner');
   assert(CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL.includes('ANY($2::text[])'), 'channel cancel respects configured bots');
   assert(CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL.includes('"channel" IS NULL'), 'unscoped publish rows still cleared');
+  for (const [name, sql] of Object.entries({ CANCEL_PENDING_SQL, CANCEL_STALE_PROCESSING_SQL })) {
+    assert(
+      /AND "eventType" NOT LIKE 'product\.video\.%'/.test(sql),
+      `${name} (scope all) never cancels product.video.* transcode events`,
+    );
+  }
   for (const [name, sql] of Object.entries({
     CANCEL_PENDING_CHANNEL_SQL,
     CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL,
