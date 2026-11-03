@@ -1,8 +1,31 @@
 import React from 'react';
-import Image, { getImageProps } from 'next/image';
+import { preload } from 'react-dom';
+import { getImageProps } from 'next/image';
+
+export const HERO_MOBILE_MEDIA = '(max-width: 767px)';
+export const HERO_DESKTOP_MEDIA = '(min-width: 768px)';
+const HERO_SIZES = '100vw';
+
+type HeroPlate = { src: string; srcSet?: string };
 
 function isLocalStaticAsset(src: string): boolean {
   return src.startsWith('/') && !src.startsWith('//') && !src.startsWith('/_next/');
+}
+
+/** Local `/banners/*.webp` plates are pre-optimized; only remote media goes through the optimizer. */
+function resolvePlate(src: string): HeroPlate {
+  if (isLocalStaticAsset(src)) return { src };
+  const { props } = getImageProps({ src, alt: '', fill: true, sizes: HERO_SIZES, quality: 75 });
+  return { src: props.src, srcSet: props.srcSet };
+}
+
+function preloadPlate(plate: HeroPlate, media?: string) {
+  preload(plate.src, {
+    as: 'image',
+    fetchPriority: 'high',
+    ...(plate.srcSet ? { imageSrcSet: plate.srcSet, imageSizes: HERO_SIZES } : {}),
+    ...(media ? { media } : {}),
+  });
 }
 
 export function StorefrontHeroMedia({
@@ -18,52 +41,40 @@ export function StorefrontHeroMedia({
   className: string;
   priority: boolean;
 }) {
-  if (isLocalStaticAsset(src)) {
-    const mobile = mobileSrc && isLocalStaticAsset(mobileSrc) ? mobileSrc : undefined;
-    return (
-      <picture>
-        {/* The initial HTML exposes exactly one matching source to the preload scanner. */}
-        {mobile ? <source media="(min-width: 768px)" srcSet={src} /> : null}
-        {/* Pre-optimized local WebP plates should not be re-encoded by Next. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={mobile || src}
-          alt={alt}
-          fetchPriority={priority ? 'high' : 'auto'}
-          loading={priority ? 'eager' : 'lazy'}
-          decoding="async"
-          className={`absolute inset-0 h-full w-full ${className}`}
-        />
-      </picture>
-    );
+  const desktop = resolvePlate(src);
+  const mobile = mobileSrc ? resolvePlate(mobileSrc) : undefined;
+  const fallback = mobile ?? desktop;
+
+  // Preload media queries must mirror the <picture> sources exactly, otherwise
+  // the browser fetches a plate it never paints.
+  if (priority) {
+    if (mobile) {
+      preloadPlate(mobile, HERO_MOBILE_MEDIA);
+      preloadPlate(desktop, HERO_DESKTOP_MEDIA);
+    } else {
+      preloadPlate(desktop);
+    }
   }
 
   return (
     <picture>
-      {mobileSrc ? (
+      {mobile ? (
         <source
-          media="(max-width: 767px)"
-          srcSet={
-            getImageProps({
-              src: mobileSrc,
-              alt: '',
-              fill: true,
-              sizes: '100vw',
-              quality: 75,
-            }).props.srcSet
-          }
+          media={HERO_DESKTOP_MEDIA}
+          srcSet={desktop.srcSet ?? desktop.src}
+          sizes={desktop.srcSet ? HERO_SIZES : undefined}
         />
       ) : null}
-      <Image
-        src={src}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={fallback.src}
+        srcSet={fallback.srcSet}
+        sizes={fallback.srcSet ? HERO_SIZES : undefined}
         alt={alt}
-        fill
-        priority={priority}
         fetchPriority={priority ? 'high' : 'auto'}
         loading={priority ? 'eager' : 'lazy'}
-        quality={75}
-        sizes="100vw"
-        className={className}
+        decoding={priority ? undefined : 'async'}
+        className={`absolute inset-0 h-full w-full ${className}`}
       />
     </picture>
   );

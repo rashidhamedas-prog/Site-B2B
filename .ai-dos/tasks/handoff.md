@@ -1,3 +1,10 @@
+## 2026-11-04T00:00:00Z — TASK-20261104-lcp-mobile (perf/lcp-mobile)
+
+- Root cause: live hero plates are local `/banners/*.webp`, so `StorefrontHeroMedia` rendered a raw `<img>` with no preload at all; on the remote branch Next's `priority` preloaded the desktop plate while phones paint the mobile `<source>`.
+- Fix: one `<picture>` for every plate type; slide 0 calls `ReactDOM.preload` per plate with `media` mirroring the sources ((max-width: 767px) mobile, (min-width: 768px) desktop) and `imageSrcSet`/`imageSizes` for optimizer plates. Slide 0 renders with no opacity/transition/scale/fade until the carousel first moves (`hasAdvanced`); autoplay arms only after `load` + idle. `images.formats` avif first. PDP `priority` only on gallery index 0.
+- Already compliant, unchanged: home product grids (no imagePriority), category banners (fill + aspect + lazy/low), blog list/post (one priority each), hero frame height (CSS aspect-ratio + max-height).
+- Reclaimed stale overlapping claims listed in the task notes.
+
 ## 2026-11-03T12:42:00Z — PR #159 independent review fixes
 
 - Fixed review HIGH/MEDIUM/LOW findings: bounded MinIO multipart + incomplete abort, independent byte counter, product row lock + one-live partial unique index + 23505→409, scoped nginx 210m, UUID validation, public visibility, and candidate-key confinement.

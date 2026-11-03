@@ -501,7 +501,7 @@ export function ProductDetail({
                 <ProductImage
                   src={mainImage}
                   alt={resolveProductImageAlt(product.imageAlts, mainImage, { name: product.name, fabric: product.specs?.fabricType || product.fabric, index: activeItem?.imageIndex ?? 0 })}
-                  priority
+                  priority={activeMedia === 0}
                   sizes={PDP_MAIN_IMAGE_SIZES}
                 />
               )}

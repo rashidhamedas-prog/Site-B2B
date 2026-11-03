@@ -1,3 +1,8 @@
+## 2026-11-04 — LCP موبایل: preload هیرو با art direction (perf/lcp-mobile)
+
+- علت در کد: پلیت‌های هیرو زنده local (`/banners/*.webp`) بودند و `StorefrontHeroMedia` برایشان `<img>` خام بدون هیچ preload می‌ساخت؛ در شاخه remote هم preload برای تصویر دسکتاپ بود. حالا اسلاید ۰ برای هر پلیت `ReactDOM.preload` با `media` هم‌خوان با `<picture>` دارد؛ اسلاید ۰ تا اولین جابه‌جایی carousel بدون opacity/transition/scale/fade رندر می‌شود و autoplay بعد از `load` شروع می‌شود. PDP فقط تصویر اول priority دارد؛ `formats` با avif شروع می‌شود.
+- شواهد: HTML هر دو host حالا ۲ preload تصویر در `<head>` و دقیقاً یک `<img fetchpriority="high">` دارد (master: صفر). Lighthouse موبایل simulated (۳ بار، `--disable-gpu`): load delay تصویر از ۱۲۰–۴۳۰ms به ۰–۱۲۵ms رسید، ولی LCP شبیه‌سازی‌شده تقریباً ثابت ماند (.com حدود 3.96s، .ir حدود 4.1s، مثل master)، چون FCP شبیه‌سازی‌شده خودش ~2.3s است. معیار LCP < 2.0s برآورده نشد؛ بدون merge. گزارش: `docs/reports/2026-11-04-lcp-mobile.md`.
+
 ## 2026-11-03 — ویدیوی محصول، فاز ۰۱ (DB/storage/upload API)
 
 - migration افزایشی `product_video`، bucket خصوصی فایل خام، آپلود stream با کنترل magic/MIME/پسوند و صف outbox اضافه شد؛ API ادمین برای مشاهده/حذف/retry/پوستر و endpoint عمومی فقط برای ویدیوی آماده ثبت شد.

@@ -3,7 +3,11 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft } from 'lucide-react';
-import { HeroCarouselControls, useHeroCarousel } from '@/components/shared/HeroCarousel';
+import {
+  HeroCarouselControls,
+  heroSlideLayerClass,
+  useHeroCarousel,
+} from '@/components/shared/HeroCarousel';
 import { StorefrontHeroMedia } from '@/components/shared/StorefrontHeroMedia';
 import {
   normalizeHeroSlides,
@@ -130,9 +134,7 @@ export function HeroSection(props: HeroSectionProps) {
         return (
           <div
             key={`${s.imageUrl}-${i}`}
-            className={`absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none ${
-              isActive ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
+            className={heroSlideLayerClass(isActive, carousel.hasAdvanced)}
             aria-hidden={!isActive}
           >
             <StorefrontHeroMedia
@@ -158,7 +160,10 @@ export function HeroSection(props: HeroSectionProps) {
       <div
         className={`container-site relative z-10 pb-10 pt-10 sm:pb-14 sm:pt-12 lg:pb-16 lg:pt-12 ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
       >
-        <div key={`ws-copy-${carousel.index}`} className="animate-fade-in">
+        <div
+          key={`ws-copy-${carousel.index}`}
+          className={carousel.hasAdvanced ? 'animate-fade-in motion-reduce:animate-none' : undefined}
+        >
           <WholesaleSlideCopy slide={slide} artwork={isArtwork} titleAs={isHome ? 'h2' : 'h1'} />
         </div>
       </div>
