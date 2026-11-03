@@ -1,3 +1,8 @@
+## 2026-11-03 — ویدیوی محصول، فاز ۰۱ (DB/storage/upload API)
+
+- migration افزایشی `product_video`، bucket خصوصی فایل خام، آپلود stream با کنترل magic/MIME/پسوند و صف outbox اضافه شد؛ API ادمین برای مشاهده/حذف/retry/پوستر و endpoint عمومی فقط برای ویدیوی آماده ثبت شد.
+- تست: API typecheck و build سبز؛ `npm test` هر ۲۰۹ spec سبز. integration واقعی MinIO/Postgres نوشته شد و به‌علت نبود `MINIO_TEST_ENDPOINT`/`DATABASE_URL_TEST` محلی skip شد. بدون merge/deploy.
+
 ## 2026-11-02 — کاهش JS مشترک layout عمده (TASK-20261101-shared-js-reduction)
 
 - JS اولیه `/about` از 180.8 به 142.7 kB gzip (−21%)، `/` و `/products` حدود −10%؛ JS اختصاصی layout عمده از ~67 به 28.5 kB. روش: جدا کردن پیش‌فرض chrome از `lib/cms/defaults`، `apiClient` و `product-display` با `import()` در جزایر layout، `next/dynamic` (`ssr:false`) برای GA/web-vitals، LandingPopups، FloatingContact و ScrollToTop، و import مستقیم به‌جای barrel `components/ui`.

@@ -1,3 +1,10 @@
+## 2026-11-03T12:00:00Z — Product video phase 01 complete (PR pending)
+
+- Branch/worktree: `feat/product-video-01` / `D:/proje/Site-B2B-video-01`; scope stayed inside phase-01 claims plus unit-spec registration/docs.
+- Added additive `product_video` migration, private raw MinIO streaming upload with signature/type/200MB enforcement and rollback, IDs-only transcode outbox enqueue, admin lifecycle/poster APIs, and ready-only public API.
+- Evidence: `apps/api npx tsc --noEmit -p tsconfig.json` exit 0; `npm run build` exit 0; `npm test` 209/209 exit 0. MinIO/Postgres integration specs skipped locally because `MINIO_TEST_ENDPOINT` / `DATABASE_URL_TEST` are unset.
+- No contract shape changed; no phase-02 worker/Docker files, web, env, compose, deploy, or production access.
+
 ## 2026-11-03T08:30:00Z — Product video: contract (00) + parallel 01/02 launched
 
 - Source: owner package `product-video-cursor-final.zip` (00–05). `UI-SPEC.md` missing → phases 03/04 blocked by owner decision; 01/02 only.
