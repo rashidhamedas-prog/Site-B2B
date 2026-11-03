@@ -101,10 +101,11 @@ async function main() {
     const a = mp4OutputArgs(720, 23).join(' ');
     for (const f of [
       '-map 0:v:0', '-map 0:a:0?', '-map_metadata -1', '-c:v libx264', '-preset slow', '-crf 23',
-      '-profile:v high', '-pix_fmt yuv420p', "-vf scale=-2:'min(720,ih)'", '-c:a aac', '-b:a 96k', '-ac 2',
+      '-profile:v high', '-pix_fmt yuv420p', "-vf scale=-2:'trunc(min(720,ih)/2)*2'", '-c:a aac', '-b:a 96k', '-ac 2',
       '-movflags +faststart',
     ]) assert(a.includes(f), `mp4 720 flag ${f}`);
-    assert(mp4OutputArgs(480, 24).join(' ').includes("-crf 24") && mp4OutputArgs(480, 24).join(' ').includes("min(480,ih)"), 'mp4 480 crf 24');
+    assert(mp4OutputArgs(480, 24).join(' ').includes("-crf 24") && mp4OutputArgs(480, 24).join(' ').includes("trunc(min(480,ih)/2)*2"), 'mp4 480 crf 24');
+    assert(webmOutputArgs(720).join(' ').includes("-vf scale=-2:'trunc(min(720,ih)/2)*2'"), 'webm even height');
     const w = webmOutputArgs(720).join(' ');
     for (const f of ['-c:v libvpx-vp9', '-crf 33', '-b:v 0', '-row-mt 1', '-deadline good', '-cpu-used 4', '-c:a libopus', '-b:a 64k']) {
       assert(w.includes(f), `webm flag ${f}`);

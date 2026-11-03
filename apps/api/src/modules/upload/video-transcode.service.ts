@@ -24,7 +24,12 @@ export const VIDEO_POSTER_QUALITY = 80;
 export const VIDEO_POSTER_POINTS = [10, 50, 90] as const;
 export const VIDEO_DEFAULT_POSTER_POINT = 50;
 
-/** Exact encoder flags from the phase-02 spec. */
+/** yuv420p (libx264/libvpx) needs even dimensions; an odd source height under the cap would fail. */
+export function evenScaleFilter(height: number): string {
+  return `scale=-2:'trunc(min(${height},ih)/2)*2'`;
+}
+
+/** Encoder flags from the phase-02 spec. */
 export function mp4OutputArgs(height: number, crf: number): string[] {
   return [
     '-map', '0:v:0',
@@ -35,7 +40,7 @@ export function mp4OutputArgs(height: number, crf: number): string[] {
     '-crf', String(crf),
     '-profile:v', 'high',
     '-pix_fmt', 'yuv420p',
-    '-vf', `scale=-2:'min(${height},ih)'`,
+    '-vf', evenScaleFilter(height),
     '-c:a', 'aac',
     '-b:a', '96k',
     '-ac', '2',
@@ -55,7 +60,7 @@ export function webmOutputArgs(height: number): string[] {
     '-deadline', 'good',
     '-cpu-used', '4',
     '-pix_fmt', 'yuv420p',
-    '-vf', `scale=-2:'min(${height},ih)'`,
+    '-vf', evenScaleFilter(height),
     '-c:a', 'libopus',
     '-b:a', '64k',
     '-ac', '2',

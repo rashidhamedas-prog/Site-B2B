@@ -65,6 +65,42 @@ class DirStore implements VideoObjectStorePort {
   }
 }
 
+/** 640x359 source: yuv420p needs even height, so outputs must come out 358 rather than fail. */
+async function oddHeightCase(work: string) {
+  const fixture = join(work, 'odd.mp4');
+  const gen = spawnSync('ffmpeg', [
+    '-hide_banner', '-loglevel', 'error', '-nostdin',
+    '-f', 'lavfi', '-i', 'testsrc=duration=1:size=640x359:rate=24',
+    '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv444p', '-y', fixture,
+  ], { windowsHide: true, shell: false });
+  assert(gen.status === 0, `odd fixture generation failed: ${gen.stderr}`);
+  const store = new DirStore(join(work, 'odd-store'));
+  const srcKey = `src/${VIDEO_ID}-odd`;
+  store.seed(VIDEO_SRC_BUCKET, srcKey, fixture);
+  const row: Record<string, unknown> = { id: VIDEO_ID, productId: PRODUCT_ID, status: 'queued', srcKey, deletedAt: null };
+  const repo = {
+    async findOne() { return { ...row }; },
+    async update(_id: string, patch: Record<string, unknown>) { Object.assign(row, patch); },
+  };
+  const tmpRoot = join(work, 'odd-tmp');
+  mkdirSync(tmpRoot);
+  const res = await new VideoTranscodeService(repo as never, store, {
+    runner: new FfmpegRunner(),
+    tmpRoot,
+    statfs: async () => ({ bavail: 10 * 1024 * 1024, bsize: 4096 }),
+  } as never).process({ videoId: VIDEO_ID, productId: PRODUCT_ID });
+  assert(res.status === 'ready', `odd-height source transcodes: ${JSON.stringify(res)} code=${row.errorCode}`);
+  const prefix = `videos/${PRODUCT_ID}/${VIDEO_ID}`;
+  for (const name of ['720.mp4', '480.mp4', '720.webm']) {
+    const probe = spawnSync('ffprobe', [
+      '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json',
+      store.path('taranom-products', `${prefix}/${name}`),
+    ], { windowsHide: true, shell: false, encoding: 'utf8' });
+    const s = JSON.parse(probe.stdout).streams[0];
+    assert(Number(s.height) === 358 && Number(s.width) % 2 === 0, `${name} even dims (${s.width}x${s.height})`);
+  }
+}
+
 async function main() {
   if (!hasBin('ffmpeg') || !hasBin('ffprobe')) {
     console.log('video-transcode.ffmpeg.spec.ts: SKIP (ffmpeg/ffprobe not on PATH)');
@@ -151,6 +187,7 @@ async function main() {
     assert(store.removed.includes(`${VIDEO_SRC_BUCKET}/${srcKey}`), 'src removed from private bucket');
     assert(!existsSync(store.path(VIDEO_SRC_BUCKET, srcKey)) && row.srcKey === null, 'src gone + srcKey null');
     assert(readdirSync(tmpRoot).length === 0, 'tmp workdir removed');
+    await oddHeightCase(work);
     console.log(`video-transcode.ffmpeg.spec.ts: ok (${Date.now() - started}ms, bytesOut=${row.bytesOut})`);
   } finally {
     rmSync(work, { recursive: true, force: true });
