@@ -163,7 +163,9 @@ export class ProductVideoService {
       value < VIDEO_MIN_SORT_ORDER ||
       value > VIDEO_MAX_SORT_ORDER
     ) {
-      throw new BadRequestException('جایگاه ویدیو باید عدد صحیح ۲ یا بیشتر باشد؛ جایگاه اول همیشه تصویر است.');
+      throw new BadRequestException(
+        'جایگاه ویدیو باید عدد صحیحی بین ۲ تا ۱۰۰ باشد؛ جایگاه اول همیشه تصویر است.',
+      );
     }
     const row = await this.current(productId);
     if (!row) throw new NotFoundException('ویدیوی محصول پیدا نشد.');
