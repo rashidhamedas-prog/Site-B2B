@@ -5,6 +5,8 @@ import { getToken } from './auth';
 export const VIDEO_MAX_BYTES = 200 * 1024 * 1024;
 export const VIDEO_MAX_SEC = 60;
 export const VIDEO_MIN_SORT_ORDER = 2;
+export const VIDEO_MAX_SORT_ORDER = 100;
+export const VIDEO_PROBE_TIMEOUT_MS = 5_000;
 export const VIDEO_POLL_MS = 5_000;
 export const VIDEO_UPLOAD_MAX_RESTARTS = 3;
 
@@ -74,23 +76,36 @@ export const VIDEO_ACCEPT = '.mp4,.mov,.webm,video/mp4,video/quicktime,video/web
 export function validateVideoFile(file: File): { file: File } | { error: string } {
   const ext = /\.([^.]+)$/.exec(file.name.toLowerCase())?.[1] ?? '';
   const expected = TYPE_BY_EXT[ext];
-  const mime = (file.type || '').toLowerCase();
+  const mime = (file.type || '').toLowerCase().split(';', 1)[0].trim();
   if (!expected || (mime && mime !== expected)) return { error: VIDEO_MESSAGES.BAD_TYPE };
   if (file.size > VIDEO_MAX_BYTES) return { error: VIDEO_MESSAGES.TOO_BIG };
   if (mime) return { file };
   return { file: new File([file], file.name, { type: expected, lastModified: file.lastModified }) };
 }
 
-/** Reads duration from metadata only. Resolves null when the browser cannot decode the container. */
-export function probeVideoDuration(file: File, timeoutMs = 10_000): Promise<number | null> {
+/**
+ * Reads duration from metadata only. Resolves null when the browser cannot decode the container
+ * (e.g. HEVC .mov in desktop Chrome), on timeout, or when `signal` aborts; the worker still
+ * enforces the 60s limit (TOO_LONG).
+ */
+export function probeVideoDuration(
+  file: File,
+  opts: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<number | null> {
   return new Promise((resolve) => {
+    if (opts.signal?.aborted) {
+      resolve(null);
+      return;
+    }
     const url = URL.createObjectURL(file);
     const video = document.createElement('video');
     let settled = false;
+    const onAbort = () => finish(null);
     const finish = (value: number | null) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      opts.signal?.removeEventListener('abort', onAbort);
       video.removeAttribute('src');
       try {
         video.load();
@@ -100,7 +115,8 @@ export function probeVideoDuration(file: File, timeoutMs = 10_000): Promise<numb
       URL.revokeObjectURL(url);
       resolve(value);
     };
-    const timer = setTimeout(() => finish(null), timeoutMs);
+    const timer = setTimeout(() => finish(null), opts.timeoutMs ?? VIDEO_PROBE_TIMEOUT_MS);
+    opts.signal?.addEventListener('abort', onAbort, { once: true });
     video.preload = 'metadata';
     video.muted = true;
     video.onloadedmetadata = () => {
@@ -302,7 +318,8 @@ export async function commitProductVideoDraft(
     return;
   }
   if (draft.sortOrder != null && draft.sortOrder !== draft.initialSortOrder) {
-    await setProductVideoOrder(productId, draft.sortOrder);
+    const order = Math.min(Math.max(draft.sortOrder, VIDEO_MIN_SORT_ORDER), VIDEO_MAX_SORT_ORDER);
+    await setProductVideoOrder(productId, order);
   }
 }
 

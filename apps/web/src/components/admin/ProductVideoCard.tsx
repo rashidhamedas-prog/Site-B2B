@@ -23,6 +23,7 @@ import {
   VIDEO_ACCEPT,
   VIDEO_MAX_SEC,
   VIDEO_MESSAGES,
+  VIDEO_MAX_SORT_ORDER,
   VIDEO_MIN_SORT_ORDER,
   VIDEO_POLL_MS,
   VideoUploadError,
@@ -81,7 +82,7 @@ export function ProductVideoCard({
   const posterRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const { upload: uploadImage } = useImageUpload();
 
-  const maxOrder = Math.max(VIDEO_MIN_SORT_ORDER, images.length + 1);
+  const maxOrder = Math.min(VIDEO_MAX_SORT_ORDER, Math.max(VIDEO_MIN_SORT_ORDER, images.length + 1));
   const effectiveOrder = Math.min(Math.max(sortOrder, VIDEO_MIN_SORT_ORDER), maxOrder);
   const status = video?.status ?? null;
   const processing = !!video && isVideoProcessing(status) && !pendingDelete;
@@ -158,7 +159,7 @@ export function ProductVideoCard({
 
   const startUpload = useCallback(
     async (raw: File | undefined | null) => {
-      if (!raw || upload) return;
+      if (!raw || upload || abortRef.current) return;
       setError(null);
       setNotice(null);
       const checked = validateVideoFile(raw);
@@ -166,15 +167,21 @@ export function ProductVideoCard({
         setError(checked.error);
         return;
       }
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
       setChecking(true);
-      const duration = await probeVideoDuration(checked.file);
+      const duration = await probeVideoDuration(checked.file, { signal: ctrl.signal });
       setChecking(false);
+      if (ctrl.signal.aborted) {
+        if (abortRef.current === ctrl) abortRef.current = null;
+        setNotice('آپلود لغو شد.');
+        return;
+      }
       if (duration != null && duration > VIDEO_MAX_SEC) {
+        abortRef.current = null;
         setError(VIDEO_MESSAGES.TOO_LONG);
         return;
       }
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
       setUpload({ pct: 0, reconnecting: false });
       try {
         const accepted = await uploadProductVideo(productId, checked.file, {
@@ -300,7 +307,7 @@ export function ProductVideoCard({
     if (upload) {
       return upload.reconnecting
         ? { icon: <WifiOff className="h-4 w-4" aria-hidden />, label: 'اتصال قطع شد', text: VIDEO_MESSAGES.CONNECTION_LOST, tone: 'warn' as const }
-        : { icon: <Upload className="h-4 w-4" aria-hidden />, label: 'در حال آپلود', text: `${faNum(upload.pct)}٪`, tone: 'info' as const };
+        : { icon: <Upload className="h-4 w-4" aria-hidden />, label: 'در حال آپلود', text: 'فایل در حال ارسال است.', tone: 'info' as const };
     }
     if (checking) {
       return { icon: <Loader2 className="h-4 w-4 animate-spin" aria-hidden />, label: 'بررسی فایل', text: 'در حال بررسی مدت ویدیو…', tone: 'info' as const };
@@ -332,10 +339,10 @@ export function ProductVideoCard({
   };
 
   const mediaSlots = useMemo(() => {
-    const slots: Array<{ kind: 'image'; url: string } | { kind: 'video' }> = images.map((url) => ({
-      kind: 'image' as const,
-      url,
-    }));
+    const slots: Array<{ kind: 'image'; url: string } | { kind: 'placeholder' } | { kind: 'video' }> = [
+      images[0] ? { kind: 'image' as const, url: images[0] } : { kind: 'placeholder' as const },
+      ...images.slice(1).map((url) => ({ kind: 'image' as const, url })),
+    ];
     slots.splice(Math.min(effectiveOrder - 1, slots.length), 0, { kind: 'video' });
     return slots;
   }, [images, effectiveOrder]);
@@ -382,8 +389,18 @@ export function ProductVideoCard({
         {notice ? <p className="text-xs text-gray-600">{notice}</p> : null}
       </div>
 
+      {checking && !upload ? (
+        <button type="button" onClick={cancelUpload} className={cn('btn btn-outline btn-sm inline-flex items-center gap-1', focusRing)}>
+          <X className="h-3.5 w-3.5" aria-hidden />
+          لغو
+        </button>
+      ) : null}
+
       {upload ? (
         <div className="space-y-2">
+          <p className="text-xs text-gray-600" data-testid="product-video-progress-text">
+            {faNum(upload.pct)}٪
+          </p>
           <div
             role="progressbar"
             aria-label="پیشرفت آپلود ویدیو"
@@ -491,7 +508,7 @@ export function ProductVideoCard({
 
       {video && !pendingDelete && !upload ? (
         <div className="flex flex-wrap gap-2">
-          {status === 'failed' ? (
+          {status === 'failed' && video.error_code !== 'TOO_LONG' ? (
             <button
               type="button"
               onClick={retry}
@@ -628,6 +645,19 @@ export function ProductVideoCard({
                         <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
                       </button>
                     </span>
+                  </li>
+                );
+              }
+              if (slot.kind === 'placeholder') {
+                return (
+                  <li
+                    key="first-image-placeholder"
+                    className="flex w-16 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-gray-300 p-1 text-center text-[10px] text-gray-500"
+                    aria-label="تصویر اول — جایگاه اول، قفل (همیشه تصویر)"
+                    data-testid="product-media-first-placeholder"
+                  >
+                    <Lock className="h-3 w-3" aria-hidden />
+                    تصویر اول
                   </li>
                 );
               }
