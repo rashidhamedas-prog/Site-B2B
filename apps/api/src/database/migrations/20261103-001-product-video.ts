@@ -46,6 +46,11 @@ export class ProductVideo1762156800001 implements MigrationInterface {
       CREATE INDEX IF NOT EXISTS "IDX_product_video_product_id"
       ON "product_video" ("product_id")
     `);
+    await queryRunner.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "UQ_product_video_one_live_per_product"
+      ON "product_video" ("product_id")
+      WHERE "deleted_at" IS NULL
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

@@ -54,6 +54,7 @@ src/modules/upload/storage.service.spec.ts
 src/modules/upload/video-policy.spec.ts
 src/modules/upload/upload.controller.video.spec.ts
 src/modules/upload/product-video.service.spec.ts
+src/modules/upload/product-video.controller.spec.ts
 src/modules/upload/video-private.integration.spec.ts
 src/database/migrations/20261103-001-product-video.integration.spec.ts
 src/modules/omnichannel/omnichannel-secrets.spec.ts

@@ -24,7 +24,21 @@ import { OmnichannelMediaAssetEntity } from '../omnichannel/entities/omnichannel
 import { isMissingRelationError, mediaAssetDeleteMatch, mediaAssetRow } from '../omnichannel/media-registry';
 import { ProductEntity } from '../product/entities/product.entity';
 import { CmsPageEntity } from '../cms/entities/cms-page.entity';
-import { VIDEO_SRC_BUCKET } from './video-policy';
+import { VIDEO_MAX_BYTES, VIDEO_SRC_BUCKET } from './video-policy';
+
+function sanitizePublicMediaKey(raw: string): string | null {
+  const imageKey = sanitizeObjectKey(raw);
+  if (imageKey) return imageKey;
+  if (/%2e/i.test(raw) || raw.includes('\\') || raw.includes('\0')) return null;
+  let key = raw.split('?')[0].split('#')[0].replace(/^\/+/, '');
+  try {
+    key = decodeURIComponent(key);
+  } catch {
+    return null;
+  }
+  if (key.includes('..') || !/^videos\/[A-Za-z0-9._/-]+$/.test(key)) return null;
+  return key;
+}
 
 @Injectable()
 export class StorageService implements OnModuleInit {
@@ -103,12 +117,12 @@ export class StorageService implements OnModuleInit {
   extractOwnedPublicKey(url: string): string | null {
     const publicUrl = this.config.get('MINIO_PUBLIC_URL', '').replace(/\/$/, '');
     if (publicUrl && url.startsWith(`${publicUrl}/`)) {
-      return sanitizeObjectKey(url.slice(publicUrl.length + 1));
+      return sanitizePublicMediaKey(url.slice(publicUrl.length + 1));
     }
     const protocol = this.useSSL ? 'https' : 'http';
     const internalBase = `${protocol}://${this.endpoint}:${this.port}/${this.bucket}`;
     if (url.startsWith(`${internalBase}/`)) {
-      return sanitizeObjectKey(url.slice(internalBase.length + 1));
+      return sanitizePublicMediaKey(url.slice(internalBase.length + 1));
     }
     return null;
   }
@@ -119,9 +133,23 @@ export class StorageService implements OnModuleInit {
     contentType: string,
   ): Promise<void> {
     if (!this.ready) throw new ServiceUnavailableException('انبار ویدیو در دسترس نیست');
-    await this.minioClient.putObject(VIDEO_SRC_BUCKET, key, body, undefined, {
-      'Content-Type': contentType || 'application/octet-stream',
-    });
+    try {
+      await this.minioClient.putObject(VIDEO_SRC_BUCKET, key, body, VIDEO_MAX_BYTES, {
+        'Content-Type': contentType || 'application/octet-stream',
+      });
+    } catch (err) {
+      try {
+        await this.minioClient.removeIncompleteUpload(VIDEO_SRC_BUCKET, key);
+      } catch {
+        // Cleanup is idempotent; preserve the original upload failure.
+      }
+      try {
+        await this.minioClient.removeObject(VIDEO_SRC_BUCKET, key);
+      } catch {
+        // Missing or already-aborted objects need no further action.
+      }
+      throw err;
+    }
   }
 
   async privateVideoExists(key: string): Promise<boolean> {

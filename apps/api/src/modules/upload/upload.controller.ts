@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { Readable } from 'stream';
+import { validate as isUuid } from 'uuid';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -109,11 +110,11 @@ export class UploadController {
   @Post('video')
   @HttpCode(HttpStatus.OK)
   async uploadVideo(@Req() req: any) {
+    const productId = typeof req?.query?.productId === 'string' ? req.query.productId.trim() : '';
+    if (!isUuid(productId)) throw new BadRequestException('شناسه محصول معتبر نیست.');
     if (!this.storage.ready) {
       throw new BadRequestException('سرویس آپلود در دسترس نیست — MinIO را اجرا کنید');
     }
-    const productId = typeof req?.query?.productId === 'string' ? req.query.productId.trim() : '';
-    if (!productId) throw new BadRequestException('شناسه محصول الزامی است.');
     await this.productVideos.assertProductExists(productId);
 
     let data: {

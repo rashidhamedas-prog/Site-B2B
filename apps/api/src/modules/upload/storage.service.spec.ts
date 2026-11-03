@@ -15,24 +15,34 @@ import {
   channelDerivativeKey,
   originalUploadKey,
 } from './storage-delete';
+import { VIDEO_MAX_BYTES, VIDEO_SRC_BUCKET } from './video-policy';
 
 function assertFn(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
-function fakeMinio(opts?: { corruptMain?: boolean }) {
+function fakeMinio(opts?: { corruptMain?: boolean; failVideoPut?: boolean }) {
   const objects = new Map<string, Buffer>();
   const removed: string[] = [];
+  const incompleteRemoved: string[] = [];
+  const putSizes: number[] = [];
   return {
     objects,
     removed,
+    incompleteRemoved,
+    putSizes,
     client: {
-      async putObject(_bucket: string, key: string, stream: Readable, _size: number) {
+      async putObject(_bucket: string, key: string, stream: Readable, size: number) {
+        putSizes.push(size);
         const chunks: Buffer[] = [];
         for await (const chunk of stream) {
           chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
         }
+        if (opts?.failVideoPut && key.startsWith('videos/')) throw new Error('put failed');
         objects.set(key, Buffer.concat(chunks));
+      },
+      async removeIncompleteUpload(bucket: string, key: string) {
+        incompleteRemoved.push(`${bucket}/${key}`);
       },
       async getObject(_bucket: string, key: string) {
         if (opts?.corruptMain && !key.endsWith(CHANNEL_JPEG_SUFFIX) && !key.startsWith('originals/')) {
@@ -101,6 +111,27 @@ async function main() {
   })
     .png()
     .toBuffer();
+
+  {
+    const fake = fakeMinio();
+    const svc = buildService(fake.client);
+    await svc.putPrivateVideo('videos/p/v/source.mp4', Readable.from([Buffer.from('video')]), 'video/mp4');
+    assert.equal(fake.putSizes[0], VIDEO_MAX_BYTES, 'private put receives numeric maximum size');
+  }
+
+  {
+    const fake = fakeMinio({ failVideoPut: true });
+    const svc = buildService(fake.client);
+    await assert.rejects(
+      () => svc.putPrivateVideo('videos/p/v/source.mp4', Readable.from([Buffer.from('video')]), 'video/mp4'),
+      /put failed/,
+    );
+    assert(
+      fake.incompleteRemoved.includes(`${VIDEO_SRC_BUCKET}/videos/p/v/source.mp4`),
+      'failed private put aborts incomplete upload',
+    );
+    assert(fake.removed.includes('videos/p/v/source.mp4'), 'failed private put removes object');
+  }
 
   // Happy path: webp + channel.jpg; no originals by default
   {

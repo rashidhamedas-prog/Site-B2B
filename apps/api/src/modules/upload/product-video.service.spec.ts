@@ -28,23 +28,38 @@ async function main() {
   const saved: any[] = [];
   const updates: any[] = [];
   let privateExists = true;
+  let visibleProduct: any = {
+    id: 'product-1',
+    status: 'ACTIVE',
+    showOnRetail: true,
+    showOnWholesale: true,
+  };
   const repo: any = {
     findOne: async () => current,
     softDelete: async () => undefined,
     update: async (_id: string, patch: any) => updates.push(patch),
   };
   const managerRepo: any = {
+    find: async () => [],
     create: (value: any) => value,
     save: async (value: any) => {
       saved.push(value);
       return value;
     },
     update: async (_id: string, patch: any) => updates.push(patch),
+    softDelete: async () => undefined,
   };
   const service = new ProductVideoService(
     repo,
-    { exist: async () => true } as any,
-    { transaction: async (fn: any) => fn({ getRepository: () => managerRepo }) } as any,
+    { exist: async () => true, findOne: async () => visibleProduct } as any,
+    {
+      transaction: async (fn: any) => fn({
+        getRepository: (entity: any) =>
+          entity.name === 'ProductEntity'
+            ? { findOne: async () => ({ id: 'product-1' }) }
+            : managerRepo,
+      }),
+    } as any,
     {
       buildPublicUrl: (key: string) => `https://media.test/${key}`,
       removePrivateVideoKeys: async (keys: string[]) => removedPrivate.push(keys),
@@ -109,7 +124,91 @@ async function main() {
     foreignRejected = true;
   }
   assert(foreignRejected, 'rejects foreign poster URL');
+
+  let traversalRejected = false;
+  try {
+    await service.selectPoster('product-1', {
+      key: 'videos/product-1/video-1/../poster-2.jpg',
+    });
+  } catch {
+    traversalRejected = true;
+  }
+  assert(traversalRejected, 'rejects unsanitized candidate key');
+
+  current.status = 'ready';
+  visibleProduct = { ...visibleProduct, status: 'DRAFT' };
+  assert((await service.getPublic('product-1')) === null, 'public video hides non-public product');
+  visibleProduct = { ...visibleProduct, status: 'ACTIVE', showOnRetail: false };
+  assert((await service.getPublic('product-1', 'RETAIL')) === null, 'public video follows retail visibility');
   assert(saved.length === 1 && updates.length >= 3, 'persists queue, retry, and poster updates');
+
+  {
+    const live: any[] = [];
+    let lockTail = Promise.resolve();
+    const transaction = async (fn: any) => {
+      let release!: () => void;
+      const mine = new Promise<void>((resolve) => { release = resolve; });
+      const previous = lockTail;
+      lockTail = lockTail.then(() => mine);
+      await previous;
+      try {
+        const videoRepo = {
+          find: async () => live.filter((row) => !row.deletedAt),
+          softDelete: async () => {
+            live.filter((row) => !row.deletedAt).forEach((row) => { row.deletedAt = new Date(); });
+          },
+          create: (value: any) => ({ ...value }),
+          save: async (value: any) => {
+            live.push(value);
+            return value;
+          },
+        };
+        return await fn({
+          getRepository: (entity: any) =>
+            entity.name === 'ProductEntity'
+              ? { findOne: async () => ({ id: 'product-1' }) }
+              : videoRepo,
+        });
+      } finally {
+        release();
+      }
+    };
+    const concurrent = new ProductVideoService(
+      repo,
+      { exist: async () => true } as any,
+      { transaction } as any,
+      {
+        removePrivateVideoKeys: async () => undefined,
+        removePublicKeys: async () => undefined,
+      } as any,
+      { enqueue: async () => undefined } as any,
+    );
+    await Promise.all([
+      concurrent.queueUploaded('product-1', 'video-a', 'videos/a.mp4'),
+      concurrent.queueUploaded('product-1', 'video-b', 'videos/b.mp4'),
+    ]);
+    assert(live.filter((row) => !row.deletedAt).length === 1, 'overlapping uploads leave one live row');
+    assert(live.find((row) => row.id === 'video-b' && !row.deletedAt), 'latest locked upload remains live');
+  }
+
+  {
+    const conflictService = new ProductVideoService(
+      repo,
+      { exist: async () => true } as any,
+      { transaction: async () => { throw Object.assign(new Error('duplicate'), { code: '23505' }); } } as any,
+      {} as any,
+      {} as any,
+    );
+    let duplicateConflict = false;
+    try {
+      await conflictService.queueUploaded('product-1', 'video-x', 'videos/x.mp4');
+    } catch (error) {
+      duplicateConflict =
+        error instanceof ConflictException &&
+        (error.getResponse() as any)?.message === 'برای این محصول هم‌زمان ویدیوی دیگری ثبت شده است.';
+    }
+    assert(duplicateConflict, '23505 maps to Persian 409');
+  }
   console.log('product-video.service.spec.ts: ok');
 }
 
