@@ -122,6 +122,7 @@ jobs:
             echo '127.0.0.1 localhost.ir' | sudo tee -a /etc/hosts >/dev/null
           fi
           npx playwright test -c e2e/playwright.product-card.config.ts
+          npx playwright test -c e2e/playwright.admin-video.config.ts
 
   omnichannel-migrate:
     runs-on: ubuntu-latest
