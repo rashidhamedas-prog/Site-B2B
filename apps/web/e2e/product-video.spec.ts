@@ -96,8 +96,11 @@ for (const channel of CHANNELS) {
     await page.setViewportSize({ width: 1280, height: 800 });
     const videoRequests = await prepare(page);
     const response = await page.goto(`${channel.origin}/products/video-product`, { waitUntil: 'load' });
-    expect(response?.status(), response ? await response.text() : 'no response').toBe(200);
-    await expect(page.locator('h1:visible').first()).toContainText('مانتو آزمون ویدیو');
+    const html = response ? await response.text() : '';
+    expect(response?.status(), html || 'no response').toBe(200);
+    expect((html.match(/<h1\b/g) || []).length).toBe(1);
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(page.locator('h1')).toContainText('مانتو آزمون ویدیو');
 
     await expect(page.locator('[data-product-video-thumbnail]')).toHaveCount(1);
     await expect(page.locator('video[data-product-video]')).toHaveCount(0);
@@ -137,8 +140,11 @@ for (const channel of CHANNELS) {
     await page.setViewportSize({ width: 390, height: 844 });
     const videoRequests = await prepare(page);
     const response = await page.goto(`${channel.origin}/products/video-product`, { waitUntil: 'load' });
-    expect(response?.status(), response ? await response.text() : 'no response').toBe(200);
-    await expect(page.locator('h1:visible').first()).toContainText('مانتو آزمون ویدیو');
+    const html = response ? await response.text() : '';
+    expect(response?.status(), html || 'no response').toBe(200);
+    expect((html.match(/<h1\b/g) || []).length).toBe(1);
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(page.locator('h1')).toContainText('مانتو آزمون ویدیو');
     await page.waitForTimeout(500);
 
     expect(videoRequests).toEqual([]);
@@ -162,8 +168,11 @@ for (const channel of CHANNELS) {
     await page.setViewportSize({ width: 390, height: 844 });
     await prepare(page);
     const response = await page.goto(`${channel.origin}/products/no-video`, { waitUntil: 'load' });
-    expect(response?.status(), response ? await response.text() : 'no response').toBe(200);
-    await expect(page.locator('h1:visible').first()).toContainText('مانتو بدون ویدیو');
+    const html = response ? await response.text() : '';
+    expect(response?.status(), html || 'no response').toBe(200);
+    expect((html.match(/<h1\b/g) || []).length).toBe(1);
+    await expect(page.locator('h1')).toHaveCount(1);
+    await expect(page.locator('h1')).toContainText('مانتو بدون ویدیو');
     await expect(page.locator('[data-product-video-slide]')).toHaveCount(0);
     await expect(page.locator('[data-product-video-thumbnail]')).toHaveCount(0);
     await expect(page.locator('[data-product-video-dot]')).toHaveCount(0);

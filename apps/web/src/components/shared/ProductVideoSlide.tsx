@@ -85,11 +85,16 @@ export function ProductVideoDot({
       aria-current={selected ? 'true' : undefined}
       onClick={onActivate}
       data-product-video-dot=""
-      className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[8px] ${
-        selected ? 'bg-black text-white' : 'bg-black/20 text-black'
-      }`}
+      className="inline-flex min-h-11 min-w-11 items-center justify-center"
     >
-      ▶
+      <span
+        aria-hidden
+        className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[8px] ${
+          selected ? 'bg-black text-white' : 'bg-black/20 text-black'
+        }`}
+      >
+        ▶
+      </span>
     </button>
   );
 }

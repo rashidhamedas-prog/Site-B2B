@@ -20,11 +20,15 @@ import {
 export { absoluteJsonLdUrl } from '@/lib/jsonld-url';
 export { organizationId, websiteId } from '@/lib/organization-from-settings';
 
+export function serializeJsonLd(data: Record<string, unknown>): string {
+  return JSON.stringify(data).replace(/</g, '\\u003c');
+}
+
 function JsonLdScript({ data }: { data: Record<string, unknown> }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
     />
   );
 }

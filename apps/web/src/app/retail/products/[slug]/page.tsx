@@ -159,7 +159,7 @@ export default async function RetailProductPage({
         ]}
       />
       <section className="sr-only" aria-label="مشخصات محصول برای خزش">
-        <h1>{name}</h1>
+        <p>{name}</p>
         <p>قیمت: {option.productPriceToman} تومان</p>
         <p>موجودی: {option.availability === 'instock' ? 'موجود' : 'ناموجود'}</p>
         {option.optionLabel ? <p>گزینه: {option.optionLabel}</p> : null}

@@ -59,7 +59,7 @@ tasks:
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
       - "docs/WORKLOG.md"
-    notes: "Explicit PHASE 04 assignment supersedes overlapping stale/done PDP claims. ProductDetail overlap with TASK-20261101-shared-js-reduction preserves its direct-import optimization. Phase 03 owns admin/API files and is untouched."
+    notes: "Explicit PHASE 04 assignment supersedes overlapping stale/done PDP claims. ProductDetail overlap with TASK-20261101-shared-js-reduction preserves its direct-import optimization. Phase 03 owns admin/API files and is untouched. PR #162 review fixes applied: 1.5s timeout, media URL allowlist, JSON-LD escaping, 44px dots, single SSR H1."
   - id: "TASK-20261103-product-video"
     title: "Product video: phase 00 contract + 01 upload API + 02 ffmpeg worker (03/04 blocked on UI-SPEC)"
     status: "in_progress"

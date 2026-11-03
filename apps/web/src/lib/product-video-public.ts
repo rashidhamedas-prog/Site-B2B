@@ -6,7 +6,7 @@ export const VIDEO_JSONLD_ENABLED = false;
 
 export type PublicProductVideo = {
   mp4_720: string;
-  mp4_480: string;
+  mp4_480?: string | null;
   webm_720?: string | null;
   poster: string | null;
   duration_sec: number;
@@ -19,11 +19,24 @@ export type PublicProductVideo = {
 export function normalizePublicProductVideo(
   value: PublicProductVideo | null | undefined,
 ): PublicProductVideo | null {
-  if (!value?.poster || !value.mp4_720) return null;
+  if (!value || !isAllowedPublicMediaUrl(value.poster) || !isAllowedPublicMediaUrl(value.mp4_720)) {
+    return null;
+  }
   return {
     ...value,
+    poster: value.poster,
+    mp4_720: value.mp4_720,
+    mp4_480: isAllowedPublicMediaUrl(value.mp4_480) ? value.mp4_480 : undefined,
+    webm_720: isAllowedPublicMediaUrl(value.webm_720) ? value.webm_720 : undefined,
     sort_order: Math.max(2, Math.trunc(Number(value.sort_order) || 2)),
   };
+}
+
+function isAllowedPublicMediaUrl(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    (value.startsWith('https://') || value.startsWith('http://') || value.startsWith('/media/'))
+  );
 }
 
 /** Public PDP video metadata. React cache dedupes route/metadata reads; Next keeps parity with PDP ISR. */
@@ -36,6 +49,7 @@ export const fetchPublicProductVideo = cache(async function fetchPublicProductVi
     const response = await fetch(
       `${getServerApiBase()}/products/${encodeURIComponent(productId)}/video/public?channel=${channel}`,
       {
+        signal: AbortSignal.timeout(1_500),
         next: {
           revalidate: 60,
           tags: ['catalog', `catalog:${channel}`, `product-video:${productId}`],

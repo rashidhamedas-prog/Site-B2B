@@ -577,8 +577,13 @@ export function ProductDetail({
                       aria-label={`تصویر ${(item.imageIndex + 1).toLocaleString('fa-IR')}`}
                       aria-current={activeMedia === index ? 'true' : undefined}
                       onClick={() => activateMedia(index)}
-                      className={`h-2 w-2 rounded-full ${activeMedia === index ? 'bg-black' : 'bg-black/20'}`}
-                    />
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center"
+                    >
+                      <span
+                        aria-hidden
+                        className={`h-2 w-2 rounded-full ${activeMedia === index ? 'bg-black' : 'bg-black/20'}`}
+                      />
+                    </button>
                   ),
                 )}
               </div>
