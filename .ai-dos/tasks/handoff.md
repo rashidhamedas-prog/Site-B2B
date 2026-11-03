@@ -1,3 +1,24 @@
+## 2026-11-03T12:42:00Z — PR #159 independent review fixes
+
+- Fixed review HIGH/MEDIUM/LOW findings: bounded MinIO multipart + incomplete abort, independent byte counter, product row lock + one-live partial unique index + 23505→409, scoped nginx 210m, UUID validation, public visibility, and candidate-key confinement.
+- CI: existing Postgres job now launches pinned official `quay.io/minio/minio` and runs migration up/down/schema/FK/index plus raw-private-key 403 specs. Docker Hub denied the legacy `minio/minio` repository on the first run; switched to MinIO's official Quay registry. Local real integrations remain env-gated and skipped because Docker/env are unavailable.
+- Evidence: `apps/api npx tsc --noEmit -p tsconfig.json` exit 0; `npm test` 210/210 exit 0; revised video specs exit 0; CI YAML parsed; nginx static checks confirm global 50M + exactly three scoped 210m directives + no `taranom-video-src`.
+- Reclaimed stale overlapping claims for `.github/workflows/ci.yml` (2026-10-27/earlier) and `nginx/nginx.conf` (2026-10-24/earlier) under the orchestrator's explicit PR-review assignment; no unrelated behavior changed.
+- No phase-02 outbox gate/worker files touched; no merge/deploy/production access.
+
+## 2026-11-03T12:00:00Z — Product video phase 01 complete (PR pending)
+
+- Branch/worktree: `feat/product-video-01` / `D:/proje/Site-B2B-video-01`; scope stayed inside phase-01 claims plus unit-spec registration/docs.
+- Added additive `product_video` migration, private raw MinIO streaming upload with signature/type/200MB enforcement and rollback, IDs-only transcode outbox enqueue, admin lifecycle/poster APIs, and ready-only public API.
+- Evidence: `apps/api npx tsc --noEmit -p tsconfig.json` exit 0; `npm run build` exit 0; `npm test` 209/209 exit 0. MinIO/Postgres integration specs skipped locally because `MINIO_TEST_ENDPOINT` / `DATABASE_URL_TEST` are unset.
+- No contract shape changed; no phase-02 worker/Docker files, web, env, compose, deploy, or production access.
+
+## 2026-11-03T08:30:00Z — Product video: contract (00) + parallel 01/02 launched
+
+- Source: owner package `product-video-cursor-final.zip` (00–05). `UI-SPEC.md` missing → phases 03/04 blocked by owner decision; 01/02 only.
+- Contract branch `feat/product-video-00-contract` (worktree `D:/proje/Site-B2B-video-00`): `video-policy.ts` constants, `ProductVideoEntity` (table `product_video`), `OUTBOX_EVENT_TYPES.PRODUCT_VIDEO_TRANSCODE`, entity registered in `database.config.ts`. `apps/api tsc --noEmit` exit 0.
+- Phase branches `feat/product-video-01` / `feat/product-video-02` start from the contract branch; each opens its own PR. Owner decision: PR only, no merge until Hamed GO; deploy only via Hamed-written `deploy-approval.json`.
+- Reclaimed stale overlapping claims (additive edits only): TASK-20261024-008 (upload.controller, storage.service), TASK-20261024-005 / 20261023-001 / 20261027-omni-redesign / 20261010-005 / 20260826-001 (outbox-worker, constants). All last claimed ≥7 days ago; previous owners are prior cursor-agent sessions.
 ## 2026-10-30T02:00:00Z — PR-14 security + phase-review pushed (#149)
 
 - Branch `ai/TASK-20261029-pr14-order-bots` · worktree `D:/proje/Site-B2B-pr14` · PR https://github.com/rashidhamedas-prog/Site-B2B/pull/149 · head `949aa968`

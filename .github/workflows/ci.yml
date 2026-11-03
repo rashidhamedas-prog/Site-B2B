@@ -159,6 +159,14 @@ jobs:
           NODE_ENV: test
           SMS_PG_TEST_URL: postgres://taranom:drill@127.0.0.1:5432/taranom_sms_pg_test
         run: npx ts-node --transpile-only src/modules/sms-panel/audience/audience-sources.pg.spec.ts
+      # MinIO community images/binaries are no longer publicly downloadable, so the
+      # private-bucket 403 spec runs against the Iran origin after deploy instead.
+      - name: Product video migration on real Postgres
+        working-directory: apps/api
+        env:
+          NODE_ENV: test
+          DATABASE_URL_TEST: postgres://taranom:drill@127.0.0.1:5432/taranom_sms_pg_test
+        run: npx ts-node --transpile-only src/database/migrations/20261103-001-product-video.integration.spec.ts
 
   deploy-lock-tests:
     runs-on: ubuntu-latest

@@ -24,6 +24,21 @@ import { OmnichannelMediaAssetEntity } from '../omnichannel/entities/omnichannel
 import { isMissingRelationError, mediaAssetDeleteMatch, mediaAssetRow } from '../omnichannel/media-registry';
 import { ProductEntity } from '../product/entities/product.entity';
 import { CmsPageEntity } from '../cms/entities/cms-page.entity';
+import { VIDEO_MAX_BYTES, VIDEO_SRC_BUCKET } from './video-policy';
+
+function sanitizePublicMediaKey(raw: string): string | null {
+  const imageKey = sanitizeObjectKey(raw);
+  if (imageKey) return imageKey;
+  if (/%2e/i.test(raw) || raw.includes('\\') || raw.includes('\0')) return null;
+  let key = raw.split('?')[0].split('#')[0].replace(/^\/+/, '');
+  try {
+    key = decodeURIComponent(key);
+  } catch {
+    return null;
+  }
+  if (key.includes('..') || !/^videos\/[A-Za-z0-9._/-]+$/.test(key)) return null;
+  return key;
+}
 
 @Injectable()
 export class StorageService implements OnModuleInit {
@@ -62,10 +77,12 @@ export class StorageService implements OnModuleInit {
   async onModuleInit() {
     if (!this.ready) return;
     try {
-      const exists = await this.minioClient.bucketExists(this.bucket);
-      if (!exists) {
-        await this.minioClient.makeBucket(this.bucket);
-        this.logger.log(`Bucket "${this.bucket}" created`);
+      for (const bucket of [this.bucket, VIDEO_SRC_BUCKET]) {
+        const exists = await this.minioClient.bucketExists(bucket);
+        if (!exists) {
+          await this.minioClient.makeBucket(bucket);
+          this.logger.log(`Bucket "${bucket}" created`);
+        }
       }
     } catch (err) {
       this.logger.warn(`MinIO bucket check failed: ${err}`);
@@ -95,6 +112,81 @@ export class StorageService implements OnModuleInit {
     const productsIdx = url.indexOf('/products/');
     if (productsIdx !== -1) return sanitizeObjectKey(url.slice(productsIdx + 1));
     return null;
+  }
+
+  extractOwnedPublicKey(url: string): string | null {
+    const publicUrl = this.config.get('MINIO_PUBLIC_URL', '').replace(/\/$/, '');
+    if (publicUrl && url.startsWith(`${publicUrl}/`)) {
+      return sanitizePublicMediaKey(url.slice(publicUrl.length + 1));
+    }
+    const protocol = this.useSSL ? 'https' : 'http';
+    const internalBase = `${protocol}://${this.endpoint}:${this.port}/${this.bucket}`;
+    if (url.startsWith(`${internalBase}/`)) {
+      return sanitizePublicMediaKey(url.slice(internalBase.length + 1));
+    }
+    return null;
+  }
+
+  async putPrivateVideo(
+    key: string,
+    body: Readable,
+    contentType: string,
+  ): Promise<void> {
+    if (!this.ready) throw new ServiceUnavailableException('انبار ویدیو در دسترس نیست');
+    try {
+      await this.minioClient.putObject(VIDEO_SRC_BUCKET, key, body, VIDEO_MAX_BYTES, {
+        'Content-Type': contentType || 'application/octet-stream',
+      });
+    } catch (err) {
+      try {
+        await this.minioClient.removeIncompleteUpload(VIDEO_SRC_BUCKET, key);
+      } catch {
+        // Cleanup is idempotent; preserve the original upload failure.
+      }
+      try {
+        await this.minioClient.removeObject(VIDEO_SRC_BUCKET, key);
+      } catch {
+        // Missing or already-aborted objects need no further action.
+      }
+      throw err;
+    }
+  }
+
+  async privateVideoExists(key: string): Promise<boolean> {
+    if (!this.ready) return false;
+    try {
+      await this.minioClient.statObject(VIDEO_SRC_BUCKET, key);
+      return true;
+    } catch (err) {
+      if (isMissingObjectError(err)) return false;
+      throw err;
+    }
+  }
+
+  async removePrivateVideoKeys(keys: Array<string | null | undefined>): Promise<void> {
+    await this.removeObjectKeys(VIDEO_SRC_BUCKET, keys);
+  }
+
+  async removePublicKeys(keys: Array<string | null | undefined>): Promise<void> {
+    await this.removeObjectKeys(this.bucket, keys);
+  }
+
+  private async removeObjectKeys(
+    bucket: string,
+    keys: Array<string | null | undefined>,
+  ): Promise<void> {
+    const unique = [...new Set(keys.filter((key): key is string => !!key))];
+    if (!unique.length) return;
+    if (!this.ready) throw new ServiceUnavailableException('انبار فایل در دسترس نیست');
+    await Promise.all(
+      unique.map(async (key) => {
+        try {
+          await this.minioClient.removeObject(bucket, key);
+        } catch (err) {
+          if (!isMissingObjectError(err)) throw err;
+        }
+      }),
+    );
   }
 
   async uploadBuffer(
