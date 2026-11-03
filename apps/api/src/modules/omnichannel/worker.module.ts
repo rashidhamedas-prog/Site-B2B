@@ -17,6 +17,9 @@ import { ChannelConnectionEntity } from './entities/channel-connection.entity';
 import { OmnichannelModule } from './omnichannel.module';
 import { OutboxWorkerService } from './services/outbox-worker.service';
 import { CustomerMarketingModule } from '../customer-marketing/customer-marketing.module';
+import { ProductVideoEntity } from '../product/entities/product-video.entity';
+import { VideoObjectStore } from '../upload/video-object-store';
+import { VideoTranscodeService } from '../upload/video-transcode.service';
 
 @Module({
   imports: [
@@ -34,6 +37,7 @@ import { CustomerMarketingModule } from '../customer-marketing/customer-marketin
       PublicationDeliveryEntity,
       ChannelDestinationEntity,
       ChannelConnectionEntity,
+      ProductVideoEntity,
     ]),
     SearchModule,
     SettingsModule,
@@ -42,6 +46,6 @@ import { CustomerMarketingModule } from '../customer-marketing/customer-marketin
     OmnichannelModule,
     CustomerMarketingModule,
   ],
-  providers: [OutboxWorkerService],
+  providers: [OutboxWorkerService, VideoObjectStore, VideoTranscodeService],
 })
 export class WorkerModule {}

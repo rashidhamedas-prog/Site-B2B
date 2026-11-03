@@ -6,6 +6,8 @@ import {
   CANCEL_PENDING_CHANNEL_SQL,
   CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL,
   CANCEL_STALE_PROCESSING_SQL,
+  CANCEL_STALE_PROCESSING_CHANNEL_SQL,
+  CANCEL_STALE_PROCESSING_CHANNEL_FOR_CHANNELS_SQL,
   MARK_DONE_SQL,
   MARK_FAILURE_SQL,
   buildDedupeKey,
@@ -92,6 +94,24 @@ async function main() {
   assert(!CANCEL_PENDING_CHANNEL_SQL.includes('sales_partner'), 'channel cancel skips sales_partner');
   assert(CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL.includes('ANY($2::text[])'), 'channel cancel respects configured bots');
   assert(CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL.includes('"channel" IS NULL'), 'unscoped publish rows still cleared');
+  for (const [name, sql] of Object.entries({ CANCEL_PENDING_SQL, CANCEL_STALE_PROCESSING_SQL })) {
+    assert(
+      /AND "eventType" NOT LIKE 'product\.video\.%'/.test(sql),
+      `${name} (scope all) never cancels product.video.* transcode events`,
+    );
+  }
+  for (const [name, sql] of Object.entries({
+    CANCEL_PENDING_CHANNEL_SQL,
+    CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL,
+    CANCEL_STALE_PROCESSING_CHANNEL_SQL,
+    CANCEL_STALE_PROCESSING_CHANNEL_FOR_CHANNELS_SQL,
+  })) {
+    assert(
+      /\(\s*\(\s*"eventType" LIKE 'product\.%'[\s\S]*?\)\s*AND "eventType" NOT LIKE 'product\.video\.%'\s*\)/.test(sql),
+      `${name} excludes product.video.* transcode events from channel clear`,
+    );
+  }
+  assert(OUTBOX_EVENT_TYPES.PRODUCT_VIDEO_TRANSCODE.startsWith('product.video.'), 'transcode type matches exclusion');
   assert(CANCEL_STALE_PROCESSING_SQL.includes("status = 'PROCESSING'"), 'stale only PROCESSING');
   assert(CANCEL_STALE_PROCESSING_SQL.includes('"lockedAt"'), 'stale uses lease age');
 

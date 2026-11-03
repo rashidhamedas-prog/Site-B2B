@@ -4,6 +4,12 @@
 - اصلاح review PR #159: multipart با partهای ۶۴MB و abort ناقص، شمارش مستقل ۲۰۰MB، قفل محصول و یک ویدیوی live، UUID/visibility/poster hardening، سقف nginx فقط روی upload و integration واقعی Postgres+MinIO در CI.
 - تست: API typecheck سبز؛ `npm test` هر ۲۱۰ spec سبز. integration واقعی MinIO/Postgres محلی به‌علت نبود env skip و در CI سیم‌کشی شد؛ nginx به‌صورت static بررسی شد (Docker محلی در دسترس نیست). بدون merge/deploy.
 
+## 2026-11-03 — ویدیوی محصول فاز ۰۲: ورکر ترنسکد ffmpeg (feat/product-video-02)
+
+- `VideoTranscodeService` (ورکر outbox، رویداد `product.video.transcode`): گارد دیسک (کمتر از ۵GB → `DISK_LOW` «فضای سرور کافی نیست.» بدون اجرای ffmpeg)، دانلود src از باکت خصوصی به tmp، ffprobe (بیش از ۶۰ ثانیه → `TOO_LONG`)، MP4 720/480 (faststart، بدون متادیتا)، WebM VP9 720، سه پوستر WebP (۱۰/۵۰/۹۰٪، پیش‌فرض ۵۰٪) در `videos/<productId>/<videoId>/` باکت عمومی؛ پس از ready، src خام حذف می‌شود. خطا/timeout → پاک‌سازی tmp و کلیدهای ناقص، src نگه داشته می‌شود.
+- اجرای sandbox با `spawn` بدون shell، `-nostdin -protocol_whitelist file -threads 2`، timeout با SIGKILL. در هر ورکر فقط یک job با lease جداگانه؛ heartbeat هر ۲۰ ثانیه و تمدید lock رویداد در طول job. `apk add ffmpeg` در Dockerfile.
+- اندازه‌گیری محلی ورودی ۶۰ ثانیه 1080p: ۱۱۹ ثانیه، پیک ffmpeg حدود ۲۸۸MB. بدون merge/deploy (GO حامد لازم است).
+
 ## 2026-11-02 — کاهش JS مشترک layout عمده (TASK-20261101-shared-js-reduction)
 
 - JS اولیه `/about` از 180.8 به 142.7 kB gzip (−21%)، `/` و `/products` حدود −10%؛ JS اختصاصی layout عمده از ~67 به 28.5 kB. روش: جدا کردن پیش‌فرض chrome از `lib/cms/defaults`، `apiClient` و `product-display` با `import()` در جزایر layout، `next/dynamic` (`ssr:false`) برای GA/web-vitals، LandingPopups، FloatingContact و ScrollToTop، و import مستقیم به‌جای barrel `components/ui`.

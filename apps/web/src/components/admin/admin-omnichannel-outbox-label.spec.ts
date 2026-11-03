@@ -13,6 +13,12 @@ function assert(cond: boolean, msg: string) {
 
 assert(!isChannelPublishEventType('sales_partner.profile.status_changed'), 'sp not channel publish');
 assert(outboxChannelCellLabel('sales_partner.profile.status_changed', 'RETAIL') === 'همکار', 'sp never تکی');
+assert(!isChannelPublishEventType('product.video.transcode'), 'video transcode not channel publish');
+assert(isChannelPublishEventType('product.created'), 'product publish still channel');
+assert(
+  !isOutboxRowForConfiguredChannels('product.video.transcode', null, new Set(['WHOLESALE'])),
+  'video transcode hidden from channel queue',
+);
 assert(outboxChannelCellLabel('customer.approved.marketing', 'WHOLESALE') === 'پیامک', 'marketing domain');
 assert(outboxChannelCellLabel('search.reindex.requested', null) === 'سیستم', 'search domain');
 assert(outboxChannelCellLabel('product.created', 'WHOLESALE') === 'عمده', 'publish wholesale');

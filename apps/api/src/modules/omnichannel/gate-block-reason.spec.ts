@@ -52,6 +52,21 @@ assert(isChannelPublishEventType('publication.deliver.requested'), 'channel deli
 assert(isChannelPublishEventType('product.created'), 'channel product');
 assert(!isChannelPublishEventType('marketing.send.requested'), 'not marketing');
 assert(!isChannelPublishEventType('order.created.notification'), 'not sms');
+assert(!isChannelPublishEventType('product.video.transcode'), 'video transcode is not a channel post');
+assert(isChannelPublishEventType('product.media.changed'), 'product media change still channel publish');
+{
+  const deadVideo = summarizeDeadByEventType(
+    [
+      { eventType: 'product.video.transcode', status: 'DEAD' },
+      { eventType: 'product.created', status: 'DEAD' },
+    ],
+    { channelOnly: true },
+  );
+  assert(
+    deadVideo.length === 1 && deadVideo[0].eventType === 'product.created',
+    'DEAD transcodes not counted as channel posts',
+  );
+}
 
 const dead = summarizeDeadByEventType(
   [

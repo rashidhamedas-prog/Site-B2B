@@ -13,6 +13,14 @@
 - Evidence: `apps/api npx tsc --noEmit -p tsconfig.json` exit 0; `npm run build` exit 0; `npm test` 209/209 exit 0. MinIO/Postgres integration specs skipped locally because `MINIO_TEST_ENDPOINT` / `DATABASE_URL_TEST` are unset.
 - No contract shape changed; no phase-02 worker/Docker files, web, env, compose, deploy, or production access.
 
+## 2026-11-03T09:10:00Z — Product video phase 02: ffmpeg transcode worker (PR open, no merge)
+
+- Branch `feat/product-video-02` · worktree `D:/proje/Site-B2B-video-02` · base contract commit `78891961`.
+- New: `upload/ffmpeg-runner.ts` (spawn no-shell, `-nostdin -protocol_whitelist file -threads 2`, SIGKILL timeout, 16KB scrubbed stderr), `upload/video-transcode.service.ts`, `upload/video-object-store.ts` (own MinIO client, same env vars; storage.service untouched), `omnichannel/services/video-job-lane.ts`.
+- Worker: transcode events use a dedicated 1-row lease (`buildLeaseSql([PRODUCT_VIDEO_TRANSCODE])`), never the batch lease; one job per process; job runs detached from `tick()`; heartbeat + `lockedAt` refresh every 20s; SIGTERM aborts ffmpeg, cleans up, re-queues without burning an attempt.
+- Evidence: `tsc --noEmit` exit 0; `npm test` 208 ok (incl. real-ffmpeg spec). Local 60s 1080p: wall 119s, peak ffmpeg WS 288MB, node 142MB.
+- Open: `CHANNEL_PUBLISH_TYPE_SQL` / `CHANNEL_PUBLISH_EVENT_PREFIXES` match `product.%`, so admin "clear channel waiting" would cancel pending transcodes (needs an exclusion in a non-owned file). Runtime depends on phase 01 migration + private bucket.
+
 ## 2026-11-03T08:30:00Z — Product video: contract (00) + parallel 01/02 launched
 
 - Source: owner package `product-video-cursor-final.zip` (00–05). `UI-SPEC.md` missing → phases 03/04 blocked by owner decision; 01/02 only.

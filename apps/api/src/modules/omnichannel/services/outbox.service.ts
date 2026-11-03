@@ -81,7 +81,10 @@ SET status = $2,
 WHERE id = $1
 `;
 
-/** Soft-cancel waiting work — never DELETE. DONE keeps audit/retention history. */
+/**
+ * Soft-cancel waiting work — never DELETE. DONE keeps audit/retention history.
+ * product.video.* is skipped: cancelling it would strand the product_video row in queued.
+ */
 export const CANCEL_PENDING_SQL = `
 UPDATE omnichannel_outbox_events
 SET status = 'DONE',
@@ -91,14 +94,19 @@ SET status = 'DONE',
     "lockedBy" = NULL,
     "updatedAt" = NOW()
 WHERE status = 'PENDING'
+  AND "eventType" NOT LIKE 'product.video.%'
 RETURNING id
 `;
 
+/** `product.video.*` is a media job (transcode), not a messenger publish. */
 const CHANNEL_PUBLISH_TYPE_SQL = `(
-    "eventType" LIKE 'product.%'
-    OR "eventType" LIKE 'blog.%'
-    OR "eventType" LIKE 'cms.%'
-    OR "eventType" LIKE 'publication.%'
+    (
+      "eventType" LIKE 'product.%'
+      OR "eventType" LIKE 'blog.%'
+      OR "eventType" LIKE 'cms.%'
+      OR "eventType" LIKE 'publication.%'
+    )
+    AND "eventType" NOT LIKE 'product.video.%'
   )`;
 
 /** Soft-cancel only messenger/catalog publish events (not SMS/search/sales_partner). */
@@ -145,6 +153,7 @@ SET status = 'DONE',
     "updatedAt" = NOW()
 WHERE status = 'PROCESSING'
   AND ("lockedAt" IS NULL OR "lockedAt" < NOW() - ($2 * INTERVAL '1 minute'))
+  AND "eventType" NOT LIKE 'product.video.%'
 RETURNING id
 `;
 

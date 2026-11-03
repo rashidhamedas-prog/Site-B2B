@@ -58,8 +58,12 @@ export const CHANNEL_PUBLISH_EVENT_PREFIXES = [
   'publication.',
 ] as const;
 
+/** Media jobs under a publish prefix (product video transcode) are not messenger posts. */
+export const NON_CHANNEL_EVENT_PREFIXES = ['product.video.'] as const;
+
 export function isChannelPublishEventType(eventType: string): boolean {
   const t = String(eventType || '');
+  if (NON_CHANNEL_EVENT_PREFIXES.some((prefix) => t.startsWith(prefix))) return false;
   return CHANNEL_PUBLISH_EVENT_PREFIXES.some((prefix) => t.startsWith(prefix));
 }
 

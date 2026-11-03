@@ -208,3 +208,8 @@ src/database/migrations/20261028-001-omnichannel-mutation-idempotency.spec.ts
 src/modules/omnichannel/services/delivery-reactivate-conflict.spec.ts
 src/modules/omnichannel/services/delivery-idempotency.integration.spec.ts
 src/modules/omnichannel/delivery-hold-policy.spec.ts
+src/modules/upload/ffmpeg-runner.spec.ts
+src/modules/upload/video-transcode.service.spec.ts
+src/modules/upload/video-transcode.ffmpeg.spec.ts
+src/modules/omnichannel/services/video-job-lane.spec.ts
+src/modules/omnichannel/services/outbox-worker.video-drain.spec.ts
