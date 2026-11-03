@@ -45,7 +45,8 @@ ENV NODE_ENV=production
 WORKDIR /app
 # su-exec: entrypoint starts as root to chown /ipc, then drops to taranom.
 RUN addgroup -S taranom && adduser -S taranom -G taranom \
- && apk add --no-cache su-exec
+ && apk add --no-cache su-exec ffmpeg \
+ && ffmpeg -version && ffprobe -version
 
 COPY --from=builder --chown=taranom:taranom /app/apps/api/dist ./dist
 COPY --from=deps --chown=taranom:taranom /app/node_modules ./node_modules
