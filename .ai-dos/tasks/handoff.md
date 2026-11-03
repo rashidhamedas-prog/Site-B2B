@@ -4924,3 +4924,10 @@ The originally reported bug (blog-link save error on retail/wholesale) is fully 
 - Exact next: independent Reviewer + Security; parent commit/push/deploy. Do not Done TASK-20260826-001. Do not flip connector flags.
 
 
+
+## 2026-11-03T14:30:00Z — Product video phase 03: admin video UX (PR open, no merge)
+
+- Task TASK-20261103-product-video-03 · branch `feat/product-video-03` · worktree `D:/proje/Site-B2B-video-03` · base `0de8327f`.
+- Web: lazy `ProductVideoCard` (next/dynamic, admin-only) in AdminProducts media section; `lib/admin-product-video.ts` (apiClient + XHR upload with progress/abort, auto-restart from byte 0 on network drop, max 3, waits for `online`). Soft delete + order applied on form save; ACTIVE save disabled while a ready video has no poster.
+- API: `PATCH /v1/products/:id/video/order` {sort_order int 2..100}; public adds `sort_order` (min 2) + `upload_date`; public returns null without poster; admin GET adds `sort_order`; error copy = UI-SPEC.
+- Evidence: api tsc 0 + touched specs ok + full `npm test`; web tsc 0; e2e `playwright.admin-video.config.ts` 14/14 (chromium, mocked API).
