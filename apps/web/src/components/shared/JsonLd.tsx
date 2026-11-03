@@ -5,6 +5,10 @@ import { jsonLdBrandNode } from '@/lib/product-jsonld-brand';
 import { jsonLdImageObjects } from '@/lib/product-image-alt';
 import { variantsInStock } from '@/lib/product-display';
 import {
+  buildProductVideoJsonLd,
+  type PublicProductVideo,
+} from '@/lib/product-video-public';
+import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
   organizationId,
@@ -117,6 +121,7 @@ export function ProductJsonLd({
   hideDefaultBrand,
   images,
   imageAlts,
+  video,
 }: {
   name: string;
   description?: string;
@@ -136,6 +141,7 @@ export function ProductJsonLd({
   channel?: SalesChannel;
   brandName?: string | null;
   hideDefaultBrand?: boolean;
+  video?: PublicProductVideo | null;
 }) {
   const fallbackImage =
     channel === 'RETAIL' ? `${RETAIL_ORIGIN}/og-retail.jpg` : `${WHOLESALE_ORIGIN}/og-wholesale.jpg`;
@@ -152,6 +158,7 @@ export function ProductJsonLd({
       ? imageObjects
       : absoluteJsonLdUrl(channel, image) ?? fallbackImage;
   const brand = jsonLdBrandNode({ brandName, hideDefaultBrand });
+  const videoObject = buildProductVideoJsonLd(video, name, description);
 
   const additionalProperty = [
     fabric ? { '@type': 'PropertyValue', name: 'جنس پارچه', value: fabric } : null,
@@ -172,6 +179,7 @@ export function ProductJsonLd({
         image: productImage,
         sku,
         ...(brand ? { brand } : {}),
+        ...(videoObject ? { video: videoObject } : {}),
         itemCondition: 'https://schema.org/NewCondition',
         ...(additionalProperty.length ? { additionalProperty } : {}),
         ...(fabric || color ? { material: fabric, color } : {}),

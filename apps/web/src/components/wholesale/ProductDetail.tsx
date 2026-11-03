@@ -28,6 +28,12 @@ import { wholesaleMoq } from '@/lib/wholesale-order';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 import { WholesaleColorSelectPrompt } from './WholesaleColorSelectPrompt';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
+import type { PublicProductVideo } from '@/lib/product-video-public';
+import {
+  ProductVideoDot,
+  ProductVideoSlide,
+  ProductVideoThumbnail,
+} from '@/components/shared/ProductVideoSlide';
 
 interface Variant {
   id: string;
@@ -196,10 +202,12 @@ function defaultColors(p: WholesaleProduct): string[] {
 export function ProductDetail({
   slug,
   initialProduct,
+  video,
   guide,
 }: {
   slug: string;
   initialProduct?: WholesaleProduct;
+  video?: PublicProductVideo | null;
   guide?: ReactNode;
 }) {
   const router = useRouter();
@@ -209,7 +217,9 @@ export function ProductDetail({
   const [quantity, setQuantity] = useState(() =>
     initialProduct ? wholesaleMoq(initialProduct) : 1,
   );
-  const [activeImage, setActiveImage] = useState(0);
+  const [activeMedia, setActiveMedia] = useState(0);
+  const [videoPlayRequest, setVideoPlayRequest] = useState(0);
+  const galleryTouchStart = useRef<number | null>(null);
   const [showSizeGuide, setShowSizeGuide] = useState(true);
   const [addedToCart, setAddedToCart] = useState(false);
   const [selectedColors, setSelectedColors] = useState<string[]>(() =>
@@ -416,7 +426,37 @@ export function ProductDetail({
   if (!product) return null;
 
   const totalPrice = Math.round(unitPrice / 10 * totalPieces);
-  const mainImage = product.images?.[activeImage];
+  const imageMedia = (product.images ?? []).map((src, imageIndex) => ({
+    kind: 'image' as const,
+    src,
+    imageIndex,
+  }));
+  const galleryMedia: Array<
+    | { kind: 'image'; src: string; imageIndex: number }
+    | { kind: 'video'; video: PublicProductVideo }
+  > = [...imageMedia];
+  if (video?.poster && imageMedia.length > 0) {
+    const insertAt = Math.min(
+      Math.max(1, (video.sort_order ?? 2) - 1),
+      galleryMedia.length,
+    );
+    galleryMedia.splice(insertAt, 0, { kind: 'video', video });
+  }
+  const hasProductVideo = galleryMedia.some((item) => item.kind === 'video');
+  const activeItem = galleryMedia[activeMedia] ?? galleryMedia[0];
+  const mainImage = activeItem?.kind === 'image' ? activeItem.src : undefined;
+  const activateMedia = (index: number, playVideo = false) => {
+    setActiveMedia(index);
+    if (playVideo) setVideoPlayRequest((request) => request + 1);
+  };
+  const finishGallerySwipe = (clientX: number, target: EventTarget | null) => {
+    if (target instanceof Element && target.closest('video')) return;
+    const start = galleryTouchStart.current;
+    galleryTouchStart.current = null;
+    if (start == null || galleryMedia.length < 2 || Math.abs(clientX - start) < 45) return;
+    const delta = clientX < start ? 1 : -1;
+    activateMedia((activeMedia + delta + galleryMedia.length) % galleryMedia.length);
+  };
   const fabricLabel = product.specs?.fabricType || product.fabric;
   const body =
     [product.fullContent, product.wholesaleFullContent, product.description]
@@ -443,13 +483,28 @@ export function ProductDetail({
         <div className="grid gap-8 lg:grid-cols-2 xl:gap-12">
           {/* Image gallery */}
           <div className="max-w-full space-y-3 overflow-hidden">
-            <div data-tn-hero="" className="pdp-main-frame tn-media rounded-2xl bg-gradient-to-b from-primary-50 to-primary-100">
-              <ProductImage
-                src={mainImage}
-                alt={resolveProductImageAlt(product.imageAlts, mainImage, { name: product.name, fabric: product.specs?.fabricType || product.fabric, index: activeImage })}
-                priority
-                sizes={PDP_MAIN_IMAGE_SIZES}
-              />
+            <div
+              data-tn-hero=""
+              className="pdp-main-frame tn-media rounded-2xl bg-gradient-to-b from-primary-50 to-primary-100"
+              onTouchStart={(event) => {
+                galleryTouchStart.current = event.touches[0]?.clientX ?? null;
+              }}
+              onTouchEnd={(event) => finishGallerySwipe(event.changedTouches[0]?.clientX ?? 0, event.target)}
+            >
+              {activeItem?.kind === 'video' ? (
+                <ProductVideoSlide
+                  video={activeItem.video}
+                  active
+                  playRequest={videoPlayRequest}
+                />
+              ) : (
+                <ProductImage
+                  src={mainImage}
+                  alt={resolveProductImageAlt(product.imageAlts, mainImage, { name: product.name, fabric: product.specs?.fabricType || product.fabric, index: activeItem?.imageIndex ?? 0 })}
+                  priority
+                  sizes={PDP_MAIN_IMAGE_SIZES}
+                />
+              )}
               <button
                 type="button"
                 aria-label="اشتراک‌گذاری محصول"
@@ -474,25 +529,60 @@ export function ProductDetail({
                 )}
               </div>
             </div>
-            {product.images?.length > 1 && (
+            {galleryMedia.length > 1 && (
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-                {product.images.map((img, i) => (
-                  <button
-                    key={img}
-                    type="button"
-                    onClick={() => setActiveImage(i)}
-                    aria-label={`تصویر ${(i + 1).toLocaleString('fa-IR')} از ${product.images.length.toLocaleString('fa-IR')}`}
-                    aria-current={activeImage === i ? 'true' : undefined}
-                    className={cn(
-                      'relative aspect-[3/4] w-full cursor-pointer overflow-hidden rounded-xl border-2 transition-colors duration-200',
-                      activeImage === i ? 'border-[var(--brand-gold-700,#836A27)]' : 'border-transparent hover:border-primary-200',
-                    )}
-                  >
-                    <ProductImage src={img} alt={resolveProductImageAlt(product.imageAlts, img, { name: product.name, fabric: product.specs?.fabricType || product.fabric, index: i })} sizes="80px" />
-                  </button>
-                ))}
+                {galleryMedia.map((item, i) =>
+                  item.kind === 'video' ? (
+                    <ProductVideoThumbnail
+                      key="product-video"
+                      video={item.video}
+                      selected={activeMedia === i}
+                      onActivate={() => activateMedia(i, true)}
+                      className={cn(
+                        'aspect-[3/4] w-full rounded-xl border-2 transition-colors duration-200',
+                        activeMedia === i ? 'border-[var(--brand-gold-700,#836A27)]' : 'border-transparent hover:border-primary-200',
+                      )}
+                    />
+                  ) : (
+                    <button
+                      key={item.src}
+                      type="button"
+                      onClick={() => activateMedia(i)}
+                      aria-label={`تصویر ${(item.imageIndex + 1).toLocaleString('fa-IR')} از ${product.images.length.toLocaleString('fa-IR')}`}
+                      aria-current={activeMedia === i ? 'true' : undefined}
+                      className={cn(
+                        'relative aspect-[3/4] w-full cursor-pointer overflow-hidden rounded-xl border-2 transition-colors duration-200',
+                        activeMedia === i ? 'border-[var(--brand-gold-700,#836A27)]' : 'border-transparent hover:border-primary-200',
+                      )}
+                    >
+                      <ProductImage src={item.src} alt={resolveProductImageAlt(product.imageAlts, item.src, { name: product.name, fabric: product.specs?.fabricType || product.fabric, index: item.imageIndex })} sizes="80px" />
+                    </button>
+                  ),
+                )}
               </div>
             )}
+            {hasProductVideo ? (
+              <div className="flex justify-center gap-2 sm:hidden" aria-label="صفحه‌بندی گالری">
+                {galleryMedia.map((item, index) =>
+                  item.kind === 'video' ? (
+                    <ProductVideoDot
+                      key="product-video-dot"
+                      selected={activeMedia === index}
+                      onActivate={() => activateMedia(index, true)}
+                    />
+                  ) : (
+                    <button
+                      key={`image-dot-${item.src}`}
+                      type="button"
+                      aria-label={`تصویر ${(item.imageIndex + 1).toLocaleString('fa-IR')}`}
+                      aria-current={activeMedia === index ? 'true' : undefined}
+                      onClick={() => activateMedia(index)}
+                      className={`h-2 w-2 rounded-full ${activeMedia === index ? 'bg-black' : 'bg-black/20'}`}
+                    />
+                  ),
+                )}
+              </div>
+            ) : null}
           </div>
 
           {/* Product info */}

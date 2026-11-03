@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState, useEffect, type ReactNode } from 'react';
+import { useMemo, useState, useEffect, useRef, type ReactNode } from 'react';
 import { Check, ChevronLeft, ChevronRight, Heart, ShoppingBag, Truck, X, ZoomIn } from 'lucide-react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
@@ -20,6 +20,12 @@ import { looksLikeHtml, selectRetailPdpBody, lightSanitizeHtml } from '@/lib/ret
 import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import { trackViewItemList } from '@/lib/retail-analytics';
+import type { PublicProductVideo } from '@/lib/product-video-public';
+import {
+  ProductVideoDot,
+  ProductVideoSlide,
+  ProductVideoThumbnail,
+} from '@/components/shared/ProductVideoSlide';
 
 type Related = {
   id: string;
@@ -144,10 +150,12 @@ function PreOrderCountdown({ date }: { date: string }) {
 export function RetailProductDetail({
   product,
   initialVariantId,
+  video,
   guide,
 }: {
   product: Product;
   initialVariantId?: string;
+  video?: PublicProductVideo | null;
   guide?: ReactNode;
 }) {
   const boutique = useRetailSkin() === 'boutique';
@@ -212,7 +220,21 @@ export function RetailProductDetail({
     return (product.images ?? []).filter((u) => !hidden.has(u));
   }, [colors, colorMeta, product.images, product.variants]);
 
-  const [activeImg, setActiveImg] = useState(0);
+  const galleryMedia = useMemo(() => {
+    const media: Array<
+      | { kind: 'image'; src: string; imageIndex: number }
+      | { kind: 'video'; video: PublicProductVideo }
+    > = gallery.map((src, imageIndex) => ({ kind: 'image' as const, src, imageIndex }));
+    if (video?.poster && media.length > 0) {
+      const insertAt = Math.min(Math.max(1, (video.sort_order ?? 2) - 1), media.length);
+      media.splice(insertAt, 0, { kind: 'video', video });
+    }
+    return media;
+  }, [gallery, video]);
+  const [activeMedia, setActiveMedia] = useState(0);
+  const [videoPlayRequest, setVideoPlayRequest] = useState(0);
+  const galleryTouchStart = useRef<number | null>(null);
+  const hasProductVideo = galleryMedia.some((item) => item.kind === 'video');
 
   useEffect(() => {
     setWish(isInWishlist(product.id));
@@ -263,8 +285,13 @@ export function RetailProductDetail({
     const url = colorMeta.get(color)?.imageUrl;
     if (!url) return;
     const idx = gallery.findIndex((g) => g === url);
-    if (idx >= 0) setActiveImg(idx);
-  }, [color, colorMeta, gallery]);
+    if (idx >= 0) {
+      const mediaIndex = galleryMedia.findIndex(
+        (item) => item.kind === 'image' && item.imageIndex === idx,
+      );
+      if (mediaIndex >= 0) setActiveMedia(mediaIndex);
+    }
+  }, [color, colorMeta, gallery, galleryMedia]);
 
   const variantUnits = (v: Variant) => Math.max(0, Number(v.retailStock) || 0);
 
@@ -300,7 +327,11 @@ export function RetailProductDetail({
   const variantStock = selectedVariant ? variantUnits(selectedVariant) : productRetailStock;
   const stock = product.variants?.length ? variantStock : productRetailStock;
   const colorImage = mediaUrl(colorMeta.get(color)?.imageUrl);
-  const main = colorImage || mediaUrl(gallery[activeImg] ?? gallery[0]);
+  const activeItem = galleryMedia[activeMedia] ?? galleryMedia[0];
+  const main =
+    activeItem?.kind === 'image'
+      ? mediaUrl(activeItem.src)
+      : colorImage || mediaUrl(gallery[0]);
   const needsSize = sizeRows.length > 0;
   const canBuy = (product.isPreOrder || (price > 0 && stock > 0)) && (!needsSize || Boolean(size));
 
@@ -312,9 +343,14 @@ export function RetailProductDetail({
     if (first?.size) setSize(first.size);
   };
 
-  const selectGalleryImage = (i: number) => {
-    setActiveImg(i);
-    const url = gallery[i];
+  const selectGalleryMedia = (i: number, playVideo = false) => {
+    setActiveMedia(i);
+    const item = galleryMedia[i];
+    if (item?.kind === 'video') {
+      if (playVideo) setVideoPlayRequest((request) => request + 1);
+      return;
+    }
+    const url = item?.src;
     if (!url) return;
     for (const [c, meta] of colorMeta.entries()) {
       if (meta.imageUrl === url) {
@@ -325,8 +361,15 @@ export function RetailProductDetail({
   };
 
   const stepGallery = (delta: number) => {
-    if (gallery.length < 2) return;
-    selectGalleryImage((activeImg + delta + gallery.length) % gallery.length);
+    if (galleryMedia.length < 2) return;
+    selectGalleryMedia((activeMedia + delta + galleryMedia.length) % galleryMedia.length);
+  };
+  const finishGallerySwipe = (clientX: number, target: EventTarget | null) => {
+    if (target instanceof Element && target.closest('video')) return;
+    const start = galleryTouchStart.current;
+    galleryTouchStart.current = null;
+    if (start == null || Math.abs(clientX - start) < 45) return;
+    stepGallery(clientX < start ? 1 : -1);
   };
 
   useEffect(() => {
@@ -337,7 +380,7 @@ export function RetailProductDetail({
         setSizeOpen(false);
         return;
       }
-      if (!zoomOpen || gallery.length < 2) return;
+      if (!zoomOpen || galleryMedia.length < 2) return;
       if (event.key === 'ArrowLeft') {
         event.preventDefault();
         stepGallery(-1);
@@ -349,7 +392,7 @@ export function RetailProductDetail({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [zoomOpen, sizeOpen, gallery.length, activeImg]);
+  }, [zoomOpen, sizeOpen, galleryMedia.length, activeMedia]);
 
   const onAdd = () => {
     if (!canBuy || price <= 0) return;
@@ -409,32 +452,50 @@ export function RetailProductDetail({
     >
       <div className="mx-auto grid min-w-0 max-w-7xl gap-8 px-4 py-8 sm:gap-10 sm:px-6 lg:grid-cols-12 lg:px-8 lg:py-14">
         <div className="min-w-0 lg:col-span-7">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
-            {gallery.length > 1 ? (
+          <div
+            className="flex flex-col gap-3 lg:flex-row lg:items-start"
+            onTouchStart={(event) => {
+              galleryTouchStart.current = event.touches[0]?.clientX ?? null;
+            }}
+            onTouchEnd={(event) => finishGallerySwipe(event.changedTouches[0]?.clientX ?? 0, event.target)}
+          >
+            {galleryMedia.length > 1 ? (
               <div
                 className="flex gap-2 overflow-x-auto pb-1 lg:max-h-[min(80vh,760px)] lg:w-[4.75rem] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:pb-0"
                 role="listbox"
-                aria-label="گالری تصاویر"
+                aria-label="گالری محصول"
               >
-                {gallery.map((img, i) => {
-                  const u = mediaUrl(img);
-                  const linkedColor = [...colorMeta.entries()].find(([, m]) => m.imageUrl === img)?.[0];
-                  const selected = colorImage ? mediaUrl(gallery[i]) === colorImage : i === activeImg;
+                {galleryMedia.map((item, i) => {
+                  if (item.kind === 'video') {
+                    return (
+                      <ProductVideoThumbnail
+                        key="product-video"
+                        video={item.video}
+                        selected={activeMedia === i}
+                        onActivate={() => selectGalleryMedia(i, true)}
+                        className={`h-11 w-11 bg-[var(--retail-card)] ring-2 sm:h-16 sm:w-16 lg:h-auto lg:w-full lg:aspect-square ${
+                          activeMedia === i ? 'ring-[var(--retail-primary)]' : 'ring-transparent'
+                        }`}
+                      />
+                    );
+                  }
+                  const u = mediaUrl(item.src);
+                  const linkedColor = [...colorMeta.entries()].find(([, m]) => m.imageUrl === item.src)?.[0];
                   return (
                     <button
-                      key={`${img}-${i}`}
+                      key={`${item.src}-${i}`}
                       type="button"
                       role="option"
-                      aria-selected={selected}
-                      onClick={() => selectGalleryImage(i)}
+                      aria-selected={activeMedia === i}
+                      onClick={() => selectGalleryMedia(i)}
                       title={linkedColor || undefined}
-                      aria-label={`تصویر ${(i + 1).toLocaleString('fa-IR')} از ${gallery.length.toLocaleString('fa-IR')}${linkedColor ? `، ${linkedColor}` : ''}`}
+                      aria-label={`تصویر ${(item.imageIndex + 1).toLocaleString('fa-IR')} از ${gallery.length.toLocaleString('fa-IR')}${linkedColor ? `، ${linkedColor}` : ''}`}
                       className={`relative h-11 w-11 shrink-0 cursor-pointer overflow-hidden bg-[var(--retail-card)] ring-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-gold-700,#836A27)] sm:h-16 sm:w-16 lg:h-auto lg:w-full lg:aspect-square ${
-                        selected ? 'ring-[var(--retail-primary)]' : 'ring-transparent'
+                        activeMedia === i ? 'ring-[var(--retail-primary)]' : 'ring-transparent'
                       }`}
                     >
                       {u ? (
-                        <Image src={u} alt={resolveProductImageAlt(product.imageAlts, img, { name: product.name, color: linkedColor, index: i })} fill className="object-cover" sizes="72px" />
+                        <Image src={u} alt={resolveProductImageAlt(product.imageAlts, item.src, { name: product.name, color: linkedColor, index: item.imageIndex })} fill className="object-cover" sizes="72px" />
                       ) : null}
                     </button>
                   );
@@ -442,41 +503,71 @@ export function RetailProductDetail({
               </div>
             ) : null}
 
-            <button
-              type="button"
-              data-tn-hero=""
-              className="pdp-main-frame tn-media cursor-zoom-in bg-[var(--retail-card)] lg:flex-1"
-              onClick={() => setZoomOpen(true)}
-              aria-label={`بزرگنمایی تصویر ${product.name}`}
-            >
-              {main ? (
-                <Image
-                  src={main}
-                  alt={resolveProductImageAlt(product.imageAlts, gallery[activeImg] || main, { name: product.name, color, index: activeImg })}
-                  fill
-                  className="object-cover transition duration-300 hover:scale-[1.03] motion-reduce:transition-none motion-reduce:hover:scale-100"
-                  sizes={PDP_MAIN_IMAGE_SIZES}
-                  priority
+            {activeItem?.kind === 'video' ? (
+              <div data-tn-hero="" className="pdp-main-frame tn-media bg-[var(--retail-card)] lg:flex-1">
+                <ProductVideoSlide
+                  video={activeItem.video}
+                  active={!zoomOpen}
+                  playRequest={videoPlayRequest}
                 />
-              ) : null}
-              <span className="absolute bottom-3 left-3 inline-flex min-h-9 items-center gap-1 rounded-full bg-black/55 px-3 text-xs text-white">
-                <ZoomIn className="h-3.5 w-3.5" aria-hidden /> بزرگنمایی
-              </span>
-              {product.isPreOrder ? (
-                <span className="absolute right-3 top-3 rounded-full bg-[var(--retail-gold)] px-3 py-1 text-xs font-bold text-[var(--retail-primary-dark)]">
-                  پیش‌فروش
+                <button
+                  type="button"
+                  onClick={() => setZoomOpen(true)}
+                  className="absolute left-3 top-3 z-10 inline-flex min-h-11 items-center gap-1 rounded-full bg-black/65 px-3 text-xs text-white"
+                  aria-label="نمایش ویدیوی محصول در بزرگنمایی"
+                >
+                  <ZoomIn className="h-3.5 w-3.5" aria-hidden /> بزرگنمایی
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                data-tn-hero=""
+                className="pdp-main-frame tn-media cursor-zoom-in bg-[var(--retail-card)] lg:flex-1"
+                onClick={() => setZoomOpen(true)}
+                aria-label={`بزرگنمایی تصویر ${product.name}`}
+              >
+                {main ? (
+                  <Image
+                    src={main}
+                    alt={resolveProductImageAlt(product.imageAlts, activeItem?.kind === 'image' ? activeItem.src : main, { name: product.name, color, index: activeItem?.kind === 'image' ? activeItem.imageIndex : 0 })}
+                    fill
+                    className="object-cover transition duration-300 hover:scale-[1.03] motion-reduce:transition-none motion-reduce:hover:scale-100"
+                    sizes={PDP_MAIN_IMAGE_SIZES}
+                    priority
+                  />
+                ) : null}
+                <span className="absolute bottom-3 left-3 inline-flex min-h-9 items-center gap-1 rounded-full bg-black/55 px-3 text-xs text-white">
+                  <ZoomIn className="h-3.5 w-3.5" aria-hidden /> بزرگنمایی
                 </span>
-              ) : null}
-            </button>
+                {product.isPreOrder ? (
+                  <span className="absolute right-3 top-3 rounded-full bg-[var(--retail-gold)] px-3 py-1 text-xs font-bold text-[var(--retail-primary-dark)]">
+                    پیش‌فروش
+                  </span>
+                ) : null}
+              </button>
+            )}
           </div>
-          {product.videoUrl ? (
-            <div className="mt-4 overflow-hidden rounded-2xl bg-black">
-              <video
-                src={product.videoUrl}
-                controls
-                className="aspect-video w-full"
-                poster={main}
-              />
+          {hasProductVideo ? (
+            <div className="mt-3 flex justify-center gap-2 lg:hidden" aria-label="صفحه‌بندی گالری">
+              {galleryMedia.map((item, index) =>
+                item.kind === 'video' ? (
+                  <ProductVideoDot
+                    key="product-video-dot"
+                    selected={activeMedia === index}
+                    onActivate={() => selectGalleryMedia(index, true)}
+                  />
+                ) : (
+                  <button
+                    key={`image-dot-${item.src}`}
+                    type="button"
+                    aria-label={`تصویر ${(item.imageIndex + 1).toLocaleString('fa-IR')}`}
+                    aria-current={activeMedia === index ? 'true' : undefined}
+                    onClick={() => selectGalleryMedia(index)}
+                    className={`h-2 w-2 rounded-full ${activeMedia === index ? 'bg-black' : 'bg-black/20'}`}
+                  />
+                ),
+              )}
             </div>
           ) : null}
         </div>
@@ -715,7 +806,7 @@ export function RetailProductDetail({
         </section>
       ) : null}
 
-      {zoomOpen && main ? (
+      {zoomOpen && (main || activeItem?.kind === 'video') ? (
         <div
           className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
           role="dialog"
@@ -731,7 +822,7 @@ export function RetailProductDetail({
           >
             <X className="h-5 w-5" />
           </button>
-          {gallery.length > 1 ? (
+          {galleryMedia.length > 1 ? (
             <>
               <button
                 type="button"
@@ -751,8 +842,17 @@ export function RetailProductDetail({
               </button>
             </>
           ) : null}
-          <div className="relative z-10 h-[min(90vh,900px)] w-full max-w-4xl">
-            <Image src={main} alt={resolveProductImageAlt(product.imageAlts, gallery[activeImg] || main, { name: product.name, color, index: activeImg })} fill className="object-contain" sizes="100vw" />
+          <div className="relative z-10 aspect-[3/4] h-[min(90vh,900px)] w-full max-w-4xl">
+            {activeItem?.kind === 'video' ? (
+              <ProductVideoSlide
+                video={activeItem.video}
+                active={zoomOpen}
+                playRequest={videoPlayRequest}
+                className="rounded-xl"
+              />
+            ) : main ? (
+              <Image src={main} alt={resolveProductImageAlt(product.imageAlts, activeItem?.kind === 'image' ? activeItem.src : main, { name: product.name, color, index: activeItem?.kind === 'image' ? activeItem.imageIndex : 0 })} fill className="object-contain" sizes="100vw" />
+            ) : null}
           </div>
         </div>
       ) : null}
