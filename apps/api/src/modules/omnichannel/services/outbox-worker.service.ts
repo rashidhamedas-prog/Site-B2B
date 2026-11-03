@@ -223,12 +223,17 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** A detached video job counts as in-flight work for drain purposes. */
+  private isBusy(): boolean {
+    return this.running || this.videoLane.busy;
+  }
+
   private async waitForIdle(maxMs: number) {
     const deadline = Date.now() + maxMs;
-    while (this.running && Date.now() < deadline) {
+    while (this.isBusy() && Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 200));
     }
-    if (!this.running) this.markDrained();
+    if (!this.isBusy()) this.markDrained();
     else this.logger.warn(`outbox worker drain timeout after ${maxMs}ms id=${this.workerId}`);
   }
 
@@ -247,7 +252,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       stopping: this.stopping,
       origin: this.drainOrigin,
       drainFilePresent,
-      running: this.running,
+      running: this.isBusy(),
     });
     if (decision.resume) {
       this.applyResumeIfCleared(drainFilePresent);
@@ -257,7 +262,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       this.drainOrigin = 'file';
     }
     if (decision.skipClaim || this.stopping) {
-      if (decision.markDrained || (this.stopping && !this.running)) this.markDrained();
+      if (decision.markDrained || (this.stopping && !this.isBusy())) this.markDrained();
       return;
     }
     if (this.running) return;
@@ -324,12 +329,12 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       this.beat();
       if (this.drainRequested()) {
         this.beginDrain(this.stopping ? 'inflight-done' : 'file');
-        this.markDrained();
+        if (!this.isBusy()) this.markDrained();
       } else if (this.stopping && this.drainOrigin === 'file') {
         // Deploy aborted (drain flag removed) while this tick finished — resume.
         this.applyResumeIfCleared(false);
       } else if (this.stopping && this.drainOrigin === 'shutdown') {
-        this.markDrained();
+        if (!this.isBusy()) this.markDrained();
       }
     }
   }
