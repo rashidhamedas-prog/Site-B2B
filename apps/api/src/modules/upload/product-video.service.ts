@@ -14,7 +14,11 @@ import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 import { OutboxService } from '../omnichannel/services/outbox.service';
 import { isPublicProductRow } from '../product/public-product-status';
 import { StorageService } from './storage.service';
-import type { ProductVideoTranscodePayload } from './video-policy';
+import {
+  VIDEO_MAX_SORT_ORDER,
+  VIDEO_MIN_SORT_ORDER,
+  type ProductVideoTranscodePayload,
+} from './video-policy';
 import { sanitizeObjectKey } from './storage-delete';
 
 export interface ProductVideoPublicResponse {
@@ -25,6 +29,21 @@ export interface ProductVideoPublicResponse {
   duration_sec: number | null;
   width: number | null;
   height: number | null;
+  /** 1-based gallery slot; always >= 2 because slot 1 is the first image. */
+  sort_order: number;
+  /** ISO timestamp of the upload (VideoObject.uploadDate). */
+  upload_date: string | null;
+}
+
+function gallerySortOrder(value: number | null | undefined): number {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= VIDEO_MIN_SORT_ORDER ? n : VIDEO_MIN_SORT_ORDER;
+}
+
+function isoOrNull(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
 @Injectable()
@@ -102,6 +121,7 @@ export class ProductVideoService {
       webm_720: row.webm720Key ? this.storage.buildPublicUrl(row.webm720Key) : null,
       poster_candidates: (row.posterCandidates ?? []).map((key) => this.storage.buildPublicUrl(key)),
       poster: row.posterKey ? this.storage.buildPublicUrl(row.posterKey) : null,
+      sort_order: gallerySortOrder(row.sortOrder),
       created_at: row.createdAt,
       updated_at: row.updatedAt,
     };
@@ -120,16 +140,35 @@ export class ProductVideoService {
     if (channel === 'WHOLESALE' && product.showOnWholesale === false) return null;
     if (!channel && product.showOnRetail === false && product.showOnWholesale === false) return null;
     const row = await this.current(productId);
-    if (!row || row.status !== 'ready') return null;
+    // UI-SPEC: poster is mandatory; a video without one is not published.
+    if (!row || row.status !== 'ready' || !row.posterKey) return null;
     return {
       mp4_720: row.mp4720Key ? this.storage.buildPublicUrl(row.mp4720Key) : null,
       mp4_480: row.mp4480Key ? this.storage.buildPublicUrl(row.mp4480Key) : null,
       webm_720: row.webm720Key ? this.storage.buildPublicUrl(row.webm720Key) : null,
-      poster: row.posterKey ? this.storage.buildPublicUrl(row.posterKey) : null,
+      poster: this.storage.buildPublicUrl(row.posterKey),
       duration_sec: row.durationSec,
       width: row.width,
       height: row.height,
+      sort_order: gallerySortOrder(row.sortOrder),
+      upload_date: isoOrNull(row.createdAt),
     };
+  }
+
+  async setOrder(productId: string, body: { sort_order?: unknown }): Promise<{ sort_order: number }> {
+    const value = body?.sort_order;
+    if (
+      typeof value !== 'number' ||
+      !Number.isInteger(value) ||
+      value < VIDEO_MIN_SORT_ORDER ||
+      value > VIDEO_MAX_SORT_ORDER
+    ) {
+      throw new BadRequestException('جایگاه ویدیو باید عدد صحیح ۲ یا بیشتر باشد؛ جایگاه اول همیشه تصویر است.');
+    }
+    const row = await this.current(productId);
+    if (!row) throw new NotFoundException('ویدیوی محصول پیدا نشد.');
+    await this.videos.update(row.id, { sortOrder: value });
+    return { sort_order: value };
   }
 
   async remove(productId: string): Promise<{ deleted: boolean }> {

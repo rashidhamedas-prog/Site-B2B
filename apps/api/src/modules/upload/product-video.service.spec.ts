@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { ProductVideoService } from './product-video.service';
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -141,6 +141,45 @@ async function main() {
   visibleProduct = { ...visibleProduct, status: 'ACTIVE', showOnRetail: false };
   assert((await service.getPublic('product-1', 'RETAIL')) === null, 'public video follows retail visibility');
   assert(saved.length === 1 && updates.length >= 3, 'persists queue, retry, and poster updates');
+
+  visibleProduct = { ...visibleProduct, status: 'ACTIVE', showOnRetail: true, showOnWholesale: true };
+  current = { ...current, status: 'ready', sortOrder: 3, createdAt: new Date('2026-11-03T10:00:00Z') };
+  const published = await service.getPublic('product-1', 'WHOLESALE');
+  assert(published?.sort_order === 3, 'public exposes sort_order');
+  assert(published?.upload_date === '2026-11-03T10:00:00.000Z', 'public exposes upload_date as ISO');
+  assert(published?.poster === 'https://media.test/videos/product-1/video-1/poster.jpg', 'public exposes poster');
+  current = { ...current, sortOrder: null, createdAt: null };
+  const defaults = await service.getPublic('product-1');
+  assert(defaults?.sort_order === 2 && defaults.upload_date === null, 'null sort_order defaults to slot 2');
+  current = { ...current, sortOrder: 1 };
+  assert((await service.getPublic('product-1'))?.sort_order === 2, 'slot 1 is never reported for video');
+  current = { ...current, posterKey: null };
+  assert((await service.getPublic('product-1')) === null, 'video without poster is not published');
+  current = { ...current, posterKey: 'videos/product-1/video-1/poster.jpg' };
+
+  for (const bad of [1, 0, -2, 2.5, '3', null, undefined, 101]) {
+    let rejected = false;
+    try {
+      await service.setOrder('product-1', { sort_order: bad });
+    } catch (error) {
+      rejected = error instanceof BadRequestException;
+    }
+    assert(rejected, `order rejects ${String(bad)}`);
+  }
+  const before = updates.length;
+  const ordered = await service.setOrder('product-1', { sort_order: 4 });
+  assert(ordered.sort_order === 4, 'order returns new slot');
+  assert(updates.length === before + 1 && updates[updates.length - 1].sortOrder === 4, 'order persists sortOrder');
+  const savedCurrent = current;
+  current = null;
+  let missing = false;
+  try {
+    await service.setOrder('product-1', { sort_order: 2 });
+  } catch (error) {
+    missing = error instanceof NotFoundException;
+  }
+  assert(missing, 'order without a video is 404');
+  current = savedCurrent;
 
   {
     const live: any[] = [];

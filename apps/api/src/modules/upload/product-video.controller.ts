@@ -55,6 +55,14 @@ export class ProductVideoController {
     return this.videos.selectPoster(id, body);
   }
 
+  @Patch(':id/video/order')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  setOrder(@Param('id') id: string, @Body() body: { sort_order?: unknown }) {
+    this.assertUuid(id);
+    return this.videos.setOrder(id, body);
+  }
+
   private assertUuid(id: string): void {
     if (!isUuid(id)) throw new BadRequestException('شناسه محصول معتبر نیست.');
   }

@@ -32,11 +32,17 @@ export interface ProductVideoTranscodePayload {
   productId: string;
 }
 
+/** Copy is UI-SPEC §1 verbatim; the admin client shows the same strings. */
 export const VIDEO_ERROR_MESSAGES = {
-  TOO_BIG: 'حجم ویدیو بیشتر از ۲۰۰ مگابایت است.',
-  BAD_TYPE: 'فرمت ویدیو مجاز نیست. mp4، mov یا webm بفرستید.',
-  TOO_LONG: 'مدت ویدیو بیشتر از ۶۰ ثانیه است.',
+  TOO_BIG: 'حجم فایل بیش از ۲۰۰ مگابایت است.',
+  BAD_TYPE: 'فرمت پشتیبانی نمی‌شود. فقط MP4، MOV یا WebM.',
+  TOO_LONG: 'ویدیو بیش از ۶۰ ثانیه است. کوتاه‌ترش کنید.',
+  PROCESSING_FAILED: 'پردازش ناموفق بود. دوباره تلاش کنید یا فایل دیگری بفرستید.',
 } as const;
+
+/** Gallery slot 1 is always the first image; a video may sit in slot 2 or later. */
+export const VIDEO_MIN_SORT_ORDER = 2;
+export const VIDEO_MAX_SORT_ORDER = 100;
 
 export type VideoMagicKind = 'iso-bmff' | 'webm';
 

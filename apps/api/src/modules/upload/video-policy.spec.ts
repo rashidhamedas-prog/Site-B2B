@@ -32,5 +32,12 @@ assert(
   'rejects 201MB',
 );
 assert(VIDEO_MAX_BYTES === 200 * 1024 * 1024, 'keeps approved 200MB cap');
+assert(VIDEO_ERROR_MESSAGES.BAD_TYPE === 'فرمت پشتیبانی نمی‌شود. فقط MP4، MOV یا WebM.', 'UI-SPEC bad-type copy');
+assert(VIDEO_ERROR_MESSAGES.TOO_BIG === 'حجم فایل بیش از ۲۰۰ مگابایت است.', 'UI-SPEC too-big copy');
+assert(VIDEO_ERROR_MESSAGES.TOO_LONG === 'ویدیو بیش از ۶۰ ثانیه است. کوتاه‌ترش کنید.', 'UI-SPEC too-long copy');
+assert(
+  VIDEO_ERROR_MESSAGES.PROCESSING_FAILED === 'پردازش ناموفق بود. دوباره تلاش کنید یا فایل دیگری بفرستید.',
+  'UI-SPEC processing-failed copy',
+);
 
 console.log('video-policy.spec.ts: ok');
