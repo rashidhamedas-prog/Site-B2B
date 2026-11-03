@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Plus,
@@ -60,6 +61,16 @@ import {
   suggestProductImageAlt,
 } from '@/lib/product-image-alt';
 import { resolveWholesaleOrderBadge } from '@/lib/wholesale-order-badge';
+import {
+  EMPTY_VIDEO_DRAFT,
+  commitProductVideoDraft,
+  type ProductVideoDraft,
+} from '@/lib/admin-product-video';
+
+const ProductVideoCard = dynamic(() => import('@/components/admin/ProductVideoCard'), {
+  ssr: false,
+  loading: () => <p className="text-xs text-gray-500">در حال بارگذاری بخش ویدیو…</p>,
+});
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'فعال',
@@ -902,6 +913,7 @@ export function AdminProducts() {
   const [colorDrafts, setColorDrafts] = useState<ColorDraft[]>([]);
   const [initialColorNames, setInitialColorNames] = useState<string[]>([]);
   const { upload: uploadImage, uploading: uploadingImg } = useImageUpload();
+  const [videoDraft, setVideoDraft] = useState<ProductVideoDraft>(EMPTY_VIDEO_DRAFT);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
@@ -1214,6 +1226,7 @@ export function AdminProducts() {
     setWholesaleLinkPicks([]);
     setSaveError(null);
     setSlugError(null);
+    setVideoDraft(EMPTY_VIDEO_DRAFT);
   };
 
   const handleImageUpload = useCallback(
@@ -1277,6 +1290,8 @@ export function AdminProducts() {
   const handleSave = useCallback(async () => {
     if (!form.name || !form.wholesalePrice) return;
     if (!form.sku && !form.categoryId && modal === 'create') return;
+    if (videoDraft.uploading) return;
+    if (form.status === 'ACTIVE' && videoDraft.posterMissing) return;
     setSaveError(null);
     setSlugError(null);
 
@@ -1551,6 +1566,10 @@ export function AdminProducts() {
         }
       }
 
+      if (productId && modal === 'edit') {
+        await commitProductVideoDraft(productId, videoDraft);
+      }
+
       closeModal();
       refetch();
       refreshSpecMemory();
@@ -1578,6 +1597,7 @@ export function AdminProducts() {
     retailLinkPicks,
     wholesaleLinkPicks,
     refreshSpecMemory,
+    videoDraft,
   ]);
 
   const generateContent = useCallback(
@@ -3209,9 +3229,26 @@ export function AdminProducts() {
                   className="hidden"
                   onChange={handleImageUpload}
                 />
+                {modal === 'edit' && editProduct ? (
+                  <ProductVideoCard
+                    key={editProduct.id}
+                    productId={editProduct.id}
+                    images={images}
+                    onDraftChange={setVideoDraft}
+                  />
+                ) : (
+                  <p className="rounded-lg bg-gray-50 px-3 py-2 text-[11px] text-gray-500">
+                    برای افزودن ویدیوی محصول، ابتدا محصول را ذخیره کنید و سپس آن را ویرایش کنید.
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4">
+              {form.status === 'ACTIVE' && videoDraft.posterMissing ? (
+                <p id="product-video-publish-hint" className="ml-auto text-xs text-amber-800">
+                  برای انتشار، پوستر ویدیو را انتخاب کنید (یا وضعیت را از «فعال» تغییر دهید).
+                </p>
+              ) : null}
               <button onClick={closeModal} className="btn btn-outline btn-md">
                 انصراف
               </button>
@@ -3220,14 +3257,27 @@ export function AdminProducts() {
                 disabled={
                   saving ||
                   uploadingImg ||
+                  videoDraft.uploading ||
+                  (form.status === 'ACTIVE' && videoDraft.posterMissing) ||
                   !form.name ||
                   !form.wholesalePrice ||
                   (modal === 'create' && !form.sku && !form.categoryId)
                 }
+                aria-describedby={
+                  form.status === 'ACTIVE' && videoDraft.posterMissing
+                    ? 'product-video-publish-hint'
+                    : undefined
+                }
                 className="btn btn-primary btn-md flex items-center gap-2"
               >
                 <Save className="h-4 w-4" />
-                {uploadingImg ? 'صبر برای آپلود عکس' : saving ? 'در حال ذخیره...' : 'ذخیره'}
+                {uploadingImg
+                  ? 'صبر برای آپلود عکس'
+                  : videoDraft.uploading
+                    ? 'صبر برای آپلود ویدیو'
+                    : saving
+                      ? 'در حال ذخیره...'
+                      : 'ذخیره'}
               </button>
             </div>
           </div>
