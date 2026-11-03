@@ -11,6 +11,7 @@ import {
   VideoTranscodeAbortedError,
   VideoTranscodeService,
   mp4OutputArgs,
+  posterFrameArgs,
   webmOutputArgs,
 } from './video-transcode.service';
 import type { VideoObjectStorePort } from './video-object-store';
@@ -106,6 +107,7 @@ async function main() {
     ]) assert(a.includes(f), `mp4 720 flag ${f}`);
     assert(mp4OutputArgs(480, 24).join(' ').includes("-crf 24") && mp4OutputArgs(480, 24).join(' ').includes("trunc(min(480,ih)/2)*2"), 'mp4 480 crf 24');
     assert(webmOutputArgs(720).join(' ').includes("-vf scale=-2:'trunc(min(720,ih)/2)*2'"), 'webm even height');
+    assert(posterFrameArgs(720).join(' ').includes("-vf scale=-2:'trunc(min(720,ih)/2)*2'"), 'poster dims match streams');
     const w = webmOutputArgs(720).join(' ');
     for (const f of ['-c:v libvpx-vp9', '-crf 33', '-b:v 0', '-row-mt 1', '-deadline good', '-cpu-used 4', '-c:a libopus', '-b:a 64k']) {
       assert(w.includes(f), `webm flag ${f}`);

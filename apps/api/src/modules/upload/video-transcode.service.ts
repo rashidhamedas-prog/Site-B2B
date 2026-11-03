@@ -9,6 +9,7 @@ import { FfmpegError, FfmpegRunner, type ProbeResult } from './ffmpeg-runner';
 import { MAX_INPUT_PIXELS, type SharpFactory, withSharpSlot } from './image-processor';
 import { VideoObjectStore, type VideoObjectStorePort } from './video-object-store';
 import {
+  VIDEO_KEEP_ORIGINAL,
   VIDEO_MAX_BYTES,
   VIDEO_MAX_SEC,
   VIDEO_MIN_FREE_DISK_BYTES,
@@ -72,7 +73,7 @@ export function posterFrameArgs(height: number): string[] {
     '-map', '0:v:0',
     '-map_metadata', '-1',
     '-frames:v', '1',
-    '-vf', `scale=-2:'min(${height},ih)'`,
+    '-vf', evenScaleFilter(height),
     '-f', 'image2',
     '-c:v', 'png',
   ];
@@ -266,11 +267,13 @@ export class VideoTranscodeService {
       });
       uploaded.length = 0;
 
-      try {
-        await this.store.remove(VIDEO_SRC_BUCKET, row.srcKey);
-        await this.videos.update(videoId, { srcKey: null });
-      } catch (err) {
-        this.logger.warn(`video ${videoId} ready; source cleanup deferred: ${errText(err)}`);
+      if (!VIDEO_KEEP_ORIGINAL) {
+        try {
+          await this.store.remove(VIDEO_SRC_BUCKET, row.srcKey);
+          await this.videos.update(videoId, { srcKey: null });
+        } catch (err) {
+          this.logger.warn(`video ${videoId} ready; source cleanup deferred: ${errText(err)}`);
+        }
       }
       return { status: 'ready', bytesOut };
     } catch (err) {

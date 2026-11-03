@@ -49,6 +49,11 @@ tasks:
       - "apps/api/src/modules/omnichannel/services/outbox.service.spec.ts"
       - "apps/api/src/modules/omnichannel/gate-block-reason.ts"
       - "apps/api/src/modules/omnichannel/gate-block-reason.spec.ts"
+      # 02 review follow-up: drain respects video lane; web console mirror
+      - "apps/api/src/modules/omnichannel/services/outbox-worker.video-drain.spec.ts"
+      - "apps/api/scripts/unit-specs.txt"
+      - "apps/web/src/components/admin/admin-omnichannel-outbox.ts"
+      - "apps/web/src/components/admin/admin-omnichannel-outbox-label.spec.ts"
     notes: "Overlapping stale claims (TASK-20261024-008, -005, 20261023-001, 20261027-omni-redesign, 20261010-005, 20260826-001) on upload.controller/storage.service/outbox-worker/constants: last claimed 2026-10-24..27 or earlier; edits here are additive only. Reason recorded in handoff.md."
   - id: "TASK-20261102-header-nav-cls"
     title: "CLS of header nav (nav.hidden.items-center) on production"
