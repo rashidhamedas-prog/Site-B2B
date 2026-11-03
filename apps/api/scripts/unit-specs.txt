@@ -51,6 +51,11 @@ src/modules/upload/storage-delete.spec.ts
 src/modules/upload/channel-image.spec.ts
 src/modules/upload/storage-upload-channel.spec.ts
 src/modules/upload/storage.service.spec.ts
+src/modules/upload/video-policy.spec.ts
+src/modules/upload/upload.controller.video.spec.ts
+src/modules/upload/product-video.service.spec.ts
+src/modules/upload/video-private.integration.spec.ts
+src/database/migrations/20261103-001-product-video.integration.spec.ts
 src/modules/omnichannel/omnichannel-secrets.spec.ts
 src/modules/omnichannel/omnichannel-token-vault.spec.ts
 src/modules/omnichannel/provider-egress.spec.ts
