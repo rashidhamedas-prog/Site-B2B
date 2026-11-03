@@ -153,35 +153,20 @@ jobs:
         run: npm ci
       - name: Build shared-types
         run: npm run build -w @taranom/shared-types
-      - name: Start private MinIO test service
-        run: |
-          docker run -d --name product-video-minio \
-            -p 9000:9000 \
-            -e MINIO_ROOT_USER=video-test \
-            -e MINIO_ROOT_PASSWORD=video-test-secret \
-            quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
       - name: SMS audience sources on real Postgres
         working-directory: apps/api
         env:
           NODE_ENV: test
           SMS_PG_TEST_URL: postgres://taranom:drill@127.0.0.1:5432/taranom_sms_pg_test
         run: npx ts-node --transpile-only src/modules/sms-panel/audience/audience-sources.pg.spec.ts
-      - name: Product video migration and private MinIO integration
+      # MinIO community images/binaries are no longer publicly downloadable, so the
+      # private-bucket 403 spec runs against the Iran origin after deploy instead.
+      - name: Product video migration on real Postgres
         working-directory: apps/api
         env:
           NODE_ENV: test
           DATABASE_URL_TEST: postgres://taranom:drill@127.0.0.1:5432/taranom_sms_pg_test
-          MINIO_TEST_ENDPOINT: http://127.0.0.1:9000
-          MINIO_TEST_ACCESS_KEY: video-test
-          MINIO_TEST_SECRET_KEY: video-test-secret
-        run: |
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null; then break; fi
-            sleep 1
-          done
-          curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null
-          npx ts-node --transpile-only src/database/migrations/20261103-001-product-video.integration.spec.ts
-          npx ts-node --transpile-only src/modules/upload/video-private.integration.spec.ts
+        run: npx ts-node --transpile-only src/database/migrations/20261103-001-product-video.integration.spec.ts
 
   deploy-lock-tests:
     runs-on: ubuntu-latest
