@@ -70,6 +70,7 @@ class MockApi {
   videoGets: number[] = [];
   afterUpload: Array<Row | null> = [videoRow({ status: 'processing', poster: null, poster_candidates: [] }), videoRow()];
   afterRetry: Array<Row | null> = [videoRow()];
+  product: Row = PRODUCT;
   constructor(
     public seq: Array<Row | null> = [null],
     public uploadPlan: Array<'ok' | 'network' | 'slow'> = ['ok'],
@@ -125,9 +126,9 @@ async function handleApi(route: Route, api: MockApi, path: string) {
   api.calls.push({ method, path, body, headers: req.headers() });
 
   if (method === 'GET' && path === '/products/admin') {
-    return json(route, { data: [PRODUCT], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } });
+    return json(route, { data: [api.product], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } });
   }
-  if (method === 'GET' && path === `/products/${PID}`) return json(route, PRODUCT);
+  if (method === 'GET' && path === `/products/${PID}`) return json(route, api.product);
   if (method === 'GET' && path === `/products/${PID}/video`) {
     api.videoGets.push(Date.now());
     return json(route, api.nextVideo());
@@ -178,6 +179,9 @@ async function openEditor(page: Page, api: MockApi) {
       }
       return safe(() => route.fulfill({ status: 404, body: '' }));
     }
+    if (host === 'api.poshaktaranom.com') {
+      return handleApi(route, api, url.pathname.replace(/^\/v1(?=\/)/, ''));
+    }
     const apiMatch = /^(?:\/api)?\/v1(\/.*)$/.exec(url.pathname);
     if (apiMatch) return handleApi(route, api, apiMatch[1]);
     if (/(^|\.)poshaktaranom\.(com|ir)$/.test(host)) {
@@ -196,11 +200,17 @@ async function openEditor(page: Page, api: MockApi) {
     localStorage.setItem('taranom_admin_token', value);
     localStorage.setItem('taranom_admin_role', 'ADMIN');
     const w = window as unknown as {
-      __e2eVideoDuration: number;
+      __e2eVideoDuration: number | null;
       __e2eRevoked: string[];
       __e2eStatusLog: string[];
+      __e2eOffline: boolean;
     };
     w.__e2eVideoDuration = 12;
+    w.__e2eOffline = false;
+    Object.defineProperty(Navigator.prototype, 'onLine', {
+      configurable: true,
+      get: () => !w.__e2eOffline,
+    });
     w.__e2eRevoked = [];
     w.__e2eStatusLog = [];
     const revoke = URL.revokeObjectURL.bind(URL);
@@ -217,6 +227,7 @@ async function openEditor(page: Page, api: MockApi) {
       set(v: string) {
         if (typeof v === 'string' && v.startsWith('blob:')) {
           const d = w.__e2eVideoDuration;
+          if (d === null) return;
           Object.defineProperty(this, 'duration', { configurable: true, get: () => d });
           setTimeout(() => (this as HTMLMediaElement).dispatchEvent(new Event('loadedmetadata')), 20);
           return;
@@ -258,6 +269,8 @@ test('upload → queued → processing → ready, with progress, aria-live and a
   await expect(bar).toHaveAttribute('aria-valuenow', /^\d+$/);
   await expect(card.getByRole('button', { name: 'لغو' })).toBeVisible();
   await expect(status(page)).toContainText('در حال آپلود');
+  await expect(card.getByTestId('product-video-progress-text')).toContainText('٪');
+  await expect(status(page)).not.toContainText('٪');
 
   await expect(status(page)).toContainText('در صف پردازش');
   await expect(status(page)).toContainText(MSG.PREPARING);
@@ -318,6 +331,116 @@ test('cancel aborts the upload and returns to the upload zone', async ({ page })
   await expect(card.getByRole('button', { name: 'آپلود ویدیو' })).toBeVisible();
 });
 
+const neverReadsMetadata = (page: Page) =>
+  page.evaluate(() => {
+    (window as unknown as { __e2eVideoDuration: number | null }).__e2eVideoDuration = null;
+  });
+
+test('closing the editor during the duration check never uploads', async ({ page }) => {
+  const api = new MockApi([videoRow()]);
+  const card = await openEditor(page, api);
+  await card.getByRole('button', { name: 'حذف' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'حذف' }).click();
+  await neverReadsMetadata(page);
+  await page.getByTestId('product-video-input').setInputFiles({
+    name: 'clip.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.alloc(2048, 4),
+  });
+  await expect(status(page)).toContainText('بررسی فایل');
+  await expect(card.getByRole('button', { name: 'لغو' })).toBeVisible();
+  await page.getByRole('button', { name: 'انصراف', exact: true }).click();
+  await expect(page.getByTestId('product-video-card')).toHaveCount(0);
+  await page.waitForTimeout(7_000);
+  expect(api.count('POST', '/upload/video')).toBe(0);
+  expect(api.count('DELETE', `/products/${PID}/video`)).toBe(0);
+});
+
+test('«لغو» during the duration check stops before any upload', async ({ page }) => {
+  const api = new MockApi([null]);
+  const card = await openEditor(page, api);
+  await neverReadsMetadata(page);
+  await page.getByTestId('product-video-input').setInputFiles({
+    name: 'clip.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.alloc(2048, 5),
+  });
+  await expect(status(page)).toContainText('بررسی فایل');
+  await card.getByRole('button', { name: 'لغو' }).click();
+  await expect(status(page)).toContainText('آپلود لغو شد.');
+  await page.waitForTimeout(6_000);
+  expect(api.count('POST', '/upload/video')).toBe(0);
+});
+
+test('unreadable duration still uploads; server TOO_LONG shows cause, delete, no retry', async ({ page }) => {
+  const api = new MockApi([null]);
+  api.afterUpload = [videoRow({ status: 'failed', error_code: 'TOO_LONG', poster: null, poster_candidates: [] })];
+  const card = await openEditor(page, api);
+  await neverReadsMetadata(page);
+  await page.getByTestId('product-video-input').setInputFiles({
+    name: 'iphone.mov',
+    mimeType: 'video/quicktime',
+    buffer: Buffer.alloc(2048, 6),
+  });
+  await expect(status(page)).toContainText('بررسی فایل');
+  await expect.poll(() => api.count('POST', '/upload/video'), { timeout: 10_000 }).toBe(1);
+  await expect(status(page)).toContainText(MSG.TOO_LONG, { timeout: 15_000 });
+  await expect(card.getByRole('button', { name: 'تلاش مجدد' })).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'حذف' })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'آپلود فایل دیگر' })).toBeVisible();
+});
+
+test('network drop: 3 restarts max, then error and no further POST', async ({ page }) => {
+  const api = new MockApi([null], ['network']);
+  await openEditor(page, api);
+  await page.getByTestId('product-video-input').setInputFiles({
+    name: 'clip.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.alloc(2048, 7),
+  });
+  await expect(status(page)).toContainText(MSG.CONNECTION_LOST);
+  await expect(status(page)).toContainText('آپلود ویدیو ناموفق بود', { timeout: 20_000 });
+  expect(api.count('POST', '/upload/video')).toBe(4);
+  await page.waitForTimeout(3_000);
+  expect(api.count('POST', '/upload/video')).toBe(4);
+});
+
+test('offline: restart waits for the online event', async ({ page }) => {
+  const api = new MockApi([null], ['network', 'ok']);
+  await openEditor(page, api);
+  await page.evaluate(() => {
+    (window as unknown as { __e2eOffline: boolean }).__e2eOffline = true;
+  });
+  await page.getByTestId('product-video-input').setInputFiles({
+    name: 'clip.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.alloc(2048, 8),
+  });
+  await expect(status(page)).toContainText(MSG.CONNECTION_LOST);
+  await page.waitForTimeout(4_000);
+  expect(api.count('POST', '/upload/video')).toBe(1);
+  await page.evaluate(() => {
+    (window as unknown as { __e2eOffline: boolean }).__e2eOffline = false;
+    window.dispatchEvent(new Event('online'));
+  });
+  await expect(status(page)).toContainText('در صف پردازش', { timeout: 10_000 });
+  expect(api.count('POST', '/upload/video')).toBe(2);
+});
+
+test('empty gallery: slot 1 is a locked placeholder and the video sits in slot 2', async ({ page }) => {
+  const api = new MockApi([videoRow()]);
+  api.product = { ...PRODUCT, images: [] };
+  const card = await openEditor(page, api);
+  const items = card.getByTestId('product-media-order').locator('li');
+  await expect(items).toHaveCount(2);
+  await expect(items.nth(0)).toHaveAttribute('data-testid', 'product-media-first-placeholder');
+  await expect(items.nth(0)).toContainText('تصویر اول');
+  await expect(items.nth(1)).toHaveAttribute('data-testid', 'product-media-video-slot');
+  await expect(card.locator('#product-video-order-label')).toContainText('جایگاه در گالری: ۲');
+  await expect(card.getByRole('button', { name: 'انتقال ویدیو به جایگاه قبلی' })).toBeDisabled();
+  await expect(card.getByRole('button', { name: 'انتقال ویدیو به جایگاه بعدی' })).toBeDisabled();
+});
+
 test('client validation: bad type, >200MB (drag&drop) and >60s never reach the API', async ({ page }) => {
   const api = new MockApi([null]);
   const card = await openEditor(page, api);
@@ -354,12 +477,12 @@ for (const [code, message] of [
   ['TOO_LONG', MSG.TOO_LONG],
   ['DISK_LOW', MSG.DISK_LOW],
 ] as const) {
-  test(`failed (${code}) shows Persian cause with retry and delete`, async ({ page }) => {
+  test(`failed (${code}) shows Persian cause, delete, retry unless TOO_LONG`, async ({ page }) => {
     const api = new MockApi([videoRow({ status: 'failed', error_code: code, poster: null })]);
     const card = await openEditor(page, api);
     await expect(status(page)).toContainText('خطا');
     await expect(status(page)).toContainText(message);
-    await expect(card.getByRole('button', { name: 'تلاش مجدد' })).toBeVisible();
+    await expect(card.getByRole('button', { name: 'تلاش مجدد' })).toHaveCount(code === 'TOO_LONG' ? 0 : 1);
     await expect(card.getByRole('button', { name: 'حذف' })).toBeVisible();
   });
 }

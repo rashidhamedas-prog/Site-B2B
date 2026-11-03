@@ -28,6 +28,8 @@ tasks:
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
       - "docs/WORKLOG.md"
+      # PR #161 review round 1: admin-video e2e added to the existing web e2e CI step
+      - ".github/workflows/ci.yml"
     notes: "Phase 04 (storefront player) runs in parallel in another worktree; this task does not touch components/shared|wholesale|retail, storefront pages, JsonLd, worker, migrations, env, nginx, compose."
   - id: "TASK-20261103-product-video"
     title: "Product video: phase 00 contract + 01 upload API + 02 ffmpeg worker (03/04 blocked on UI-SPEC)"
