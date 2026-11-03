@@ -180,7 +180,7 @@ async function openEditor(page: Page, api: MockApi) {
     }
     const apiMatch = /^(?:\/api)?\/v1(\/.*)$/.exec(url.pathname);
     if (apiMatch) return handleApi(route, api, apiMatch[1]);
-    if (host.endsWith('poshaktaranom.com') || host.endsWith('poshaktaranom.ir')) {
+    if (/(^|\.)poshaktaranom\.(com|ir)$/.test(host)) {
       return safe(() => route.abort());
     }
     return safe(() => route.continue());
