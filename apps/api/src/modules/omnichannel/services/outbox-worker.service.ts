@@ -52,8 +52,11 @@ import {
 
 /** Video jobs use their own single-slot lease; never leased by the messenger/catalog batch. */
 const VIDEO_LEASE_SQL = buildLeaseSql([OUTBOX_EVENT_TYPES.PRODUCT_VIDEO_TRANSCODE]);
-/** Shutdown waits this long for an aborted transcode to clean up (compose stop_grace_period is 90s). */
-const VIDEO_ABORT_WAIT_MS = 30_000;
+/**
+ * Soft drain / shutdown wait this long for an aborted transcode to clean up.
+ * Must stay well under the deploy drain timeout (120s) and compose stop_grace_period (90s).
+ */
+export const VIDEO_ABORT_WAIT_MS = 30_000;
 
 const SALES_PARTNER_ACK = new Set<string>(SALES_PARTNER_OUTBOX_EVENT_TYPES);
 
@@ -155,7 +158,12 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     const job = this.videoJob;
     if (!job) return;
     this.videoAbort?.abort();
-    await Promise.race([job, new Promise((r) => setTimeout(r, VIDEO_ABORT_WAIT_MS))]);
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      await Promise.race([job, new Promise((r) => { timer = setTimeout(r, VIDEO_ABORT_WAIT_MS); })]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   private beginDrain(reason: 'file' | 'shutdown' | 'inflight-done') {
@@ -262,6 +270,8 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       this.drainOrigin = 'file';
     }
     if (decision.skipClaim || this.stopping) {
+      // Deploy drain waits ≤120s; a transcode can run 10 min. Abort it (event re-queued, attempt kept).
+      if (this.stopping && this.videoLane.busy) await this.abortVideoJob();
       if (decision.markDrained || (this.stopping && !this.isBusy())) this.markDrained();
       return;
     }
