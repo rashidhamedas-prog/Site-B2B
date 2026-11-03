@@ -184,6 +184,8 @@ export const OUTBOX_EVENT_TYPES = {
   PRODUCT_VISIBILITY_CHANGED: 'product.visibility_changed',
   PRODUCT_MEDIA_CHANGED: 'product.media_changed',
   PRODUCT_WITHDRAWN: 'product.withdrawn',
+  /** Internal media job (ffmpeg); never a messenger publish candidate. */
+  PRODUCT_VIDEO_TRANSCODE: 'product.video.transcode',
   BLOG_PUBLISHED: 'blog.published',
   CMS_PUBLISHED: 'cms.published',
   ORDER_CREATED_NOTIFICATION: 'order.created.notification',

@@ -1,3 +1,9 @@
+## 2026-11-03T08:30:00Z — Product video: contract (00) + parallel 01/02 launched
+
+- Source: owner package `product-video-cursor-final.zip` (00–05). `UI-SPEC.md` missing → phases 03/04 blocked by owner decision; 01/02 only.
+- Contract branch `feat/product-video-00-contract` (worktree `D:/proje/Site-B2B-video-00`): `video-policy.ts` constants, `ProductVideoEntity` (table `product_video`), `OUTBOX_EVENT_TYPES.PRODUCT_VIDEO_TRANSCODE`, entity registered in `database.config.ts`. `apps/api tsc --noEmit` exit 0.
+- Phase branches `feat/product-video-01` / `feat/product-video-02` start from the contract branch; each opens its own PR. Owner decision: PR only, no merge until Hamed GO; deploy only via Hamed-written `deploy-approval.json`.
+- Reclaimed stale overlapping claims (additive edits only): TASK-20261024-008 (upload.controller, storage.service), TASK-20261024-005 / 20261023-001 / 20261027-omni-redesign / 20261010-005 / 20260826-001 (outbox-worker, constants). All last claimed ≥7 days ago; previous owners are prior cursor-agent sessions.
 ## 2026-10-30T02:00:00Z — PR-14 security + phase-review pushed (#149)
 
 - Branch `ai/TASK-20261029-pr14-order-bots` · worktree `D:/proje/Site-B2B-pr14` · PR https://github.com/rashidhamedas-prog/Site-B2B/pull/149 · head `949aa968`
