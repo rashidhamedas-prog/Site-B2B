@@ -94,11 +94,15 @@ WHERE status = 'PENDING'
 RETURNING id
 `;
 
+/** `product.video.*` is a media job (transcode), not a messenger publish. */
 const CHANNEL_PUBLISH_TYPE_SQL = `(
-    "eventType" LIKE 'product.%'
-    OR "eventType" LIKE 'blog.%'
-    OR "eventType" LIKE 'cms.%'
-    OR "eventType" LIKE 'publication.%'
+    (
+      "eventType" LIKE 'product.%'
+      OR "eventType" LIKE 'blog.%'
+      OR "eventType" LIKE 'cms.%'
+      OR "eventType" LIKE 'publication.%'
+    )
+    AND "eventType" NOT LIKE 'product.video.%'
   )`;
 
 /** Soft-cancel only messenger/catalog publish events (not SMS/search/sales_partner). */

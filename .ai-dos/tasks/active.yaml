@@ -42,6 +42,13 @@ tasks:
       - "apps/api/src/modules/upload/ffmpeg-runner.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
       - "apps/api/src/modules/omnichannel/worker.module.ts"
+      - "apps/api/src/modules/upload/video-object-store.ts"
+      - "apps/api/src/modules/omnichannel/services/video-job-lane.ts"
+      # 02 follow-up: exclude product.video.* from channel clear / channel-post counts
+      - "apps/api/src/modules/omnichannel/services/outbox.service.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox.service.spec.ts"
+      - "apps/api/src/modules/omnichannel/gate-block-reason.ts"
+      - "apps/api/src/modules/omnichannel/gate-block-reason.spec.ts"
     notes: "Overlapping stale claims (TASK-20261024-008, -005, 20261023-001, 20261027-omni-redesign, 20261010-005, 20260826-001) on upload.controller/storage.service/outbox-worker/constants: last claimed 2026-10-24..27 or earlier; edits here are additive only. Reason recorded in handoff.md."
   - id: "TASK-20261102-header-nav-cls"
     title: "CLS of header nav (nav.hidden.items-center) on production"
