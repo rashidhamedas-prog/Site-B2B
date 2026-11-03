@@ -11,6 +11,7 @@ import { resolveRetailPdpOption, torobHeadMeta } from '@/lib/torob-pdp-meta';
 import { resolveRetailProductSeo } from '@/lib/retail-seo-copy';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import { absoluteJsonLdUrl } from '@/lib/jsonld-url';
+import { fetchPublicProductVideo } from '@/lib/product-video-public';
 
 type SeoBag = Record<string, string | undefined>;
 
@@ -112,6 +113,7 @@ export default async function RetailProductPage({
     ((product.specs as { fabricType?: string } | undefined)?.fabricType);
   const brandName = (product as { brandName?: string | null }).brandName;
   const hideDefaultBrand = Boolean((product as { hideDefaultBrand?: boolean }).hideDefaultBrand);
+  const video = await fetchPublicProductVideo(String(product.id || ''), 'RETAIL');
 
   return (
     <>
@@ -130,6 +132,7 @@ export default async function RetailProductPage({
         url={url}
         brandName={brandName}
         hideDefaultBrand={hideDefaultBrand}
+        video={video}
       />
       <ProductGroupJsonLd
         channel="RETAIL"
@@ -156,7 +159,7 @@ export default async function RetailProductPage({
         ]}
       />
       <section className="sr-only" aria-label="مشخصات محصول برای خزش">
-        <h1>{name}</h1>
+        <p>{name}</p>
         <p>قیمت: {option.productPriceToman} تومان</p>
         <p>موجودی: {option.availability === 'instock' ? 'موجود' : 'ناموجود'}</p>
         {option.optionLabel ? <p>گزینه: {option.optionLabel}</p> : null}
@@ -165,6 +168,7 @@ export default async function RetailProductPage({
       <RetailProductDetail
         product={product as any}
         initialVariantId={option.selected?.id}
+        video={video}
         guide={
           <ProductInternalLinks
             links={(product as { internalLinks?: never[] }).internalLinks}

@@ -5,6 +5,10 @@ import { jsonLdBrandNode } from '@/lib/product-jsonld-brand';
 import { jsonLdImageObjects } from '@/lib/product-image-alt';
 import { variantsInStock } from '@/lib/product-display';
 import {
+  buildProductVideoJsonLd,
+  type PublicProductVideo,
+} from '@/lib/product-video-public';
+import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
   organizationId,
@@ -16,11 +20,15 @@ import {
 export { absoluteJsonLdUrl } from '@/lib/jsonld-url';
 export { organizationId, websiteId } from '@/lib/organization-from-settings';
 
+export function serializeJsonLd(data: Record<string, unknown>): string {
+  return JSON.stringify(data).replace(/</g, '\\u003c');
+}
+
 function JsonLdScript({ data }: { data: Record<string, unknown> }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
     />
   );
 }
@@ -117,6 +125,7 @@ export function ProductJsonLd({
   hideDefaultBrand,
   images,
   imageAlts,
+  video,
 }: {
   name: string;
   description?: string;
@@ -136,6 +145,7 @@ export function ProductJsonLd({
   channel?: SalesChannel;
   brandName?: string | null;
   hideDefaultBrand?: boolean;
+  video?: PublicProductVideo | null;
 }) {
   const fallbackImage =
     channel === 'RETAIL' ? `${RETAIL_ORIGIN}/og-retail.jpg` : `${WHOLESALE_ORIGIN}/og-wholesale.jpg`;
@@ -152,6 +162,7 @@ export function ProductJsonLd({
       ? imageObjects
       : absoluteJsonLdUrl(channel, image) ?? fallbackImage;
   const brand = jsonLdBrandNode({ brandName, hideDefaultBrand });
+  const videoObject = buildProductVideoJsonLd(video, name, description);
 
   const additionalProperty = [
     fabric ? { '@type': 'PropertyValue', name: 'جنس پارچه', value: fabric } : null,
@@ -172,6 +183,7 @@ export function ProductJsonLd({
         image: productImage,
         sku,
         ...(brand ? { brand } : {}),
+        ...(videoObject ? { video: videoObject } : {}),
         itemCondition: 'https://schema.org/NewCondition',
         ...(additionalProperty.length ? { additionalProperty } : {}),
         ...(fabric || color ? { material: fabric, color } : {}),

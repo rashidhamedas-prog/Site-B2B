@@ -4923,6 +4923,18 @@ The originally reported bug (blog-link save error on retail/wholesale) is fully 
 - Gates: destination/connection/phase/publication-automation specs ok; web tsc 0; api tsc only pre-existing order-money-guard.spec noise
 - Exact next: independent Reviewer + Security; parent commit/push/deploy. Do not Done TASK-20260826-001. Do not flip connector flags.
 
+## 2026-11-03 — TASK-20261103-product-video-04 — storefront player ready
+
+- Shared poster-first player integrated into wholesale and retail PDP galleries; first photo/LCP markup remains priority and video is inserted at optional `sort_order`.
+- Gates: web tsc 0; focused JSON-LD unit OK; Playwright 6/6 (3 wholesale, 3 retail); production build OK. PDP route JS 9.79→11.5 kB wholesale and 11.1→12.8 kB retail (+1.7 kB each); observed LCP `img`, CLS 0, and no video URL requests before interaction.
+- Read-only ops checks: both nginx shop vhosts proxy `/media/` directly to MinIO without hiding Range or Content-Type (MinIO Range/206 and media MIME pass through); `/media` is channel-exempt in `channel.ts`. No nginx/API/admin/deploy files changed.
+- Existing TASK-20261101 shared-JS overlap was preserved (direct UI imports). Next: commit/push branch, PR, independent review; do not merge/deploy without Hamed GO.
+
+## 2026-11-03 — TASK-20261103-product-video-04 — review fixes
+
+- Added a 1.5s fail-open metadata timeout, public-media URL allowlist, JSON-LD `<` escaping, 44px pagination hit targets, and removed the duplicate retail H1 after confirming the visible client component H1 is present in initial SSR HTML.
+- Gates: web tsc 0; timeout/URL/JSON-LD unit checks OK; Playwright 6/6 with one initial-HTML H1 on both hosts and mobile CLS 0. Ready for PR #162 re-review; no merge/deploy.
+
 
 
 ## 2026-11-03T14:30:00Z — Product video phase 03: admin video UX (PR open, no merge)

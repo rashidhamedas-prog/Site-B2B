@@ -10,6 +10,7 @@ import { resolvePublicProductCanonical } from '@/lib/public-product-path';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import { uniqueInStockColors } from '@/lib/product-display';
+import { fetchPublicProductVideo } from '@/lib/product-video-public';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -87,7 +88,10 @@ export default async function ProductPage({ params }: Props) {
   const fabricLabel =
     (product.fabric as string | undefined) ||
     ((product.specs as { fabricType?: string } | undefined)?.fabricType);
-  const related = await loadWholesaleRelated(product);
+  const [related, video] = await Promise.all([
+    loadWholesaleRelated(product),
+    fetchPublicProductVideo(String(product.id || ''), 'WHOLESALE'),
+  ]);
 
   return (
     <>
@@ -112,6 +116,7 @@ export default async function ProductPage({ params }: Props) {
         }
         moq={Number(product.minOrderQty ?? 0) || undefined}
         url={url}
+        video={video}
       />
       <BreadcrumbJsonLd
         items={[
@@ -123,6 +128,7 @@ export default async function ProductPage({ params }: Props) {
       <ProductDetail
         slug={canonicalSlug || slug}
         initialProduct={product as unknown as WholesaleProduct}
+        video={video}
         guide={
           <ProductInternalLinks
             links={(product as { internalLinks?: never[] }).internalLinks}
