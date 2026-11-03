@@ -1,3 +1,11 @@
+## 2026-11-03T12:42:00Z — PR #159 independent review fixes
+
+- Fixed review HIGH/MEDIUM/LOW findings: bounded MinIO multipart + incomplete abort, independent byte counter, product row lock + one-live partial unique index + 23505→409, scoped nginx 210m, UUID validation, public visibility, and candidate-key confinement.
+- CI: existing Postgres job now launches pinned free `minio/minio` and runs migration up/down/schema/FK/index plus raw-private-key 403 specs. Local real integrations remain env-gated and skipped because Docker/env are unavailable.
+- Evidence: `apps/api npx tsc --noEmit -p tsconfig.json` exit 0; `npm test` 210/210 exit 0; revised video specs exit 0; CI YAML parsed; nginx static checks confirm global 50M + exactly three scoped 210m directives + no `taranom-video-src`.
+- Reclaimed stale overlapping claims for `.github/workflows/ci.yml` (2026-10-27/earlier) and `nginx/nginx.conf` (2026-10-24/earlier) under the orchestrator's explicit PR-review assignment; no unrelated behavior changed.
+- No phase-02 outbox gate/worker files touched; no merge/deploy/production access.
+
 ## 2026-11-03T12:00:00Z — Product video phase 01 complete (PR pending)
 
 - Branch/worktree: `feat/product-video-01` / `D:/proje/Site-B2B-video-01`; scope stayed inside phase-01 claims plus unit-spec registration/docs.

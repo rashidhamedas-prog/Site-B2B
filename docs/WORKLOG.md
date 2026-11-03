@@ -1,7 +1,8 @@
 ## 2026-11-03 — ویدیوی محصول، فاز ۰۱ (DB/storage/upload API)
 
 - migration افزایشی `product_video`، bucket خصوصی فایل خام، آپلود stream با کنترل magic/MIME/پسوند و صف outbox اضافه شد؛ API ادمین برای مشاهده/حذف/retry/پوستر و endpoint عمومی فقط برای ویدیوی آماده ثبت شد.
-- تست: API typecheck و build سبز؛ `npm test` هر ۲۰۹ spec سبز. integration واقعی MinIO/Postgres نوشته شد و به‌علت نبود `MINIO_TEST_ENDPOINT`/`DATABASE_URL_TEST` محلی skip شد. بدون merge/deploy.
+- اصلاح review PR #159: multipart با partهای ۶۴MB و abort ناقص، شمارش مستقل ۲۰۰MB، قفل محصول و یک ویدیوی live، UUID/visibility/poster hardening، سقف nginx فقط روی upload و integration واقعی Postgres+MinIO در CI.
+- تست: API typecheck سبز؛ `npm test` هر ۲۱۰ spec سبز. integration واقعی MinIO/Postgres محلی به‌علت نبود env skip و در CI سیم‌کشی شد؛ nginx به‌صورت static بررسی شد (Docker محلی در دسترس نیست). بدون merge/deploy.
 
 ## 2026-11-02 — کاهش JS مشترک layout عمده (TASK-20261101-shared-js-reduction)
 
