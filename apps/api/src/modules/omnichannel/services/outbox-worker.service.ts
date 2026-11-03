@@ -42,6 +42,18 @@ import { MarketingSmsSender } from '../../customer-marketing/marketing-sms.sende
 import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
+import { buildLeaseSql } from './outbox-lease';
+import { leaseRowsFromQueryResult } from './outbox.service';
+import { VideoJobLane } from './video-job-lane';
+import {
+  VideoTranscodeAbortedError,
+  VideoTranscodeService,
+} from '../../upload/video-transcode.service';
+
+/** Video jobs use their own single-slot lease; never leased by the messenger/catalog batch. */
+const VIDEO_LEASE_SQL = buildLeaseSql([OUTBOX_EVENT_TYPES.PRODUCT_VIDEO_TRANSCODE]);
+/** Shutdown waits this long for an aborted transcode to clean up (compose stop_grace_period is 90s). */
+const VIDEO_ABORT_WAIT_MS = 30_000;
 
 const SALES_PARTNER_ACK = new Set<string>(SALES_PARTNER_OUTBOX_EVENT_TYPES);
 
@@ -79,6 +91,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   private stopping = false;
   /** `file` soft-drain is cancelable; `shutdown` is not. */
   private drainOrigin: DrainOrigin = 'none';
+  private readonly videoLane = new VideoJobLane();
+  private videoJob: Promise<void> | null = null;
+  private videoAbort: AbortController | null = null;
 
   constructor(
     private readonly outbox: OutboxService,
@@ -106,6 +121,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly botPoller?: OmnichannelBotPollerService,
     @Optional() private readonly marketing?: CustomerMarketingService,
     @Optional() private readonly marketingSms?: MarketingSmsSender,
+    @Optional() private readonly videoTranscode?: VideoTranscodeService,
   ) {}
 
   onModuleInit() {
@@ -130,7 +146,16 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy() {
     this.beginDrain('shutdown');
+    await this.abortVideoJob();
     await this.waitForIdle(DRAIN_WAIT_MS);
+  }
+
+  /** SIGKILLs ffmpeg; the service cleans tmp + partial keys and the event is re-queued. */
+  private async abortVideoJob() {
+    const job = this.videoJob;
+    if (!job) return;
+    this.videoAbort?.abort();
+    await Promise.race([job, new Promise((r) => setTimeout(r, VIDEO_ABORT_WAIT_MS))]);
   }
 
   private beginDrain(reason: 'file' | 'shutdown' | 'inflight-done') {
@@ -291,6 +316,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         }
         this.beat();
       }
+      await this.maybeStartVideoJob();
     } catch (err: unknown) {
       this.logger.warn(`outbox lease failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -305,6 +331,72 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       } else if (this.stopping && this.drainOrigin === 'shutdown') {
         this.markDrained();
       }
+    }
+  }
+
+  /**
+   * Leases at most one transcode event when this process has no video job, then runs it
+   * detached so a 10-minute encode does not stall SMS/search/messenger ticks.
+   */
+  private async maybeStartVideoJob(): Promise<void> {
+    if (!this.videoTranscode || this.videoLane.busy || this.stopping) return;
+    const raw = await this.deliveries.query(VIDEO_LEASE_SQL, [1, this.workerId.slice(0, 80)]);
+    const row = leaseRowsFromQueryResult(raw)[0] as OutboxEventEntity | undefined;
+    if (!row) return;
+    this.videoAbort = new AbortController();
+    this.videoJob = this.runVideoJob(row).finally(() => {
+      this.videoJob = null;
+      this.videoAbort = null;
+    });
+  }
+
+  private async runVideoJob(row: OutboxEventEntity): Promise<void> {
+    try {
+      await this.videoLane.run(row.id, () => this.handle(row), {
+        beat: () => this.beat(),
+        touch: () => this.touchVideoLock(row.id),
+      });
+      await this.outbox.markDone(row.id);
+    } catch (err: unknown) {
+      try {
+        if (err instanceof DeliveryDeferredError) {
+          await this.outbox.releaseDeferred(row.id, err.availableAt);
+        } else {
+          const message = safeWorkerError(err);
+          this.logger.warn(`outbox ${row.eventType} ${row.id} failed: ${message}`);
+          await this.outbox.markFailure(row, message);
+        }
+      } catch (bookErr: unknown) {
+        this.logger.warn(`video outbox bookkeeping failed ${row.id}: ${safeWorkerError(bookErr)}`);
+      }
+    }
+  }
+
+  private async touchVideoLock(eventId: string): Promise<void> {
+    await this.deliveries.query(
+      `UPDATE omnichannel_outbox_events SET "lockedAt" = NOW(), "updatedAt" = NOW()
+       WHERE id = $1 AND status = 'PROCESSING' AND "lockedBy" = $2`,
+      [eventId, this.workerId.slice(0, 80)],
+    );
+  }
+
+  private async handleVideoTranscode(row: OutboxEventEntity, payload: Record<string, unknown>): Promise<void> {
+    if (!this.videoTranscode) throw new Error('video transcode service unavailable');
+    if (this.videoLane.currentId !== row.id) {
+      // Reached via another path while the single slot is taken: defer without burning an attempt.
+      throw new DeliveryDeferredError('video transcode lane busy', new Date(Date.now() + 30_000), 'video_lane_busy');
+    }
+    try {
+      const result = await this.videoTranscode.process(
+        { videoId: String(payload.videoId || row.aggregateId), productId: String(payload.productId || '') },
+        { signal: this.videoAbort?.signal },
+      );
+      this.logger.log(`video transcode ${row.aggregateId}: ${JSON.stringify(result)}`);
+    } catch (err: unknown) {
+      if (err instanceof VideoTranscodeAbortedError) {
+        throw new DeliveryDeferredError('video transcode aborted by shutdown', null, 'video_aborted');
+      }
+      throw err;
     }
   }
 
@@ -387,6 +479,10 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
           await this.markDeliveryFailure(payload, row, err);
           throw err;
         }
+        return;
+      case OUTBOX_EVENT_TYPES.PRODUCT_VIDEO_TRANSCODE:
+        // Media job, not a messenger/catalog publish: never falls through to PHASE4 sync.
+        await this.handleVideoTranscode(row, payload);
         return;
       default:
         // Audit already persisted at emit time; ACK so rows do not sit PENDING forever
