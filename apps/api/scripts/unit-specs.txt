@@ -33,6 +33,7 @@ src/modules/product/product-related-fill.spec.ts
 src/modules/product/catalog-excel.spec.ts
 src/modules/product/channel-product-projection.spec.ts
 src/modules/basalam/basalam-catalog.spec.ts
+src/modules/basalam/basalam.service.spec.ts
 src/modules/product/channel-stock-isolation.spec.ts
 src/modules/product/channel-stock-deduct.spec.ts
 src/modules/product/public-product-status.spec.ts

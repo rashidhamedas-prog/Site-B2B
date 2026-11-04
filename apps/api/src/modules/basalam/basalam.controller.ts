@@ -1,10 +1,14 @@
 import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { BasalamService } from './basalam.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AdminOnly } from '../auth/decorators/admin-only.decorator';
+
+export function isDryRun(value?: string): boolean {
+  return value === '1' || String(value || '').toLowerCase() === 'true';
+}
 
 @ApiTags('basalam')
 @Controller({ path: 'basalam', version: '1' })
@@ -43,10 +47,13 @@ export class BasalamController {
   @ApiOperation({
     summary: 'ارسال محصولات تکی به غرفه باسلام',
     description:
-      'Creates unpublished stall products via official OpenAPI, or maps existing stall rows. Retail only. Idempotent.',
+      'Creates unpublished stall products via official OpenAPI, or maps existing stall rows. Retail only. Idempotent. ?dryRun=1 returns the payloads without any Basalam call.',
   })
-  pushCatalog(@Query('limit') limit?: string) {
-    return this.svc.pushCatalog(Math.min(20, Math.max(1, Number(limit) || 8)));
+  @ApiQuery({ name: 'dryRun', required: false, enum: ['1', '0'] })
+  pushCatalog(@Query('limit') limit?: string, @Query('dryRun') dryRun?: string) {
+    return this.svc.pushCatalog(Math.min(20, Math.max(1, Number(limit) || 8)), {
+      dryRun: isDryRun(dryRun),
+    });
   }
 
   @Post('sync-inventory')
@@ -54,9 +61,12 @@ export class BasalamController {
   @Roles('ADMIN')
   @AdminOnly()
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'همگام‌سازی موجودی/قیمت با غرفه باسلام' })
-  sync(@Query('limit') limit?: string) {
-    return this.svc.syncInventory(Math.min(200, Math.max(1, Number(limit) || 50)));
+  @ApiOperation({ summary: 'همگام‌سازی موجودی/قیمت با غرفه باسلام (?dryRun=1 بدون ارسال)' })
+  @ApiQuery({ name: 'dryRun', required: false, enum: ['1', '0'] })
+  sync(@Query('limit') limit?: string, @Query('dryRun') dryRun?: string) {
+    return this.svc.syncInventory(Math.min(200, Math.max(1, Number(limit) || 50)), {
+      dryRun: isDryRun(dryRun),
+    });
   }
 
   @Get('catalog-export')
