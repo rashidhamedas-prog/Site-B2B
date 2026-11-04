@@ -148,6 +148,32 @@ export interface PostQuoteOutcome {
   zone: ShippingZone;
 }
 
+export interface PostQuoteRequest {
+  channel: ShippingChannel;
+  originProvince: string;
+  originCity: string;
+  destination: QuoteDestination;
+  weightGrams: number;
+  goodsIrr: number;
+}
+
+/**
+ * Nest DI providers. Phase 02 binds legacy implementations (settings-derived rates,
+ * current tapin/local post); phases 01/03 replace them with DB rates / cached post.
+ */
+export interface ShippingRateProvider {
+  /** null → method not tariffed for that zone (engine returns 400 SHIPPING_DESTINATION_UNSUPPORTED) */
+  findRate(channel: ShippingChannel, methodId: string, zone: ShippingZone): Promise<ShippingRate | null>;
+  channelThresholdIrr(channel: ShippingChannel): Promise<number>;
+}
+
+export interface PostQuoteProvider {
+  quote(req: PostQuoteRequest): Promise<PostQuoteOutcome>;
+}
+
+export const SHIPPING_RATE_PROVIDER = 'SHIPPING_RATE_PROVIDER';
+export const POST_QUOTE_PROVIDER = 'POST_QUOTE_PROVIDER';
+
 export interface PostBreakerStatus {
   state: 'closed' | 'open' | 'half_open';
   consecutiveFailures: number;

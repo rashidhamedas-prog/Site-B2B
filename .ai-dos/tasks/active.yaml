@@ -17,7 +17,7 @@ tasks:
       - "apps/web/src/components/checkout/ShippingSourceNote.tsx"
       - ".ai-dos/tasks/active.yaml"
       - "docs/reports/2026-11-04-shipping-rebuild.md"
-    notes: "Parallel phases 01–04 must not edit active.yaml, handoff.md, WORKLOG.md or the contract file; orchestrator integrates. Merge order 00→01→02→03→04 (stacked rebase)."
+    notes: "Parallel phases 01–04 must not edit active.yaml, handoff.md, WORKLOG.md or the contract file; orchestrator integrates. Merge order 00→01→02→03→04 (stacked rebase). Shared append-only: apps/api/scripts/unit-specs.txt; shipping.module.ts providers list (01 rates provider, 02 legacy bindings, 03 post provider)."
   - id: "TASK-20261104-shipping-01"
     title: "Shipping phase 01: product/category weights, shipping_rates table, admin rates API + panel section"
     status: "in_progress"
