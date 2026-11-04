@@ -210,6 +210,16 @@ export function createdProductId(json: unknown): number | null {
   return id > 0 ? id : null;
 }
 
+export const ZERO_RETAIL_STOCK_REASON = 'موجودی تکی صفر';
+
+/**
+ * Pre-flight guard for create: Basalam rejects out-of-stock products, so never POST with stock ≤ 0.
+ * `retailStock` must come from channelAvailability(product, 'RETAIL') — wholesale/legacy stock never counts.
+ */
+export function createSkipReason(retailStock: number): string | null {
+  return Number(retailStock) > 0 ? null : ZERO_RETAIL_STOCK_REASON;
+}
+
 /** Official create body: https://developers.basalam.com/docs/quick-start */
 export function buildCreatePayload(input: {
   name: string;

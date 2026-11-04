@@ -14,7 +14,11 @@ type PushResult = {
   hasMore?: boolean;
   hint?: string;
   failedSample?: Array<{ sku: string; error: string }>;
+  skipped?: number;
+  skippedSample?: Array<{ sku: string; reason: string }>;
 };
+
+type Skipped = { count: number; sample: Array<{ sku: string; reason: string }> };
 
 type SyncResult = {
   ok?: boolean;
@@ -26,10 +30,12 @@ type SyncResult = {
 export function AdminBasalamCatalog() {
   const [busy, setBusy] = useState<'push' | 'sync' | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [skipped, setSkipped] = useState<Skipped | null>(null);
 
   const pushCatalog = async () => {
     setBusy('push');
     setMsg(null);
+    setSkipped(null);
     const totals = { created: 0, mappedExisting: 0, failed: 0 };
     const errors: string[] = [];
     try {
@@ -41,6 +47,8 @@ export function AdminBasalamCatalog() {
         for (const row of res.failedSample || []) {
           errors.push(`${row.sku}: ${row.error}`);
         }
+        // Every page reports the same full skipped set, so keep the latest instead of summing.
+        setSkipped(res.skipped ? { count: res.skipped, sample: res.skippedSample || [] } : null);
         if (!res.hasMore) {
           const parts = [
             totals.created ? `${totals.created} محصول جدید در غرفه ساخته شد` : null,
@@ -124,6 +132,25 @@ export function AdminBasalamCatalog() {
         >
           {msg.text}
         </p>
+      )}
+      {skipped && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+          <p className="font-bold">
+            {skipped.count} محصول ارسال نشد چون موجودی تکی صفر است (موجودی عمده حساب نمی‌شود).
+          </p>
+          {skipped.sample.length > 0 && (
+            <ul className="mt-1 list-inside list-disc space-y-0.5">
+              {skipped.sample.map((row) => (
+                <li key={row.sku}>
+                  <span dir="ltr">{row.sku}</span> — {row.reason}
+                </li>
+              ))}
+            </ul>
+          )}
+          {skipped.count > skipped.sample.length && (
+            <p className="mt-1 text-amber-800">و {skipped.count - skipped.sample.length} مورد دیگر…</p>
+          )}
+        </div>
       )}
     </div>
   );
