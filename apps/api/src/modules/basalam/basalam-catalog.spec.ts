@@ -5,7 +5,9 @@ import {
   BASALAM_STATUS_UNPUBLISHED,
   absMediaUrl,
   basalamRetailPriceRial,
+  ZERO_RETAIL_STOCK_REASON,
   buildCreatePayload,
+  createSkipReason,
   coreTitle,
   createdProductId,
   extractStyleCodes,
@@ -123,6 +125,11 @@ assert(
   basalamRetailPriceRial({ wholesalePrice: 5_000_000, retailPrice: 6_500_000 }, now) === 6_500_000,
   'no sale: retail price',
 );
+
+assert(createSkipReason(0) === ZERO_RETAIL_STOCK_REASON, 'zero stock skipped');
+assert(createSkipReason(-3) === ZERO_RETAIL_STOCK_REASON, 'negative stock skipped');
+assert(createSkipReason(Number.NaN) === ZERO_RETAIL_STOCK_REASON, 'NaN stock skipped');
+assert(createSkipReason(1) === null, 'positive stock allowed');
 
 assert(stripHtml('<b>سلام</b> دنیا') === 'سلام دنیا', 'stripHtml');
 assert(absMediaUrl('a.jpg', 'https://www.poshaktaranom.ir') === 'https://www.poshaktaranom.ir/media/a.jpg', 'media path');

@@ -16,6 +16,7 @@ import {
   absMediaUrl,
   basalamRetailPriceRial,
   buildCreatePayload,
+  createSkipReason,
   createdProductId,
   flattenCategories,
   matchStallProduct,
@@ -383,7 +384,16 @@ export class BasalamService {
     const created: string[] = [];
     const mapped: string[] = [];
     const failed: Array<{ sku: string; error: string }> = [];
-    const batch = pending.slice(0, limit);
+    // Unmatched zero-retail-stock rows are skipped before batching so they never block real creates.
+    const skipped: Array<{ sku: string; reason: string }> = [];
+    const candidates = pending.filter((product) => {
+      const onStall = matchStallProduct({ id: product.id, sku: product.sku, name: product.name }, stall, map);
+      if (onStall) return true;
+      const reason = createSkipReason(channelAvailability(product, 'RETAIL').stock);
+      if (reason) skipped.push({ sku: product.sku || product.id, reason });
+      return !reason;
+    });
+    const batch = candidates.slice(0, limit);
 
     for (const product of batch) {
       try {
@@ -396,6 +406,12 @@ export class BasalamService {
           map[product.id] = stallId;
           await this.persistProductMap({ [product.id]: stallId });
           mapped.push(product.sku || product.id);
+          continue;
+        }
+
+        const skipReason = createSkipReason(channelAvailability(product, 'RETAIL').stock);
+        if (skipReason) {
+          skipped.push({ sku: product.sku || product.id, reason: skipReason });
           continue;
         }
 
@@ -430,12 +446,13 @@ export class BasalamService {
       }
     }
 
-    const remaining = pending.length - batch.length;
+    const remaining = candidates.length - batch.length;
     this.tracker.recordSuccess({
       op: 'pushCatalog',
       created: created.length,
       mapped: mapped.length,
       failed: failed.length,
+      skipped: skipped.length,
     });
     return {
       ok: failed.length === 0,
@@ -443,6 +460,8 @@ export class BasalamService {
       mappedExisting: mapped.length,
       failed: failed.length,
       failedSample: failed.slice(0, 10),
+      skipped: skipped.length,
+      skippedSample: skipped.slice(0, 20),
       remaining,
       hasMore: remaining > 0,
       hint:
@@ -480,7 +499,13 @@ export class BasalamService {
       relations: ['variants', 'category'],
     });
     const pending = rows.filter((p) => isChannelVisible(p, 'RETAIL') && !Number(map[p.id]));
-    const batch = pending.slice(0, limit);
+    const skipped: Array<{ sku: string; reason: string }> = [];
+    const candidates = pending.filter((product) => {
+      const reason = createSkipReason(channelAvailability(product, 'RETAIL').stock);
+      if (reason) skipped.push({ sku: product.sku || product.id, reason });
+      return !reason;
+    });
+    const batch = candidates.slice(0, limit);
     const url = `${BASALAM_OPENAPI_BASE}/vendors/${vendorId ?? '{vendorId}'}/products`;
 
     const items = batch.map((product) => {
@@ -520,11 +545,14 @@ export class BasalamService {
       config: this.dryRunConfig(m),
       wouldCreate: items.filter((item) => item.action === 'create').length,
       wouldFail: items.filter((item) => item.action === 'fail').length,
-      remaining: pending.length - batch.length,
+      skipped: skipped.length,
+      skippedSample: skipped.slice(0, 20),
+      remaining: candidates.length - batch.length,
       items,
       notes: [
         'dry-run: no request sent to Basalam; photos are source URLs (not uploaded); product map unchanged.',
         'category_id is resolved from the stall at push time; stall matching (map existing) is not evaluated offline.',
+        'zero retail stock rows are skipped; at push time they are still mapped if already on the stall.',
         'primary_price is Rial.',
       ],
     };

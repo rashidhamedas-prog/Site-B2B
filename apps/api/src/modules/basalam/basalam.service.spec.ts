@@ -168,6 +168,70 @@ async function main() {
       assert(h.settingsWrites.length === 1, 'real push: map persisted');
     }
 
+    // P3: zero retail stock → skipped, no upload, no POST.
+    {
+      const h = harness({
+        rows: [product({ variants: [{ size: 'M', color: 'x', retailStock: 0, wholesaleStock: 0, stock: 0 }] })],
+      });
+      const res: any = await h.svc.pushCatalog(8);
+      assert(res.created === 0 && res.skipped === 1, 'zero stock: skipped');
+      assert(res.skippedSample[0].reason === 'موجودی تکی صفر', 'zero stock: reason');
+      assert(h.downloads.length === 0, 'zero stock: no photo download');
+      assert(!h.calls.some((c) => c.method === 'POST'), 'zero stock: no POST/upload');
+      assert(h.settingsWrites.length === 0, 'zero stock: no map write');
+    }
+
+    // P3 isolation: wholesale-only / legacy-only stock never counts for Basalam.
+    {
+      const h = harness({
+        rows: [
+          product({
+            variants: [
+              { size: 'M', color: 'x', retailStock: 0, wholesaleStock: 50, stock: 50 },
+              { size: 'L', color: 'x', retailStock: 0, wholesaleStock: 20, stock: 20 },
+            ],
+          }),
+        ],
+      });
+      const res: any = await h.svc.pushCatalog(8);
+      assert(res.skipped === 1 && res.created === 0, 'wholesale stock ignored');
+      const dry: any = await h.svc.pushCatalog(8, { dryRun: true });
+      assert(dry.skipped === 1 && dry.wouldCreate === 0 && dry.items.length === 0, 'dry-run: wholesale stock ignored');
+    }
+
+    // P3: variants [2,3] → stock 5 on create.
+    {
+      const h = harness();
+      await h.svc.pushCatalog(8);
+      const create = h.calls.find((c) => c.method === 'POST' && c.url.endsWith('/vendors/78910/products'));
+      assert(create && (create.body as any).stock === 5, 'variants 2+3 → 5');
+    }
+
+    // P3: skipped rows do not consume batch slots.
+    {
+      const zero = (id: string) =>
+        product({ id, sku: `Z-${id}`, name: `محصول ${id}`, variants: [{ size: 'M', color: 'x', retailStock: 0, wholesaleStock: 9 }] });
+      const h = harness({ rows: [zero('z1'), zero('z2'), product({ id: 'ok1', sku: 'OK1', name: 'شومیز تازه' })] });
+      const res: any = await h.svc.pushCatalog(1);
+      assert(res.created === 1 && res.skipped === 2 && res.remaining === 0, 'zero-stock rows do not block batch');
+    }
+
+    // P3: zero-stock product already on the stall is still mapped (no create).
+    {
+      const h = harness({
+        rows: [product({ variants: [{ size: 'M', color: 'x', retailStock: 0, wholesaleStock: 0 }] })],
+      });
+      (h as any).svc.http.request = async (req: BasalamHttpRequest) => {
+        h.calls.push(req);
+        if (req.method === 'GET' && req.url.includes('/vendors/78910/products')) {
+          return { ok: true, status: 200, json: { data: [{ id: 777, title: 'x', sku: 'COATS00015', category: { id: 390 } }] } };
+        }
+        return { ok: true, status: 200, json: {} };
+      };
+      const res: any = await h.svc.pushCatalog(8);
+      assert(res.mappedExisting === 1 && res.skipped === 0 && res.created === 0, 'zero stock on stall: mapped');
+    }
+
     assert(globalFetchCalls === 0, 'global fetch never called');
   } finally {
     (globalThis as any).fetch = realFetch;
