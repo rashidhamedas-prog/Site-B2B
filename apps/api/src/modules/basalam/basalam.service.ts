@@ -10,6 +10,7 @@ import { RETAIL_CANONICAL_ORIGIN } from '../torob/torob-product-projection';
 import {
   BASALAM_OPENAPI_BASE,
   absMediaUrl,
+  basalamRetailPriceRial,
   buildCreatePayload,
   createdProductId,
   flattenCategories,
@@ -183,8 +184,9 @@ export class BasalamService {
       take: limit,
     });
 
-    const updates: Array<{ id: number; price?: number; stock?: number; status?: number }> = [];
+    const updates: Array<{ id: number; primary_price: number; stock: number }> = [];
     const unmapped: string[] = [];
+    const invalidPrice: string[] = [];
 
     for (const p of rows) {
       if (!isChannelVisible(p, 'RETAIL')) continue;
@@ -193,12 +195,15 @@ export class BasalamService {
         unmapped.push(p.sku || p.id);
         continue;
       }
+      let primaryPrice: number;
+      try {
+        primaryPrice = basalamRetailPriceRial(p);
+      } catch {
+        invalidPrice.push(p.sku || p.id);
+        continue;
+      }
       const { stock } = channelAvailability(p, 'RETAIL');
-      updates.push({
-        id: Number(basalamId),
-        price: irrToTomanOnce(Number(p.retailPrice)),
-        stock,
-      });
+      updates.push({ id: Number(basalamId), primary_price: primaryPrice, stock });
     }
 
     if (!updates.length) {
@@ -208,6 +213,7 @@ export class BasalamService {
         updated: 0,
         unmappedCount: unmapped.length,
         unmappedSample: unmapped.slice(0, 20),
+        invalidPriceSample: invalidPrice.slice(0, 20),
         hint: 'ابتدا دکمه «ارسال محصولات تکی به غرفه» را بزنید تا نگاشت ساخته شود.',
         retry: { idempotent: true },
       };
@@ -231,7 +237,7 @@ export class BasalamService {
           const r = await fetch(`${this.coreBase}/products/${u.id}`, {
             method: 'PATCH',
             headers,
-            body: JSON.stringify({ price: u.price, stock: u.stock }),
+            body: JSON.stringify({ primary_price: u.primary_price, stock: u.stock }),
             signal: AbortSignal.timeout(15_000),
           });
           if (r.ok) ok += 1;
@@ -264,6 +270,7 @@ export class BasalamService {
       updated: updates.length,
       unmappedCount: unmapped.length,
       unmappedSample: unmapped.slice(0, 20),
+      invalidPriceSample: invalidPrice.slice(0, 20),
       response: json,
       retry: { idempotent: true },
     };
@@ -345,7 +352,7 @@ export class BasalamService {
           name: product.name,
           sku: product.sku,
           description: product.retailFullContent || product.description,
-          priceIrr: Number(product.retailPrice),
+          priceIrr: basalamRetailPriceRial(product),
           stock,
           photoIds,
           categoryId,

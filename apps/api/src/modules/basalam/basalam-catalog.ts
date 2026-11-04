@@ -1,5 +1,20 @@
-function irrToTomanOnce(irr: number): number {
-  return Math.max(0, Math.round(Number(irr || 0) / 10));
+import { resolveChannelSale, type ProductSaleInput } from '../product/product-sale';
+
+/**
+ * Basalam `primary_price` is sent in Rial (IRR). DB prices are already IRR, so no unit conversion.
+ * Throws on NaN / non-positive values so a broken price never reaches the stall.
+ */
+export function toBasalamPriceRial(irr: number | string | null | undefined): number {
+  const n = Math.round(Number(irr));
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error(`قیمت نامعتبر برای باسلام: ${String(irr)}`);
+  }
+  return n;
+}
+
+/** Retail payable price (respects sale window) in Rial for Basalam `primary_price`. */
+export function basalamRetailPriceRial(product: ProductSaleInput, now: Date = new Date()): number {
+  return toBasalamPriceRial(resolveChannelSale(product, 'RETAIL', now).payable);
 }
 
 /** Official OpenAPI (https://developers.basalam.com/docs/quick-start). Do not invent hosts. */
@@ -215,7 +230,7 @@ export function buildCreatePayload(input: {
     preparation_days: DEFAULT_PREP_DAYS,
     weight: DEFAULT_WEIGHT_G,
     package_weight: DEFAULT_PACKAGE_WEIGHT_G,
-    primary_price: irrToTomanOnce(input.priceIrr),
+    primary_price: toBasalamPriceRial(input.priceIrr),
     stock: Math.max(0, Math.floor(Number(input.stock) || 0)),
     is_wholesale: false,
     status: BASALAM_STATUS_UNPUBLISHED,
