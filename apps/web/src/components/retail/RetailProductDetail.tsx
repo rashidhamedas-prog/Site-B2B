@@ -534,7 +534,7 @@ export function RetailProductDetail({
                     fill
                     className="object-cover transition duration-300 hover:scale-[1.03] motion-reduce:transition-none motion-reduce:hover:scale-100"
                     sizes={PDP_MAIN_IMAGE_SIZES}
-                    priority
+                    priority={activeMedia === 0}
                   />
                 ) : null}
                 <span className="absolute bottom-3 left-3 inline-flex min-h-9 items-center gap-1 rounded-full bg-black/55 px-3 text-xs text-white">

@@ -2,7 +2,11 @@
 
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import { HeroCarouselControls, useHeroCarousel } from '@/components/shared/HeroCarousel';
+import {
+  HeroCarouselControls,
+  heroSlideLayerClass,
+  useHeroCarousel,
+} from '@/components/shared/HeroCarousel';
 import { StorefrontHeroMedia } from '@/components/shared/StorefrontHeroMedia';
 import {
   isLightHeroOverlay,
@@ -169,16 +173,14 @@ export function RetailHero(props: RetailHeroProps) {
             : side === 'end'
               ? isLightHeroOverlay(s)
                 ? 'object-cover object-[center_top] sm:object-right'
-                : 'object-cover object-[82%_center] sm:object-[78%_center] lg:object-center scale-[1.02]'
+                : 'object-cover object-[82%_center] sm:object-[78%_center] lg:object-center'
               : isLightHeroOverlay(s)
                 ? 'object-cover object-[center_top] sm:object-left'
-                : 'object-cover object-[18%_center] sm:object-[22%_center] lg:object-center scale-[1.02]';
+                : 'object-cover object-[18%_center] sm:object-[22%_center] lg:object-center';
         return (
           <div
             key={`${src}-${i}`}
-            className={`absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none ${
-              isActive ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
+            className={heroSlideLayerClass(isActive, carousel.hasAdvanced)}
             aria-hidden={!isActive}
           >
             <StorefrontHeroMedia
@@ -257,7 +259,9 @@ export function RetailHero(props: RetailHeroProps) {
       >
         <div
           key={`copy-${carousel.index}`}
-          className="animate-fade-in w-full min-w-0 max-w-xl motion-reduce:animate-none lg:w-[46%]"
+          className={`w-full min-w-0 max-w-xl lg:w-[46%] ${
+            carousel.hasAdvanced ? 'animate-fade-in motion-reduce:animate-none' : ''
+          }`}
         >
           <RetailSlideCopy
             slide={slide}

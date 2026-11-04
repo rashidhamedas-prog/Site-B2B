@@ -16,6 +16,9 @@ export function useHeroCarousel(
   const [manualPaused, setManualPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [autoplayReady, setAutoplayReady] = useState(!waitForIdle);
+  // Stays false until the first slide change so SSR / first paint of slide 0
+  // carries no opacity, transition, or fade (they delay mobile LCP).
+  const [hasAdvanced, setHasAdvanced] = useState(false);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -36,17 +39,32 @@ export function useHeroCarousel(
       requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
       cancelIdleCallback?: (id: number) => void;
     };
-    if (typeof w.requestIdleCallback === 'function') {
-      const id = w.requestIdleCallback(arm, { timeout: 4000 });
-      return () => w.cancelIdleCallback?.(id);
+    let cancelIdle: (() => void) | undefined;
+    const armWhenIdle = () => {
+      if (typeof w.requestIdleCallback === 'function') {
+        const id = w.requestIdleCallback(arm, { timeout: 4000 });
+        cancelIdle = () => w.cancelIdleCallback?.(id);
+        return;
+      }
+      const t = window.setTimeout(arm, 2500);
+      cancelIdle = () => window.clearTimeout(t);
+    };
+    // Never rotate away from the LCP slide before the page `load` event.
+    if (document.readyState === 'complete') {
+      armWhenIdle();
+      return () => cancelIdle?.();
     }
-    const t = window.setTimeout(arm, 2500);
-    return () => window.clearTimeout(t);
+    window.addEventListener('load', armWhenIdle, { once: true });
+    return () => {
+      window.removeEventListener('load', armWhenIdle);
+      cancelIdle?.();
+    };
   }, [waitForIdle]);
 
   const goTo = useCallback(
     (next: number) => {
       if (count === 0) return;
+      setHasAdvanced(true);
       setIndex(((next % count) + count) % count);
     },
     [count]
@@ -58,6 +76,7 @@ export function useHeroCarousel(
   useEffect(() => {
     if (!autoplayReady || count < 2 || paused || manualPaused || reducedMotion || autoplayMs <= 0) return;
     const id = window.setInterval(() => {
+      setHasAdvanced(true);
       setIndex((i) => (i + 1) % count);
     }, autoplayMs);
     return () => window.clearInterval(id);
@@ -67,6 +86,7 @@ export function useHeroCarousel(
     index,
     slide: slides[index] ?? slides[0],
     count,
+    hasAdvanced,
     goTo,
     goNext,
     goPrev,
@@ -76,6 +96,14 @@ export function useHeroCarousel(
     togglePaused: () => setManualPaused((value) => !value),
     showControls: count > 1,
   };
+}
+
+/** Cross-fade classes only after the carousel first moves; slide 0's first paint is a plain layer. */
+export function heroSlideLayerClass(isActive: boolean, hasAdvanced: boolean): string {
+  if (!hasAdvanced) return isActive ? 'absolute inset-0' : 'pointer-events-none absolute inset-0 opacity-0';
+  return `absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none ${
+    isActive ? 'opacity-100' : 'pointer-events-none opacity-0'
+  }`;
 }
 
 export function HeroCarouselControls({
