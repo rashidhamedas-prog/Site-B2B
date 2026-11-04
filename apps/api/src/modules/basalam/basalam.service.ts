@@ -1,11 +1,15 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { irrToTomanOnce } from '@taranom/shared-types';
 import { IntegrationHealthTracker } from '../../common/integration-health';
 import { ProductEntity } from '../product/entities/product.entity';
 import { SettingsService } from '../settings/settings.service';
-import { channelAvailability, isChannelVisible } from '../product/channel-product-projection';
+import {
+  channelAvailability,
+  channelUnitStock,
+  isChannelVisible,
+} from '../product/channel-product-projection';
 import { RETAIL_CANONICAL_ORIGIN } from '../torob/torob-product-projection';
 import {
   BASALAM_OPENAPI_BASE,
@@ -21,6 +25,9 @@ import {
   pickPhotoUrls,
   type StallProduct,
 } from './basalam-catalog';
+import { BASALAM_HTTP, type BasalamHttp } from './basalam-http';
+
+export type BasalamRunOptions = { dryRun?: boolean };
 
 /**
  * Lightweight Basalam Core/OpenAPI client (https://developers.basalam.com / https://doc.basalam.com).
@@ -40,6 +47,7 @@ export class BasalamService {
     @InjectRepository(ProductEntity)
     private readonly products: Repository<ProductEntity>,
     private readonly settings: SettingsService,
+    @Inject(BASALAM_HTTP) private readonly http: BasalamHttp,
   ) {}
 
   private async bearerHeaders() {
@@ -83,11 +91,13 @@ export class BasalamService {
 
   async me() {
     const headers = await this.jsonHeaders();
-    const res = await fetch(`${this.coreBase}/users/me`, {
+    const res = await this.http.request({
+      method: 'GET',
+      url: `${this.coreBase}/users/me`,
       headers,
-      signal: AbortSignal.timeout(15_000),
+      timeoutMs: 15_000,
     });
-    const json = await res.json().catch(() => ({}));
+    const json = res.json as any;
     if (!res.ok) {
       throw new BadRequestException(json?.message || `Basalam users/me failed (${res.status})`);
     }
@@ -153,8 +163,10 @@ export class BasalamService {
    * Mapping lives in marketing.basalamProductMap: { [localProductId]: basalamProductId }
    *
    * Idempotent retry: re-running with the same map/prices is safe (PATCH upsert).
+   * `dryRun`: returns the exact bulk body without any Basalam call (no token/enabled needed).
    */
-  async syncInventory(limit = 50) {
+  async syncInventory(limit = 50, opts: BasalamRunOptions = {}) {
+    if (opts.dryRun) return this.syncInventoryDryRun(limit);
     if (this.syncInFlight) {
       throw new BadRequestException(
         'همگام‌سازی باسلام در حال اجراست — پس از اتمام دوباره تلاش کنید (idempotent retry).',
@@ -176,35 +188,11 @@ export class BasalamService {
     const vendorId = Number(m.basalamVendorId);
     if (!vendorId) throw new BadRequestException('basalamVendorId نامعتبر است');
 
-    const map = (m.basalamProductMap || {}) as Record<string, number>;
     const headers = await this.jsonHeaders();
-    const rows = await this.products.find({
-      where: { status: 'ACTIVE' },
-      relations: ['variants'],
-      take: limit,
-    });
-
-    const updates: Array<{ id: number; primary_price: number; stock: number }> = [];
-    const unmapped: string[] = [];
-    const invalidPrice: string[] = [];
-
-    for (const p of rows) {
-      if (!isChannelVisible(p, 'RETAIL')) continue;
-      const basalamId = map[p.id];
-      if (!basalamId) {
-        unmapped.push(p.sku || p.id);
-        continue;
-      }
-      let primaryPrice: number;
-      try {
-        primaryPrice = basalamRetailPriceRial(p);
-      } catch {
-        invalidPrice.push(p.sku || p.id);
-        continue;
-      }
-      const { stock } = channelAvailability(p, 'RETAIL');
-      updates.push({ id: Number(basalamId), primary_price: primaryPrice, stock });
-    }
+    const { updates, unmapped, invalidPrice } = await this.collectInventoryUpdates(
+      (m.basalamProductMap || {}) as Record<string, number>,
+      limit,
+    );
 
     if (!updates.length) {
       this.tracker.recordSuccess({ op: 'syncInventory', updated: 0, unmapped: unmapped.length });
@@ -220,25 +208,26 @@ export class BasalamService {
     }
 
     // Official bulk update endpoint (Core service) — already used; do not invent alternatives.
-    const url = `${this.coreBase}/vendors/${vendorId}/products/bulk`;
-    const res = await fetch(url, {
+    const res = await this.http.request({
       method: 'PATCH',
+      url: this.bulkUpdateUrl(vendorId),
       headers,
-      body: JSON.stringify({ data: updates }),
-      signal: AbortSignal.timeout(30_000),
+      body: { data: updates },
+      timeoutMs: 30_000,
     });
-    const json = await res.json().catch(() => ({}));
+    const json = res.json;
     if (!res.ok) {
       this.logger.warn(`Basalam bulk update failed: ${res.status} ${JSON.stringify(json)}`);
       let ok = 0;
       const errors: string[] = [];
       for (const u of updates.slice(0, 20)) {
         try {
-          const r = await fetch(`${this.coreBase}/products/${u.id}`, {
+          const r = await this.http.request({
             method: 'PATCH',
+            url: `${this.coreBase}/products/${u.id}`,
             headers,
-            body: JSON.stringify({ primary_price: u.primary_price, stock: u.stock }),
-            signal: AbortSignal.timeout(15_000),
+            body: { primary_price: u.primary_price, stock: u.stock },
+            timeoutMs: 15_000,
           });
           if (r.ok) ok += 1;
           else errors.push(`${u.id}:${r.status}`);
@@ -276,11 +265,80 @@ export class BasalamService {
     };
   }
 
+  private bulkUpdateUrl(vendorId: number | string) {
+    // Official bulk update endpoint (Core service) — already used; do not invent alternatives.
+    return `${this.coreBase}/vendors/${vendorId}/products/bulk`;
+  }
+
+  private async collectInventoryUpdates(map: Record<string, number>, limit: number) {
+    const rows = await this.products.find({
+      where: { status: 'ACTIVE' },
+      relations: ['variants'],
+      take: limit,
+    });
+    const updates: Array<{ id: number; primary_price: number; stock: number }> = [];
+    const unmapped: string[] = [];
+    const invalidPrice: string[] = [];
+    for (const p of rows) {
+      if (!isChannelVisible(p, 'RETAIL')) continue;
+      const basalamId = map[p.id];
+      if (!basalamId) {
+        unmapped.push(p.sku || p.id);
+        continue;
+      }
+      let primaryPrice: number;
+      try {
+        primaryPrice = basalamRetailPriceRial(p);
+      } catch {
+        invalidPrice.push(p.sku || p.id);
+        continue;
+      }
+      const { stock } = channelAvailability(p, 'RETAIL');
+      updates.push({ id: Number(basalamId), primary_price: primaryPrice, stock });
+    }
+    return { updates, unmapped, invalidPrice };
+  }
+
+  private async syncInventoryDryRun(limit: number) {
+    const m = await this.settings.marketing();
+    const vendorId = Number(m.basalamVendorId) || null;
+    const { updates, unmapped, invalidPrice } = await this.collectInventoryUpdates(
+      (m.basalamProductMap || {}) as Record<string, number>,
+      limit,
+    );
+    return {
+      ok: true,
+      dryRun: true,
+      config: this.dryRunConfig(m),
+      request: {
+        method: 'PATCH',
+        url: this.bulkUpdateUrl(vendorId ?? '{vendorId}'),
+        body: { data: updates },
+      },
+      updated: 0,
+      wouldUpdate: updates.length,
+      unmappedCount: unmapped.length,
+      unmappedSample: unmapped.slice(0, 20),
+      invalidPriceSample: invalidPrice.slice(0, 20),
+      notes: ['dry-run: no request sent to Basalam; prices are Rial (primary_price).'],
+    };
+  }
+
+  private dryRunConfig(m: { basalamEnabled?: boolean; basalamAccessToken?: string; basalamVendorId?: string }) {
+    return {
+      enabled: m.basalamEnabled === true,
+      hasToken: !!String(m.basalamAccessToken || '').trim(),
+      vendorId: Number(m.basalamVendorId) || null,
+    };
+  }
+
   /**
    * Create missing retail products on the stall (unpublished) and map existing ones.
    * Official OpenAPI: POST /v1/files then POST /v1/vendors/{id}/products.
+   * `dryRun`: returns create bodies (photos as URLs) — no upload, no create, no map write.
    */
-  async pushCatalog(limit = 8) {
+  async pushCatalog(limit = 8, opts: BasalamRunOptions = {}) {
+    if (opts.dryRun) return this.pushCatalogDryRun(Math.min(20, Math.max(1, limit)));
     if (this.syncInFlight) {
       throw new BadRequestException(
         'همگام‌سازی باسلام در حال اجراست — پس از اتمام دوباره تلاش کنید (idempotent retry).',
@@ -347,23 +405,15 @@ export class BasalamService {
           continue;
         }
 
-        const { stock } = channelAvailability(product, 'RETAIL');
-        const body = buildCreatePayload({
-          name: product.name,
-          sku: product.sku,
-          description: product.retailFullContent || product.description,
-          priceIrr: basalamRetailPriceRial(product),
-          stock,
-          photoIds,
-          categoryId,
-        });
-        const res = await fetch(`${BASALAM_OPENAPI_BASE}/vendors/${vendorId}/products`, {
+        const body = this.buildProductCreateBody(product, photoIds, categoryId);
+        const res = await this.http.request({
           method: 'POST',
+          url: `${BASALAM_OPENAPI_BASE}/vendors/${vendorId}/products`,
           headers: jsonHeaders,
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(30_000),
+          body,
+          timeoutMs: 30_000,
         });
-        const json = await res.json().catch(() => ({}));
+        const json = res.json;
         const newId = createdProductId(json);
         if (!res.ok || !newId) {
           const message = String((json as any)?.message || (json as any)?.error || `create ${res.status}`);
@@ -403,6 +453,83 @@ export class BasalamService {
     };
   }
 
+  private buildProductCreateBody(product: ProductEntity, photoIds: number[], categoryId: number) {
+    const { stock } = channelAvailability(product, 'RETAIL');
+    return buildCreatePayload({
+      name: product.name,
+      sku: product.sku,
+      description: product.retailFullContent || product.description,
+      priceIrr: basalamRetailPriceRial(product),
+      stock,
+      photoIds,
+      categoryId,
+    });
+  }
+
+  /**
+   * Offline preview of pushCatalog. Makes zero Basalam calls, so stall matching and
+   * category lookup (both remote reads) are not evaluated; see `notes` in the response.
+   */
+  private async pushCatalogDryRun(limit: number) {
+    const m = await this.settings.marketing();
+    const map = (m.basalamProductMap || {}) as Record<string, number>;
+    const vendorId = Number(m.basalamVendorId) || null;
+    const origin = (process.env.NEXT_PUBLIC_RETAIL_URL || RETAIL_CANONICAL_ORIGIN).replace(/\/$/, '');
+    const rows = await this.products.find({
+      where: { status: 'ACTIVE' },
+      relations: ['variants', 'category'],
+    });
+    const pending = rows.filter((p) => isChannelVisible(p, 'RETAIL') && !Number(map[p.id]));
+    const batch = pending.slice(0, limit);
+    const url = `${BASALAM_OPENAPI_BASE}/vendors/${vendorId ?? '{vendorId}'}/products`;
+
+    const items = batch.map((product) => {
+      const base = {
+        localId: product.id,
+        sku: product.sku || null,
+        variants: (product.variants || []).map((v) => ({
+          size: v.size,
+          color: v.color,
+          retailStock: channelUnitStock(v, 'RETAIL'),
+        })),
+      };
+      const photoUrls = pickPhotoUrls(product.images, origin);
+      if (!photoUrls.length) {
+        return { ...base, action: 'fail' as const, error: 'تصویر محصول برای آپلود به باسلام موجود نیست' };
+      }
+      try {
+        // Index placeholders keep the photo/photos split identical to the real payload.
+        const body = this.buildProductCreateBody(
+          product,
+          photoUrls.map((_, i) => i + 1),
+          0,
+        );
+        const toUrl = (id: unknown) => photoUrls[Number(id) - 1];
+        if (body.photo !== undefined) body.photo = toUrl(body.photo);
+        if (Array.isArray(body.photos)) body.photos = body.photos.map(toUrl);
+        body.category_id = null;
+        return { ...base, action: 'create' as const, request: { method: 'POST', url, body } };
+      } catch (e: any) {
+        return { ...base, action: 'fail' as const, error: String(e?.message || e).slice(0, 240) };
+      }
+    });
+
+    return {
+      ok: items.every((item) => item.action !== 'fail'),
+      dryRun: true,
+      config: this.dryRunConfig(m),
+      wouldCreate: items.filter((item) => item.action === 'create').length,
+      wouldFail: items.filter((item) => item.action === 'fail').length,
+      remaining: pending.length - batch.length,
+      items,
+      notes: [
+        'dry-run: no request sent to Basalam; photos are source URLs (not uploaded); product map unchanged.',
+        'category_id is resolved from the stall at push time; stall matching (map existing) is not evaluated offline.',
+        'primary_price is Rial.',
+      ],
+    };
+  }
+
   private async persistProductMap(extra: Record<string, number>) {
     const prev = await this.settings.get('marketing');
     const nextMap = { ...((prev.basalamProductMap || {}) as Record<string, number>), ...extra };
@@ -415,11 +542,13 @@ export class BasalamService {
   ): Promise<StallProduct[]> {
     const out: StallProduct[] = [];
     for (let page = 1; page <= 20; page += 1) {
-      const res = await fetch(
-        `${BASALAM_OPENAPI_BASE}/vendors/${vendorId}/products?page=${page}&per_page=50`,
-        { headers: auth, signal: AbortSignal.timeout(20_000) },
-      );
-      const json = await res.json().catch(() => ({}));
+      const res = await this.http.request({
+        method: 'GET',
+        url: `${BASALAM_OPENAPI_BASE}/vendors/${vendorId}/products?page=${page}&per_page=50`,
+        headers: auth,
+        timeoutMs: 20_000,
+      });
+      const json = res.json;
       if (!res.ok) {
         throw new BadRequestException(
           String((json as any)?.message || `لیست غرفه باسلام ناموفق شد (${res.status})`),
@@ -434,13 +563,14 @@ export class BasalamService {
   }
 
   private async lookupClothingCategory(auth: { Authorization: string; Accept: string }): Promise<number | null> {
-    const res = await fetch(`${BASALAM_OPENAPI_BASE}/categories`, {
+    const res = await this.http.request({
+      method: 'GET',
+      url: `${BASALAM_OPENAPI_BASE}/categories`,
       headers: auth,
-      signal: AbortSignal.timeout(15_000),
+      timeoutMs: 15_000,
     });
-    const json = await res.json().catch(() => ({}));
     if (!res.ok) return null;
-    return pickClothingCategoryId(flattenCategories(json));
+    return pickClothingCategoryId(flattenCategories(res.json));
   }
 
   private async uploadProductPhotos(
@@ -459,30 +589,26 @@ export class BasalamService {
     auth: { Authorization: string; Accept: string },
     url: string,
   ): Promise<number | null> {
-    const img = await fetch(url, {
-      signal: AbortSignal.timeout(20_000),
-      headers: { Accept: 'image/*' },
-    });
+    const img = await this.http.download(url, 20_000);
     if (!img.ok) {
       this.logger.warn(`Basalam photo download failed ${img.status} ${url.slice(0, 80)}`);
       return null;
     }
-    const mime = img.headers.get('content-type') || 'image/jpeg';
+    const mime = img.contentType || 'image/jpeg';
     if (!mime.startsWith('image/')) return null;
-    const buf = Buffer.from(await img.arrayBuffer());
-    if (buf.length < 32) return null;
+    if (img.bytes.length < 32) return null;
     const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
     const form = new FormData();
-    form.append('file', new Blob([new Uint8Array(buf)], { type: mime }), `product.${ext}`);
+    form.append('file', new Blob([new Uint8Array(img.bytes)], { type: mime }), `product.${ext}`);
     form.append('file_type', 'product.photo');
-    const res = await fetch(`${BASALAM_OPENAPI_BASE}/files`, {
+    const res = await this.http.request({
       method: 'POST',
+      url: `${BASALAM_OPENAPI_BASE}/files`,
       headers: { Authorization: auth.Authorization },
       body: form,
-      signal: AbortSignal.timeout(30_000),
+      timeoutMs: 30_000,
     });
-    const json = await res.json().catch(() => ({}));
-    const id = Number((json as any)?.id);
+    const id = Number((res.json as any)?.id);
     if (!res.ok || !(id > 0)) {
       this.logger.warn(`Basalam file upload failed ${res.status}`);
       return null;
