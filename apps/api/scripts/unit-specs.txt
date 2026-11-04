@@ -213,3 +213,4 @@ src/modules/upload/video-transcode.service.spec.ts
 src/modules/upload/video-transcode.ffmpeg.spec.ts
 src/modules/omnichannel/services/video-job-lane.spec.ts
 src/modules/omnichannel/services/outbox-worker.video-drain.spec.ts
+src/modules/shipping/shipping.contract.spec.ts
